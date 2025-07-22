@@ -50,6 +50,15 @@ This roadmap outlines my progress through the Coursera **Microsoft Full-Stack We
 
 ---
 
+### ✅ Course 2: Introduction to Programming With C#
+
+- 🔹 Set up and configured .NET projects using Visual Studio Code
+- 🔹 Practiced core C# programming concepts: variables, conditionals, loops, and methods
+- 🔹 Applied object-oriented principles using classes, inheritance, and polymorphism
+- 🔹 Developed asynchronous programs with async and await for better performance
+
+---
+
 ## 📜 License
 
 This project is licensed under the [MIT License](LICENSE).
