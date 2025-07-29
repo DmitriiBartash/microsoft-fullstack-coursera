@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Module, Observer, Singleton</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <h1>Calculator</h1>
+  <div id="result">Result: 0</div>
+  <button onclick="CalculatorModule.add(5)">Add 5</button>
+  <button onclick="CalculatorModule.subtract(2)">Subtract 2</button>
+
+  <h2>Observer Demo</h2>
+  <button onclick="runObserverDemo()">Run Observer Demo</button>
+  <button onclick="clearObserverOutput()">Clear Observer Output</button>
+  <div id="observer-output" class="output-box">
+    <div class="placeholder">No observer output yet.</div>
+  </div>
+
+  <h2>Singleton Demo</h2>
+  <button onclick="runSingletonDemo()">Run Singleton Demo</button>
+  <button onclick="clearSingletonOutput()">Clear Singleton Output</button>
+  <div id="singleton-output" class="output-box">
+    <div class="placeholder">No singleton output yet.</div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
