@@ -1,0 +1,298 @@
+/* ========= Root Variables ========= */
+:root {
+  --bg-color: #f9fafb;
+  --text-color: #1f2937;
+  --accent: #2563eb;
+  --accent-dark: #1e40af;
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --highlight-bg: #e0f2fe;
+  --pill-bg: #eef2ff;
+  --pill-text: #3730a3;
+  --font-main: 'Segoe UI', Roboto, sans-serif;
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ========= Reset & Base ========= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.7;
+  font-size: 16px;
+  padding: 0 1rem;
+  scroll-behavior: smooth;
+}
+
+/* ========= Layout Containers ========= */
+header, section, footer {
+  max-width: 1000px;
+  margin: auto;
+  padding: 3rem 1rem;
+}
+
+/* ========= Header & Navigation ========= */
+header {
+  background: linear-gradient(90deg, #1f2937, #111827);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-md);
+  border-radius: 0 0 16px 16px;
+  padding: 1.5rem 1rem;
+}
+
+nav ul {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  list-style: none;
+  flex-wrap: wrap;
+}
+
+nav a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 500;
+  position: relative;
+  padding: 0.5rem 0;
+  transition: color 0.3s ease;
+}
+
+nav a::after {
+  content: '';
+  position: absolute;
+  height: 2px;
+  width: 0;
+  left: 50%;
+  bottom: 0;
+  background-color: #3b82f6;
+  transition: all 0.3s ease;
+}
+
+nav a:hover {
+  color: #dbeafe;
+}
+
+nav a:hover::after {
+  left: 0;
+  width: 100%;
+}
+
+/* ========= Headings ========= */
+h2 {
+  font-size: 2.2rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid var(--card-border);
+  padding-bottom: 0.6rem;
+  color: var(--accent-dark);
+}
+
+h3 {
+  font-size: 1.4rem;
+  margin-top: 1.8rem;
+  margin-bottom: 0.7rem;
+  color: var(--text-color);
+}
+
+/* ========= Card Sections ========= */
+section > article,
+section > div {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+section > article:hover,
+section > div:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ========= Paragraphs & Lists ========= */
+p {
+  margin-bottom: 1.1rem;
+}
+
+ul {
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+ul li {
+  margin-bottom: 0.5rem;
+}
+
+/* ========= Links ========= */
+a {
+  color: var(--accent);
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--accent-dark);
+}
+
+/* ========= Skills Section ========= */
+#skills ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  list-style: none;
+  padding-left: 0;
+}
+
+#skills li {
+  background-color: var(--pill-bg);
+  color: var(--pill-text);
+  padding: 0.5rem 0.9rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* ========= Certifications Section ========= */
+#certifications a {
+  display: inline-block;
+  margin-top: 0.4rem;
+  color: var(--accent);
+  font-size: 0.95rem;
+}
+
+/* ========= Contact Section ========= */
+#contact {
+  background-color: var(--highlight-bg);
+  border-left: 5px solid var(--accent);
+  border-right: 5px solid var(--accent);
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+#contact h2 {
+  text-align: center;
+}
+
+#contact p {
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+/* ========= Contact Form ========= */
+.contact-form {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.contact-form label {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.contact-form input,
+.contact-form textarea {
+  padding: 0.7rem;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: var(--font-main);
+  background-color: #fff;
+}
+
+.contact-form textarea {
+  resize: vertical;
+}
+
+.contact-form button {
+  background-color: var(--accent);
+  color: white;
+  padding: 0.7rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.contact-form button:hover {
+  background-color: var(--accent-dark);
+}
+
+/* ========= Footer ========= */
+footer {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+  border-top: 1px solid var(--card-border);
+  padding: 2rem 1rem;
+  margin-top: 3rem;
+}
+
+/* ========= Obfuscated Email ========= */
+.email-obfuscated {
+  unicode-bidi: bidi-override;
+  direction: rtl;
+  cursor: pointer;
+  display: inline-block;
+  background: rgba(37, 99, 235, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: background 0.3s ease;
+}
+
+.email-obfuscated:hover {
+  background: rgba(37, 99, 235, 0.2);
+}
+
+/* ========= Responsive ========= */
+@media (max-width: 600px) {
+  nav ul {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  h2 {
+    font-size: 1.8rem;
+  }
+
+  h3 {
+    font-size: 1.2rem;
+  }
+
+  section > article,
+  section > div {
+    padding: 1.2rem;
+  }
+
+  #skills li {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .contact-form input,
+  .contact-form textarea {
+    font-size: 0.95rem;
+  }
+
+  .contact-form button {
+    font-size: 0.95rem;
+  }
+}
