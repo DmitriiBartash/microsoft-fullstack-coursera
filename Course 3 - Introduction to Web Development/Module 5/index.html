@@ -1,20 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <meta name="description" content="Portfolio website of Dmitrii Bartash - Junior Full-Stack Developer specializing in .NET & ASP.NET Core." />
+  <meta name="description"
+    content="Portfolio website of Dmitrii Bartash - Junior Full-Stack Developer specializing in .NET & ASP.NET Core." />
   <title>Dmitrii Bartash | Junior Full-Stack Developer</title>
   <link rel="stylesheet" href="style.css" />
-  <style>
-    .email-obfuscated { unicode-bidi: bidi-override; direction: rtl; }
-  </style>
 </head>
+
 <body>
 
   <!-- Header -->
   <header role="banner">
+    <button id="menu-toggle" aria-label="Toggle navigation">
+      <span class="bar"></span>
+      <span class="bar"></span>
+      <span class="bar"></span>
+    </button>
+
     <nav role="navigation" aria-label="Main navigation">
       <ul>
         <li><a href="#about-me">About</a></li>
@@ -22,6 +28,7 @@
         <li><a href="#education">Education</a></li>
         <li><a href="#skills">Skills</a></li>
         <li><a href="#certifications">Certifications</a></li>
+        <li><a href="#projects">Projects</a></li>
         <li><a href="#contact">Contact</a></li>
       </ul>
     </nav>
@@ -31,10 +38,14 @@
   <section id="about-me">
     <h2>About Me</h2>
     <p><strong>Dmitrii Bartash</strong> – Junior Full-Stack Developer based in Chișinău, Moldova.</p>
-    <p>Aspiring software developer with hands-on experience designing and building full-stack web applications and distributed backend systems. Skilled in clean code, system architecture, and cloud integration.</p>
+    <p>Aspiring software developer with hands-on experience designing and building full-stack web applications and
+      distributed backend systems. Skilled in clean code, system architecture, and cloud integration.</p>
     <p><strong>Email:</strong> <span class="email-obfuscated">moc.liamg@hsatrab.iirtimd</span></p>
-    <p><strong>GitHub:</strong> <a href="https://github.com/DmitriiBartash" target="_blank" rel="noopener noreferrer">github.com/DmitriiBartash</a> |
-       <strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/dmitrii-bartash" target="_blank" rel="noopener noreferrer">linkedin.com/in/dmitrii-bartash</a></p>
+    <p><strong>GitHub:</strong> <a href="https://github.com/DmitriiBartash" target="_blank"
+        rel="noopener noreferrer">github.com/DmitriiBartash</a> |
+      <strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/dmitrii-bartash" target="_blank"
+        rel="noopener noreferrer">linkedin.com/in/dmitrii-bartash</a>
+    </p>
   </section>
 
   <!-- Experience Section -->
@@ -91,7 +102,8 @@
     <h2>Skills</h2>
     <ul>
       <li><strong>Programming Languages:</strong> C#, Python, JavaScript, SQL</li>
-      <li><strong>.NET Frameworks & Tools:</strong> ASP.NET Core, ASP.NET Web API, ASP.NET MVC, Razor Pages, Blazor, Entity Framework Core, LINQ</li>
+      <li><strong>.NET Frameworks & Tools:</strong> ASP.NET Core, ASP.NET Web API, ASP.NET MVC, Razor Pages, Blazor,
+        Entity Framework Core, LINQ</li>
       <li><strong>Python Frameworks:</strong> FastAPI</li>
       <li><strong>Frontend & UI:</strong> HTML5, CSS3, JavaScript</li>
       <li><strong>Databases & Storage:</strong> PostgreSQL, Microsoft SQL Server, SQLite, MongoDB, Redis</li>
@@ -108,16 +120,56 @@
     <ul>
       <li>
         <strong>Introduction to Programming With C#</strong> – Microsoft (July 22, 2025)<br />
-        <a href="https://coursera.org/share/7e4101de80eb49503dd0f0e393913064" target="_blank" rel="noopener noreferrer">View Certificate</a>
+        <a href="https://coursera.org/share/7e4101de80eb49503dd0f0e393913064" target="_blank"
+          rel="noopener noreferrer">View Certificate</a>
       </li>
       <li>
         <strong>Foundations of Coding Full-Stack</strong> – Microsoft (July 7, 2025)<br />
-        <a href="https://coursera.org/share/cf252a5528e0e4fbdbd1c0e0bd795b1c" target="_blank" rel="noopener noreferrer">View Certificate</a>
+        <a href="https://coursera.org/share/cf252a5528e0e4fbdbd1c0e0bd795b1c" target="_blank"
+          rel="noopener noreferrer">View Certificate</a>
       </li>
     </ul>
   </section>
 
-  <!-- Contact Section with Form -->
+  <!-- Projects Section -->
+  <section id="projects">
+    <h2>Projects</h2>
+
+    <!-- Project Filters -->
+    <div id="project-filters">
+      <button data-category="all" class="active">All</button>
+      <button data-category="web">Web</button>
+      <button data-category="api">API</button>
+      <button data-category="tool">Tool</button>
+    </div>
+
+    <!-- Project Cards -->
+    <div class="project-card" data-category="web">
+      <h3>Personal Portfolio</h3>
+      <p>A responsive portfolio built with HTML, CSS, and JavaScript.</p>
+      <img src="images/portfolio.png" alt="Portfolio screenshot" />
+    </div>
+
+    <div class="project-card" data-category="api">
+      <h3>Weather API</h3>
+      <p>REST API built with ASP.NET Core and OpenWeather integration.</p>
+      <img src="images/portfolio.png" alt="Weather API screenshot" />
+    </div>
+
+    <div class="project-card" data-category="tool">
+      <h3>BTU Calculator</h3>
+      <p>Thermal load estimation tool built with FastAPI and JS frontend.</p>
+      <img src="images/btu.png" alt="BTU Calculator screenshot" />
+    </div>
+  </section>
+
+  <!-- Lightbox Modal -->
+  <div id="lightbox" class="lightbox" style="display: none;">
+    <span id="lightbox-close">×</span>
+    <img id="lightbox-img" src="" alt="Project Preview" />
+  </div>
+
+  <!-- Contact Section -->
   <section id="contact">
     <h2>Contact Me</h2>
     <form class="contact-form" action="#" method="post">
@@ -140,15 +192,9 @@
     <p>Languages: Russian (Native) | Romanian (Native) | English (Improving)</p>
   </footer>
 
-  <!-- Optional JS to reverse obfuscated email -->
-  <script>
-    document.querySelectorAll('.email-obfuscated').forEach(el => {
-      el.addEventListener('click', () => {
-        const reversed = el.textContent.split('').reverse().join('');
-        window.location.href = 'mailto:' + reversed;
-      });
-    });
-  </script>
+  <!-- Script -->
+  <script src="script.js"></script>
 
 </body>
+
 </html>
