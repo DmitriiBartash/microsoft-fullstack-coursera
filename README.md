@@ -59,6 +59,19 @@ This roadmap outlines my progress through the Coursera **Microsoft Full-Stack We
 
 ---
 
+### ✅ Course 3: Introduction to Web Development
+
+- 🔹 Learned the essential building blocks of web development: HTML, CSS, and JavaScript
+- 🔹 Applied responsive design principles to create layouts that adapt to different devices
+- 🔹 Studied Web Content Accessibility Guidelines (WCAG) for inclusive web experiences
+- 🔹 Practiced DOM manipulation, asynchronous JavaScript, and working with JSON
+- 🔹 Explored advanced CSS techniques and JavaScript functions/scope
+- 🔹 Gained experience with Git and GitHub for version control and collaboration
+- 🔹 Used Microsoft Copilot to assist with coding and debugging
+- 🔹 Built a small web project combining HTML, CSS, JavaScript, and Copilot
+
+---
+
 ## 📜 License
 
 This project is licensed under the [MIT License](LICENSE).
