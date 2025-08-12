@@ -1,0 +1,17 @@
+<p class="mb-1">Task: <strong>@TaskName</strong></p>
+
+<button type="button"                     
+        class="btn btn-sm @(Completed ? "btn-secondary" : "btn-success")"
+        @onclick="MarkComplete"
+        disabled="@(Completed)">
+    @(Completed ? "✅ Completed" : "✔ Mark Complete")
+</button>
+
+@code {
+    [Parameter] public string TaskName { get; set; } = string.Empty;
+    [Parameter] public bool Completed { get; set; }
+
+    [Parameter] public EventCallback<string> OnTaskCompleted { get; set; }
+
+    private Task MarkComplete() => OnTaskCompleted.InvokeAsync(TaskName);
+}

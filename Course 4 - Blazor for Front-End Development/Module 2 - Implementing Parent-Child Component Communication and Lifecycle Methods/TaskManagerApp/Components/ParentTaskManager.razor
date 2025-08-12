@@ -1,0 +1,49 @@
+<h3 class="mb-3">Task Manager (Parent)</h3>
+
+@if (tasks.All(t => t.Completed))
+{
+    <div class="alert alert-success mb-3">🎉 All tasks are completed!</div>
+}
+
+<ul class="list-group">
+    @foreach (var t in tasks)
+    {
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span class="@(t.Completed ? "text-decoration-line-through text-muted" : null)">
+                @t.Name
+            </span>
+
+            <ChildTaskDisplay
+                TaskName="@t.Name"
+                Completed="@t.Completed"
+                OnTaskCompleted="HandleTaskCompleted" />
+        </li>
+    }
+</ul>
+
+<p class="mt-2 text-muted">Completed: @tasks.Count(x => x.Completed) / @tasks.Count</p>
+
+@code {
+    private readonly List<TaskItem> tasks =
+    [
+        new("Complete Blazor lab"),
+        new("Review EventCallback example"),
+        new("Push code to GitHub"),
+    ];
+
+    private void HandleTaskCompleted(string taskName)
+    {
+        var item = tasks.FirstOrDefault(x => x.Name == taskName);
+        if (item is not null)
+        {
+            item.Completed = true;      
+            StateHasChanged();          
+            Console.WriteLine($"Completed: {taskName}");
+        }
+    }
+
+    private sealed record TaskItem(string Name)
+    {
+        public bool Completed { get; set; }
+    }
+}
