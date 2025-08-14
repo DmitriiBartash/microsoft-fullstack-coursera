@@ -1,0 +1,37 @@
+﻿@inherits LayoutComponentBase
+
+<CascadingValue Name="ThemeColor" Value="themeColor">
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+
+        <main>
+            <div class="top-row px-4 d-flex align-items-center gap-2">
+                <span class="ms-3" style="opacity:.7">Theme:</span>
+
+                <button class="btn btn-sm" style="background:#4CAF50;color:white"
+                        @onclick="@(() => SetTheme(Green))">Green</button>
+
+                <button class="btn btn-sm" style="background:#2563EB;color:white"
+                        @onclick="@(() => SetTheme(Blue))">Blue</button>
+
+                <button class="btn btn-sm" style="background:#E11D48;color:white"
+                        @onclick="@(() => SetTheme(Rose))">Rose</button>
+            </div>
+
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+</CascadingValue>
+
+@code {
+    private string themeColor = "#4CAF50";
+    private const string Green = "#4CAF50";
+    private const string Blue  = "#2563EB";
+    private const string Rose  = "#E11D48";
+
+    private void SetTheme(string color) => themeColor = color;
+}

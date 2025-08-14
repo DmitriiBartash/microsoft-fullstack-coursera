@@ -1,0 +1,29 @@
+@using Microsoft.AspNetCore.Components
+@namespace AdvancedBlazorComponents.Components
+
+<div class="p-3 border rounded" style="border-color:@(AccentColor ?? "#d0d7de"); max-width:420px; margin:auto;">
+    <h5 style="color:@(AccentColor ?? "inherit")">🧒 Child Counter</h5>
+    <p>Count: <strong>@Count</strong></p>
+
+    <div class="d-flex gap-2">
+        <button class="btn btn-success btn-animate flex-fill" @onclick="() => IncrementBy(1)">+1</button>
+        <button class="btn btn-danger  btn-animate flex-fill" @onclick="Reset">Reset</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? AccentColor { get; set; }
+    public int Count { get; private set; }
+
+    public void IncrementBy(int n)
+    {
+        Count += n;
+        _ = InvokeAsync(StateHasChanged); 
+    }
+
+    public void Reset()
+    {
+        Count = 0;
+        _ = InvokeAsync(StateHasChanged);
+    }
+}

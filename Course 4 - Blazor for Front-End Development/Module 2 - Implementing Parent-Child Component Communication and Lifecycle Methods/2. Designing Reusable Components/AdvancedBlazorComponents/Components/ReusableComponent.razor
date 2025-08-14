@@ -1,0 +1,69 @@
+@using AdvancedBlazorComponents.Services
+@inject IDataService DataService
+@using AdvancedBlazorComponents.Components
+
+<div class="card p-3 my-3 shadow-sm border rounded" style="max-width:900px;">
+    <h3>🎨 Tag Cloud (DI + Theme)</h3>
+
+    <p style="color:@(ThemeColor ?? "inherit")">
+        Theme color preview (current: @(ThemeColor ?? "default"))
+    </p>
+
+    @if (items is null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <div class="tag-cloud mb-3">
+            @foreach (var tag in items)
+            {
+                var h = HueFrom(tag);
+                <span class="badge me-1" style="background-color:hsl(@(h), 70%, 80%)">@tag</span>
+            }
+        </div>
+    }
+
+    <button class="btn btn-outline-secondary mb-4" @onclick="Reload">🔄 Reload Tags</button>
+
+    <hr />
+    <h4>Parent → Child (via @@ref)</h4>
+    <ChildComponent @ref="child" AccentColor="@(ThemeColor)" />
+
+    <div class="d-flex gap-2 mt-2" style="max-width:420px; margin:auto;">
+        <button class="btn btn-primary flex-fill" @onclick="() => child?.IncrementBy(5)">Child +5</button>
+        <button class="btn btn-warning flex-fill" @onclick="() => child?.Reset()">Reset Child</button>
+        <button class="btn btn-outline-dark flex-fill" @onclick="ReadChildCount">Read Count</button>
+    </div>
+
+    @if (lastRead.HasValue)
+    {
+        <p class="text-center mt-2">Parent read: Child.Count = <strong>@lastRead</strong></p>
+    }
+</div>
+
+@code {
+    [CascadingParameter(Name = "ThemeColor")] public string? ThemeColor { get; set; }
+    private List<string>? items;
+    private ChildComponent? child;
+    private int? lastRead;
+
+    protected override async Task OnInitializedAsync()
+        => items = await DataService.GetData();
+
+    private async Task Reload() =>
+        items = await DataService.GetData();
+
+    private void ReadChildCount() =>
+        lastRead = child?.Count;
+
+    private int HueFrom(string s)
+    {
+        unchecked
+        {
+            int hash = 0;
+            foreach (var c in s) hash = (hash * 31) + c;
+            return Math.Abs(hash % 360);
+        }
+    }
+}
