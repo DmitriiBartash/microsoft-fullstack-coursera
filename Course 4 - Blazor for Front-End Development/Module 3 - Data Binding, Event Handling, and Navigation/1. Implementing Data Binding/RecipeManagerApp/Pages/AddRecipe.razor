@@ -1,0 +1,39 @@
+@page "/addrecipe"
+@using RecipeManagerApp.Data
+@inject RecipeService RecipeService
+@inject NavigationManager Nav
+
+<h3>Add Recipe</h3>
+
+<EditForm Model="@model" OnValidSubmit="HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <InputText class="form-control" @bind-Value="model.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Description</label>
+        <InputTextArea class="form-control" @bind-Value="model.Description" rows="4" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Add</button>
+    <button type="button" class="btn btn-secondary ms-2" @onclick="Cancel">Cancel</button>
+</EditForm>
+
+@code {
+    private Recipe model = new();
+
+    private void HandleSubmit()
+    {
+        RecipeService.Add(model);
+        Nav.NavigateTo("/");
+    }
+
+    private void Cancel()
+    {
+        Nav.NavigateTo("/");
+    }
+}

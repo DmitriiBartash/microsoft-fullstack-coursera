@@ -1,0 +1,40 @@
+﻿@page "/"
+@using RecipeManagerApp.Data
+@inject RecipeService RecipeService
+
+<h1 class="mb-3">Recipes</h1>
+
+<div class="mb-3">
+    <a class="btn btn-primary" href="/addrecipe">Add Recipe</a>
+</div>
+
+@if (recipes.Count == 0)
+{
+    <p>No recipes yet. Click <strong>Add Recipe</strong> to create one.</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var r in recipes)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-start">
+                <div class="me-auto">
+                    <div class="fw-bold">
+                        <a href="@($"/recipe/{r.Id}")">@r.Name</a>
+                    </div>
+                    <small>@r.Description</small>
+                </div>
+                <a class="btn btn-sm btn-outline-secondary" href="@($"/recipe/{r.Id}")">View details</a>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<Recipe> recipes = new();
+
+    protected override void OnInitialized()
+    {
+        recipes = RecipeService.GetAll().ToList();
+    }
+}

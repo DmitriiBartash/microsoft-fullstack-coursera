@@ -1,0 +1,37 @@
+@page "/recipe/{id:int}"
+@using RecipeManagerApp.Data
+@inject RecipeService RecipeService
+@inject NavigationManager Nav
+
+<h3>Recipe Details</h3>
+
+@if (recipe is null)
+{
+    <div class="alert alert-warning">Recipe not found.</div>
+    <button class="btn btn-secondary" @onclick="GoBack">Back</button>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <h4 class="card-title">@recipe.Name</h4>
+            <p class="card-text">@recipe.Description</p>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <button class="btn btn-secondary" @onclick="GoBack">Back</button>
+    </div>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+    private Recipe? recipe;
+
+    protected override void OnParametersSet()
+    {
+        recipe = RecipeService.GetById(id);
+    }
+
+    private void GoBack() => Nav.NavigateTo("/");
+}
