@@ -1,0 +1,47 @@
+@page "/feedback/list"
+@using FeedbackApp.Models
+@using FeedbackApp.Services
+@inject IFeedbackService FeedbackService
+
+<h3>Feedback List</h3>
+
+<div class="mb-3">
+    <NavLink class="btn btn-primary" href="feedback">+ Add Feedback</NavLink>
+</div>
+
+@if (items.Count == 0)
+{
+    <p>No feedback yet.</p>
+    <NavLink class="btn btn-outline-primary" href="feedback">Create first feedback</NavLink>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Comment</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var f in items)
+        {
+            <tr>
+                <td>@f.Name</td>
+                <td>@f.Email</td>
+                <td>@f.Comment</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<FeedbackItem> items = Array.Empty<FeedbackItem>();
+
+    protected override void OnInitialized()
+    {
+        items = FeedbackService.GetAll();
+    }
+}

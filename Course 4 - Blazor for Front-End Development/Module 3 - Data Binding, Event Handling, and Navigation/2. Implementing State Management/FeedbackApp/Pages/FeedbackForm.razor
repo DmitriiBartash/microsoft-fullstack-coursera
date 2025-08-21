@@ -1,0 +1,52 @@
+@page "/feedback"
+@using FeedbackApp.Models
+@using FeedbackApp.Services
+@inject IFeedbackService FeedbackService
+
+<h3>Submit Feedback</h3>
+
+<EditForm Model="@model" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <InputText @bind-Value="model.Name" class="form-control" />
+        <ValidationMessage For="@(() => model.Name)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <InputText @bind-Value="model.Email" class="form-control" />
+        <ValidationMessage For="@(() => model.Email)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Comment</label>
+        <InputTextArea @bind-Value="model.Comment" class="form-control" rows="5" />
+        <ValidationMessage For="@(() => model.Comment)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+@if (submitted)
+{
+    <div class="alert alert-success mt-3">
+        Thanks for your feedback, @lastSubmittedName!
+    </div>
+}
+
+@code {
+    private FeedbackItem model = new();
+    private bool submitted;
+    private string lastSubmittedName = string.Empty;
+
+    private void HandleValidSubmit()
+    {
+        FeedbackService.Add(model);
+        lastSubmittedName = model.Name;
+        submitted = true;
+        model = new();
+    }
+}
