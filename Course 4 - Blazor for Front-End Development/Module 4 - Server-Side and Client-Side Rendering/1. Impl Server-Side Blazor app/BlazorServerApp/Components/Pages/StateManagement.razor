@@ -1,0 +1,25 @@
+@page "/state-management"
+@rendermode InteractiveServer
+@inject BlazorServerApp.Services.StateContainer State
+
+<h3>Server-Side State Management</h3>
+
+<p class="lead">
+    Counter value: <b>@State.Counter</b>
+</p>
+
+<button class="btn btn-success" @onclick="Increment">+1</button>
+
+@code {
+    protected override void OnInitialized()
+    {
+        State.OnChange += StateHasChanged;
+    }
+
+    private void Increment() => State.Increment();
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+    }
+}

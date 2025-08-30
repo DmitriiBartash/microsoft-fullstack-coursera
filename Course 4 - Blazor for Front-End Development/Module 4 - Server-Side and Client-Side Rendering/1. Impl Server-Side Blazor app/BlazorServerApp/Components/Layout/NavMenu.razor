@@ -1,0 +1,37 @@
+﻿@using Microsoft.AspNetCore.Components.Routing
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">BlazorServerApp</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <!-- Home -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span>
+                <span class="ms-2">Home</span>
+            </NavLink>
+        </div>
+
+        <!-- SignalR Chat -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="signalr-chat">
+                <span class="oi oi-chat" aria-hidden="true"></span>
+                <span class="ms-2">SignalR Chat</span>
+            </NavLink>
+        </div>
+
+        <!-- State Management -->
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="state-management">
+                <span class="oi oi-layers" aria-hidden="true"></span>
+                <span class="ms-2">State Management</span>
+            </NavLink>
+        </div>
+    </nav>
+</div>

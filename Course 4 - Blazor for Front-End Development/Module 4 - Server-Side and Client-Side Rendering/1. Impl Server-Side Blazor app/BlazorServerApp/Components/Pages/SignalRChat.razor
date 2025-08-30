@@ -1,0 +1,89 @@
+@page "/signalr-chat"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Nav
+
+<h3>SignalR Chat</h3>
+
+<div class="mb-3">
+    <label class="form-label">Display name</label>
+    <input @bind="userName" @bind:event="oninput" class="form-control" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Message</label>
+    <input @bind="message" @bind:event="oninput" class="form-control" @onkeydown="HandleEnter" />
+    <button class="btn btn-primary mt-2" @onclick="SendAsync">Send</button>
+</div>
+
+<p class="text-muted">Hub state: @hubState</p>
+
+<ul class="list-group">
+    @foreach (var m in messages)
+    {
+        <li class="list-group-item">
+            <b>@m.User</b>: @m.Text
+            <div class="text-muted" style="font-size:.8rem">@m.When.LocalDateTime</div>
+        </li>
+    }
+</ul>
+
+@code {
+    private HubConnection? hub;
+    private string? userName;
+    private string? message;
+    private string hubState = "Not connected";
+
+    private readonly List<ChatMessage> messages = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        hub = new HubConnectionBuilder()
+            .WithUrl(Nav.ToAbsoluteUri("/notificationHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hub.Reconnecting += error => { hubState = "Reconnecting..."; StateHasChanged(); return Task.CompletedTask; };
+        hub.Reconnected  += id    => { hubState = "Connected";     StateHasChanged(); return Task.CompletedTask; };
+        hub.Closed       += error => { hubState = "Closed";         StateHasChanged(); return Task.CompletedTask; };
+
+        hub.On<string, string, DateTimeOffset>("ReceiveMessage", (user, text, when) =>
+        {
+            messages.Add(new ChatMessage(user, text, when));
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hub.StartAsync();
+        hubState = "Connected";
+    }
+
+    private async Task SendAsync()
+    {
+        if (hub is null) return;
+
+        var u = string.IsNullOrWhiteSpace(userName) ? "Anonymous" : userName!.Trim();
+        var t = message?.Trim();
+        if (string.IsNullOrWhiteSpace(t)) return;
+
+        await hub.SendAsync("SendMessage", u, t);
+        message = string.Empty;
+    }
+
+    private async Task HandleEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SendAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hub is not null)
+        {
+            await hub.DisposeAsync();
+        }
+    }
+
+    private record ChatMessage(string User, string Text, DateTimeOffset When);
+}
