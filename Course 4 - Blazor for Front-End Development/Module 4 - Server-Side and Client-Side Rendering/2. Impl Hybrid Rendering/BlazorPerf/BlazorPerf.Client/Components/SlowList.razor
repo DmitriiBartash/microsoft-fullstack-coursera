@@ -1,0 +1,31 @@
+@code {
+    [Parameter] public int ItemsCount { get; set; } = 50;
+    private List<string> _items = new();
+
+    protected override void OnInitialized()
+    {
+        for (int i = 0; i < ItemsCount; i++)
+        {
+            _items.Add($"Item {i:D3}");
+        }
+    }
+
+    private void Shuffle()
+    {
+        var rnd = new Random();
+        for (int i = _items.Count - 1; i > 0; i--)
+        {
+            int j = rnd.Next(i + 1);
+            (_items[i], _items[j]) = (_items[j], _items[i]);
+        }
+    }
+}
+<div class="element">
+    <button class="btn" @onclick="Shuffle">Shuffle</button>
+    <ul>
+        @foreach (var it in _items)
+        {
+            <li>@it</li>
+        }
+    </ul>
+</div>

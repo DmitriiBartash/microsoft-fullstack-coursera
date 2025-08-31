@@ -1,0 +1,10 @@
+.element {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 16px;
+  background-color: #ffffff;
+  color: #111827;
+  text-align: left;
+}
+.element p { margin: 0 0 6px; font-size: 14px; color: #374151; }
+.element h3 { margin: 0; font-size: 22px; font-weight: 600; color: #2563eb; letter-spacing: 0.5px; }

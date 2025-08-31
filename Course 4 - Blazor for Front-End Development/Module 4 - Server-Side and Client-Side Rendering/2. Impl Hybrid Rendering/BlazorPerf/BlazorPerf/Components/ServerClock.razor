@@ -1,0 +1,29 @@
+@using System.Timers
+@implements IDisposable
+
+<div class="element">
+    <p>Server time</p>
+    <h3>@_now.ToLongTimeString()</h3>
+</div>
+
+@code {
+    private DateTime _now = DateTime.Now;
+    private Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        _timer = new Timer(1000);
+        _timer.Elapsed += (_, __) =>
+        {
+            _now = DateTime.Now;
+            InvokeAsync(StateHasChanged);
+        };
+        _timer.Start();
+    }
+
+    public void Dispose()
+    {
+        _timer?.Stop();
+        _timer?.Dispose();
+    }
+}

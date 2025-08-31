@@ -1,0 +1,54 @@
+@using System.Diagnostics
+@page "/hybrid"
+@rendermode InteractiveServer
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using BlazorPerf.Components
+@using BlazorPerf.Client.Components
+@inject ILogger<HybridComponent> Logger
+
+<PageTitle>Hybrid Component</PageTitle>
+
+<section class="hybrid">
+  <header class="hybrid__head">
+    <h1>Hybrid Component</h1>
+  </header>
+
+  <div class="cards">
+    <div class="card">
+      <h3>SSR-only</h3>
+      <SSRPane />
+    </div>
+    <div class="card">
+      <h3>Interactive Server</h3>
+      <ServerClock @rendermode="InteractiveServer" />
+    </div>
+    <div class="card">
+      <h3>Interactive Auto (WASM)</h3>
+      <SlowList @rendermode="InteractiveAuto" ItemsCount="300" />
+    </div>
+  </div>
+</section>
+
+@code {
+    private readonly Stopwatch _sw = new();
+
+    protected override void OnInitialized()
+    {
+        _sw.Start();
+        Logger.LogInformation("HybridComponent OnInitialized at {Utc}", DateTime.UtcNow);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("HybridComponent OnInitializedAsync start at {Utc}", DateTime.UtcNow);
+        await Task.Yield();
+        Logger.LogInformation("HybridComponent OnInitializedAsync end at {Utc} (elapsed {Ms} ms)", DateTime.UtcNow, _sw.ElapsedMilliseconds);
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            Logger.LogInformation("HybridComponent first render complete at {Utc} (elapsed {Ms} ms)", DateTime.UtcNow, _sw.ElapsedMilliseconds);
+        return Task.CompletedTask;
+    }
+}

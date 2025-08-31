@@ -1,0 +1,50 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using BlazorPerf.Components
+@using BlazorPerf.Client.Components
+@inject NavigationManager Nav
+
+<PageTitle>Home</PageTitle>
+
+<section class="hero">
+  <div class="hero__content">
+    <h1 class="title">Blazor Hybrid Rendering Lab</h1>
+    <p class="subtitle">SSR • Interactive Server • Interactive WebAssembly</p>
+    <button class="btn" @onclick="LoadHybrid">Load Hybrid Inline</button>
+    <a class="btn btn--ghost" href="/hybrid" style="margin-left:8px;">Open Full Page</a>
+  </div>
+</section>
+
+<section class="preview">
+  <h2 class="preview__title">Live Preview</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>SSR-only</h3>
+      <SSRPane />
+    </div>
+    <div class="card">
+      <h3>Interactive Server</h3>
+      <ServerClock @rendermode="InteractiveServer" />
+    </div>
+  </div>
+</section>
+
+@if (showHybrid)
+{
+  <section class="lazy" id="hybrid-host">
+    <h2 class="preview__title">Hybrid (lazy)</h2>
+    <article class="lazy__host">
+      <HybridComponent />
+    </article>
+  </section>
+}
+
+@code {
+    private bool showHybrid;
+    private async Task LoadHybrid()
+    {
+        if (!showHybrid) { showHybrid = true; await Task.Yield(); }
+        Nav.NavigateTo("#hybrid-host");
+    }
+}

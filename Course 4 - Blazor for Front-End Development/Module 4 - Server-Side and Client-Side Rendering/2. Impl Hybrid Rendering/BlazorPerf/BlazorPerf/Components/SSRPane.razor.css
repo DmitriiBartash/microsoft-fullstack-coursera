@@ -1,0 +1,11 @@
+.element {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 16px;
+  background-color: #ffffff;
+  color: #111827;
+  text-align: left;
+}
+.element p { margin: 0 0 10px; font-size: 14px; color: #374151; font-style: italic; }
+.element ul { margin: 0; padding-left: 18px; color: #111827; list-style-type: disc; }
+.element li { font-size: 14px; line-height: 1.4; margin-bottom: 4px; }

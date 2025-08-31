@@ -1,0 +1,13 @@
+@code {
+    private readonly DateTime _renderedAt = DateTime.UtcNow;
+    private readonly string[] _mock = new[] { "Alpha", "Bravo", "Charlie", "Delta" };
+}
+<div class="element">
+    <p>Rendered at (UTC): @_renderedAt:HH:mm:ss</p>
+    <ul>
+        @foreach (var s in _mock)
+        {
+            <li>@s</li>
+        }
+    </ul>
+</div>
