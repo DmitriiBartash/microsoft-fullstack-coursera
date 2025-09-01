@@ -1,0 +1,20 @@
+@page "/404"
+@page "/{*path:nonfile}"
+
+<PageTitle>Not found</PageTitle>
+
+<section class="py-5">
+  <div class="container text-center">
+    <div class="display-6 mb-3">404 — Page not found</div>
+    <p class="text-body-secondary mb-4">
+      @(string.IsNullOrWhiteSpace(path) ? "The page you’re looking for doesn’t exist." 
+                                        : $"No page matches “/{path}”.")
+    </p>
+    <a href="/" class="btn btn-primary me-2">Go home</a>
+    <a href="/events" class="btn btn-outline-secondary">Browse events</a>
+  </div>
+</section>
+
+@code {
+    [Parameter] public string? path { get; set; }
+}

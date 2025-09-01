@@ -1,0 +1,43 @@
+@page "/events/new"
+@rendermode InteractiveServer
+@using EventEase.Models
+@using EventEase.Components.Shared
+@inject EventEase.Services.IEventStore Store
+@inject NavigationManager Nav
+
+<PageTitle>New Event</PageTitle>
+
+<section class="py-4">
+    <div class="container" style="max-width:720px">
+        <h1 class="h4 mb-3">Create event</h1>
+
+        <EventCard Editable="true"
+                   @bind-Name="_name"
+                   @bind-Date="_date"
+                   @bind-Location="_location"
+                   SaveText="Create"
+                   OnSave="CreateAsync">
+            <a class="btn btn-outline-secondary" href="/events">Cancel</a>
+        </EventCard>
+    </div>
+</section>
+
+@code {
+    private string _name = "";
+    private DateTime _date = DateTime.Today.AddDays(1);
+    private string _location = "";
+
+    private Task CreateAsync()
+    {
+        var created = Store.Add(new Event
+        {
+            Name = (_name ?? "").Trim(),
+            Date = _date,
+            Location = (_location ?? "").Trim(),
+            Description = ""
+        });
+
+        Nav.NavigateTo($"/events/{created.Id}");
+        return Task.CompletedTask;
+    }
+}

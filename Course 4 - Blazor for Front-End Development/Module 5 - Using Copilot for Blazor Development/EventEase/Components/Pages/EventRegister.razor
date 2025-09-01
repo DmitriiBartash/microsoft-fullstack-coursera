@@ -1,0 +1,119 @@
+@page "/events/{Id:int}/register"
+@rendermode InteractiveServer
+@using System.ComponentModel.DataAnnotations
+@inject NavigationManager Nav
+@inject EventEase.Services.IRegistrationStore Regs
+@inject EventEase.Services.UserSession Session
+
+<PageTitle>Register</PageTitle>
+
+<section class="reg-wrap py-4">
+    <div class="container d-flex justify-content-center">
+        <article class="reg-card">
+            <header class="reg-head">
+                <div class="reg-head__icon" aria-hidden="true">🎟️</div>
+                <div class="reg-head__text">
+                    <h1 class="h4 mb-1">Event registration</h1>
+                    <div class="text-body-secondary">Event ID: @Id</div>
+                </div>
+            </header>
+
+            <EditForm Model="_model" OnValidSubmit="Submit" class="reg-form">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="alert alert-warning py-2 px-3 mb-3 small" />
+
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <div class="alert alert-danger py-2 px-3 mb-3 small" role="alert">@_error</div>
+                }
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="form-floating">
+                            <InputText id="fullName"
+                                       class="form-control"
+                                       placeholder=" "
+                                       @bind-Value="_model.FullName"
+                                       autocomplete="name" />
+                            <label for="fullName">Full name</label>
+                        </div>
+                        <ValidationMessage For="@(() => _model.FullName)" class="text-danger small d-block mt-1" />
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-floating">
+                            <InputText id="email"
+                                       class="form-control"
+                                       type="email"
+                                       placeholder=" "
+                                       @bind-Value="_model.Email"
+                                       autocomplete="email" />
+                            <label for="email">Email</label>
+                        </div>
+                        <ValidationMessage For="@(() => _model.Email)" class="text-danger small d-block mt-1" />
+                    </div>
+                </div>
+
+                <div class="d-flex">
+                    <button class="btn btn-cta flex-fill" type="submit" disabled="@_busy">
+                        @(_busy ? "Submitting..." : "Confirm registration")
+                    </button>
+                    <a class="btn btn-ghost flex-fill" href="/events/@Id">Cancel</a>
+                </div>
+            </EditForm>
+        </article>
+    </div>
+</section>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private string? _error;
+    private bool _busy;
+    private RegistrationModel _model = new();
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrWhiteSpace(Session.FullName)) _model.FullName = Session.FullName!;
+        if (!string.IsNullOrWhiteSpace(Session.Email)) _model.Email = Session.Email!;
+    }
+
+    private void Submit()
+    {
+        if (_busy) return;
+
+        _error = null;
+        _busy = true;
+
+        var full  = (_model.FullName ?? string.Empty).Trim();
+        var email = (_model.Email ?? string.Empty).Trim().ToLowerInvariant();
+
+        if (Regs.Exists(Id, email))
+        {
+            _error = "This email is already registered for this event.";
+            _busy = false;
+            return;
+        }
+
+        Regs.Add(new EventEase.Models.Registration
+        {
+            EventId = Id,
+            FullName = full,
+            Email = email
+        });
+
+        Session.FullName = full;
+        Session.Email = email;
+
+        _busy = false;
+        Nav.NavigateTo($"/events/{Id}?registered=1");
+    }
+
+    public sealed class RegistrationModel
+    {
+        [Required, StringLength(100)]
+        public string FullName { get; set; } = "";
+        [Required, EmailAddress]
+        public string Email { get; set; } = "";
+    }
+}

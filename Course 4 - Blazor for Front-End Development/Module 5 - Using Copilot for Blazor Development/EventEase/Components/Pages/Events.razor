@@ -1,0 +1,174 @@
+@page "/events"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using EventEase.Models
+@using System.Globalization
+@inject EventEase.Services.IEventStore Store
+
+<PageTitle>Events</PageTitle>
+
+<section class="e-hero py-4">
+    <div class="container">
+        <div class="d-flex align-items-center gap-2 e-search">
+            <div class="input-group input-group-lg flex-fill">
+                <span class="input-group-text" aria-hidden="true">
+                    <span class="e-ico"></span>
+                </span>
+
+                <input class="form-control"
+                       placeholder="Search by name or location..."
+                       value="@_searchText"
+                       @oninput="OnInputChanged"
+                       @onkeydown="HandleKeyDown"
+                       @ref="_searchInput" />
+            </div>
+
+            <a class="btn btn-lg btn-outline-secondary rounded-pill px-3" href="/events/new">New</a>
+
+            <button type="button"
+                    class="btn btn-lg btn-accent rounded-pill px-3"
+                    @onclick="ClearAsync"
+                    disabled="@string.IsNullOrWhiteSpace(_searchText)">
+                Clear
+            </button>
+        </div>
+    </div>
+</section>
+
+<section class="py-3">
+    <div class="container">
+        @if (_filteredCache.Count == 0)
+        {
+            <div class="text-center text-body-secondary py-5">
+                <div class="e-empty mx-auto mb-3" aria-hidden="true"></div>
+                <div class="h5 mb-1">No events found</div>
+                <div>Try a different keyword.</div>
+            </div>
+        }
+        else
+        {
+            <ul class="list-unstyled e-list">
+                <Virtualize ItemsProvider="ProvideEvents"
+                            OverscanCount="4"
+                            Context="e"
+                            @ref="_virt">
+                    <ItemContent Context="e">
+                        <li @key="e.Id">
+                            <a class="e-card" href="/events/@e.Id">
+                                <div class="e-thumb" aria-hidden="true">@(!string.IsNullOrWhiteSpace(e.Name) ? e.Name![0] : '?')</div>
+                                <div class="e-body">
+                                    <div class="e-meta">@Meta(e.Date)</div>
+                                    <div class="e-title">@e.Name</div>
+                                    <div class="e-sub text-body-secondary">@e.Location</div>
+                                </div>
+                                <div class="ms-auto e-chevron" aria-hidden="true">›</div>
+                            </a>
+                        </li>
+                    </ItemContent>
+                    <Placeholder>
+                        <li class="mb-2">
+                            <div class="e-card placeholder-glow">
+                                <div class="e-thumb placeholder col-1" style="height:56px;width:56px;border-radius:14px;"></div>
+                                <div class="e-body w-100">
+                                    <div class="placeholder col-3 mb-2"></div>
+                                    <div class="placeholder col-6"></div>
+                                </div>
+                            </div>
+                        </li>
+                    </Placeholder>
+                </Virtualize>
+            </ul>
+        }
+    </div>
+</section>
+
+@code {
+    private string _searchText = "";
+    private string _lastQuery = "";
+    private ElementReference _searchInput;
+
+    private List<Event> _all = [];
+    private List<Event> _filteredCache = [];
+    private Virtualize<Event>? _virt;
+
+    private CancellationTokenSource? _debounceCts;
+
+    protected override void OnInitialized()
+    {
+        _all = Store.All.OrderBy(e => e.Date).ToList();
+        _filteredCache = _all;
+    }
+
+    private async Task OnInputChanged(ChangeEventArgs e)
+    {
+        _searchText = e.Value?.ToString() ?? "";
+        await DebounceSearchAsync(250);
+    }
+
+    private async Task DebounceSearchAsync(int delayMs)
+    {
+        _debounceCts?.Cancel();
+        var cts = _debounceCts = new CancellationTokenSource();
+        try { await Task.Delay(delayMs, cts.Token); } catch { return; }
+        await SearchAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        var q = (_searchText ?? "").Trim();
+        if (q == _lastQuery) return;
+        _lastQuery = q;
+        ApplyFilter(q);
+        if (_virt is not null) await _virt.RefreshDataAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        _searchText = "";
+        _lastQuery = "";
+        _filteredCache = _all;
+        if (_virt is not null) await _virt.RefreshDataAsync();
+        await _searchInput.FocusAsync();
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SearchAsync();
+        else if (e.Key == "Escape") await ClearAsync();
+    }
+
+    private void ApplyFilter(string q)
+    {
+        if (string.IsNullOrWhiteSpace(q))
+        {
+            _filteredCache = _all;
+            return;
+        }
+
+        _filteredCache = _all
+            .Where(e =>
+                (!string.IsNullOrEmpty(e.Name) && e.Name.Contains(q, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(e.Location) && e.Location.Contains(q, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+    }
+
+    private ValueTask<ItemsProviderResult<Event>> ProvideEvents(ItemsProviderRequest req)
+    {
+        var slice = _filteredCache
+            .Skip(req.StartIndex)
+            .Take(req.Count)
+            .ToList();
+        return ValueTask.FromResult(new ItemsProviderResult<Event>(slice, _filteredCache.Count));
+    }
+
+    private static string Meta(DateTime dt)
+    {
+        var ci = new CultureInfo("en-US");
+        var day = dt.Day;
+        var ordinal = day % 10 == 1 && day != 11 ? "st"
+                    : day % 10 == 2 && day != 12 ? "nd"
+                    : day % 10 == 3 && day != 13 ? "rd" : "th";
+        return $"{day}{ordinal} {dt.ToString("MMM", ci)} · {dt:ddd} · {dt:h:mm tt}";
+    }
+}

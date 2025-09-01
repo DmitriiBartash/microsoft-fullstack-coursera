@@ -1,0 +1,129 @@
+@page "/events/{Id:int}"
+@rendermode InteractiveServer
+@using EventEase.Models
+@using System.Globalization
+@using Microsoft.AspNetCore.Components
+@inject EventEase.Services.IEventStore Store
+@inject EventEase.Services.IRegistrationStore Regs
+@inject EventEase.Services.UserSession Session
+
+<PageTitle>Event Details</PageTitle>
+
+<section class="e-wrap py-4">
+    <div class="container d-flex justify-content-center">
+        @if (_event is null)
+        {
+            <div class="text-center text-body-secondary py-5">
+                <div class="fs-1 mb-2">🗂️</div>
+                <div class="h5 mb-1">Event not found</div>
+                <a class="btn btn-outline-secondary mt-2" href="/events">Back to list</a>
+            </div>
+        }
+        else
+        {
+            <div class="w-100" style="max-width:760px;">
+                @if (ShowRegisteredBanner)
+                {
+                    <div class="alert alert-success d-flex align-items-center gap-3 mb-3" role="alert">
+                        <div class="fs-5" aria-hidden="true">✅</div>
+                        <div>
+                            <strong>Registration confirmed</strong><br />
+                            @if (!string.IsNullOrWhiteSpace(Session.FullName))
+                            {
+                                <span>@Session.FullName, you’re on the list for <b>@_event.Name</b> on @_event.Date.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture) in @_event.Location.</span>
+                            }
+                            else
+                            {
+                                <span>You’re on the list for <b>@_event.Name</b> on @_event.Date.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture) in @_event.Location.</span>
+                            }
+                        </div>
+                        <a href="/events" class="btn btn-sm btn-success ms-auto">Browse more</a>
+                    </div>
+                }
+
+                <article class="e-card">
+                    <div class="e-cover" aria-hidden="true"></div>
+
+                    <div class="e-body">
+                        <h1 class="e-title">@_event.Name</h1>
+                        <div class="e-location">
+                            <span class="i-pin" aria-hidden="true"></span>@_event.Location
+                        </div>
+
+                        <div class="e-section">
+                            <div class="e-section-title">Participants</div>
+                            <div class="e-avatars">
+                                <span class="avatar a1">AK</span>
+                                <span class="avatar a2">JS</span>
+                                <span class="avatar a3">RM</span>
+                                <span class="avatar a4">TG</span>
+                                <span class="avatar more">10+</span>
+                            </div>
+                        </div>
+
+                        <div class="e-section">
+                            <div class="e-section-title">Time and date</div>
+                            <div class="e-spec">
+                                <div class="spec-item">
+                                    <span class="i-clock" aria-hidden="true"></span>
+                                    @FormatTime(StartTime) – @FormatTime(EndTime)
+                                </div>
+                                <div class="spec-item">
+                                    <span class="i-cal" aria-hidden="true"></span>
+                                    @_event.Date.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture)
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="e-section">
+                            <div class="e-section-title">Description</div>
+                            <p class="e-desc">@_event.Description</p>
+                        </div>
+
+                        <div class="e-actions">
+                            <a class="btn e-ghost" href="/events">Remind me later!</a>
+
+                            @if (AlreadyRegistered)
+                            {
+                                <span class="btn e-cta disabled" aria-disabled="true">Registered ✓</span>
+                            }
+                            else
+                            {
+                                <a class="btn e-cta e-cta--attend" href="/events/@_event.Id/register">
+                                    Attending <span class="chev">›</span>
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </article>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "registered")]
+    public string? Registered { get; set; }
+
+    private Event? _event;
+
+    private bool JustRegistered =>
+        !string.IsNullOrEmpty(Registered) &&
+        (Registered == "1" || string.Equals(Registered, "true", StringComparison.OrdinalIgnoreCase));
+
+    private bool AlreadyRegistered =>
+        !string.IsNullOrWhiteSpace(Session.Email) && Regs.Exists(Id, Session.Email!);
+
+    private bool ShowRegisteredBanner => JustRegistered || AlreadyRegistered;
+
+    private DateTime StartTime => (_event?.Date.Date ?? DateTime.Today).AddHours(19);
+    private DateTime EndTime   => (_event?.Date.Date ?? DateTime.Today).AddHours(22);
+    private static string FormatTime(DateTime t) => t.ToString("h:mm tt", CultureInfo.InvariantCulture);
+
+    protected override void OnParametersSet()
+    {
+        _event = Store.All.FirstOrDefault(e => e.Id == Id);
+    }
+}

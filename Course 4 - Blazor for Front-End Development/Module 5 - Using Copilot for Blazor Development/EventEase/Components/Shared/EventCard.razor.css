@@ -1,0 +1,35 @@
+:host {
+    display: block;
+}
+
+.event-card .form-label {
+    font-weight: 600;
+    margin-bottom: .25rem;
+}
+
+.event-card .form-control {
+    border-radius: .5rem;
+}
+
+.event-card .form-control:focus {
+    border-color: rgba(124, 58, 237, .45);
+    box-shadow: 0 0 0 .15rem rgba(124, 58, 237, .18);
+}
+
+.ec-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 1rem;
+}
+
+.btn.btn-primary {
+    box-shadow: 0 10px 24px rgba(13, 110, 253, .25);
+    transition: filter .15s ease, transform .08s ease, box-shadow .2s ease;
+}
+
+.btn.btn-primary:hover {
+    filter: brightness(1.06);
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
