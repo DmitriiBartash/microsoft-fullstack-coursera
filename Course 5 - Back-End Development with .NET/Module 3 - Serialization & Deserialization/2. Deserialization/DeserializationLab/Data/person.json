@@ -1,0 +1,6 @@
+{
+  "UserName": "Bob",
+  "UserAge": 25,
+  "Email": "bob@example.com",
+  "IsActive": true
+}

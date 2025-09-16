@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Person xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <UserName>Bob</UserName>
+  <UserAge>25</UserAge>
+  <Email>bob@example.com</Email>
+  <IsActive>true</IsActive>
+</Person>
