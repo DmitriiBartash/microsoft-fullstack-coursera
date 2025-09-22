@@ -1,0 +1,81 @@
+﻿@page
+@model UserManagementApp.Pages.IndexModel
+@{
+    ViewData["Title"] = "User Management";
+}
+
+<h1 class="mb-4 text-primary d-flex align-items-center">
+    <i class="bi bi-people-fill me-2"></i> Manage Users
+</h1>
+
+<div class="form-container mb-4 p-3 border rounded shadow-sm bg-light">
+    <div class="row g-2">
+        <div class="col-md-3">
+            <input type="text" id="firstName" class="form-control" placeholder="First Name" required />
+            <div class="invalid-feedback">First name is required</div>
+        </div>
+        <div class="col-md-3">
+            <input type="text" id="lastName" class="form-control" placeholder="Last Name" required />
+            <div class="invalid-feedback">Last name is required</div>
+        </div>
+        <div class="col-md-4">
+            <input type="email" id="email" class="form-control" placeholder="Email" required />
+            <div class="invalid-feedback">Please enter a valid email</div>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-success w-100" onclick="addUser()">
+                <i class="bi bi-person-plus-fill me-1"></i> Add User
+            </button>
+        </div>
+    </div>
+</div>
+
+<table id="userTable" class="table table-striped table-hover table-bordered align-middle shadow-sm">
+    <thead class="table-light">
+        <tr class="text-center">
+            <th style="width: 60px;">Id</th>
+            <th>First</th>
+            <th>Last</th>
+            <th>Email</th>
+            <th style="width: 120px;">Actions</th>
+        </tr>
+    </thead>
+    <tbody class="text-center"></tbody>
+</table>
+
+<div class="d-flex align-items-center justify-content-between mt-3">
+    <div class="d-flex align-items-center gap-2">
+        <label for="pageSize" class="form-label m-0 small text-muted">Rows per page</label>
+        <select id="pageSize" class="form-select form-select-sm" style="width:auto"
+            onchange="changePageSize(this.value)">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+        </select>
+        <span class="small text-muted" id="pageInfo"></span>
+    </div>
+    <nav>
+        <ul class="pagination pagination-sm mb-0" id="pager"></ul>
+    </nav>
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalLabel">User Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Id:</strong> <span id="modalUserId" class="badge bg-primary"></span></p>
+                <p><strong>First Name:</strong> <span id="modalFirstName"></span></p>
+                <p><strong>Last Name:</strong> <span id="modalLastName"></span></p>
+                <p><strong>Email:</strong> <span id="modalEmail"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
