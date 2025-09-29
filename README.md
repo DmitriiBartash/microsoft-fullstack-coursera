@@ -72,6 +72,26 @@ This roadmap outlines my progress through the Coursera **Microsoft Full-Stack We
 
 ---
 
+### ✅ Course 4: Blazor for Front-End Development
+
+- 🔹 Learned the basic concepts and features of **Blazor**, its components, data binding, and rendering models  
+- 🔹 Created and configured Blazor projects, practiced parent-child component communication, routing, and navigation  
+- 🔹 Explored lifecycle methods, event handling, state management, and hybrid rendering approaches  
+- 🔹 Developed a Blazor project, focusing on writing, debugging, and optimizing Blazor code  
+- 🔹 Applied **UI/UX design principles** to build responsive, user-centered interfaces and improve CSS styling  
+
+---
+
+### ✅ Course 5: Back-End Development with .NET
+
+- 🔹 Studied the features and functionalities of the **.NET Framework**, differences between .NET Core and .NET Framework, and commonly used libraries and packages  
+- 🔹 Learned how to set up the development environment for .NET and create a simple web API with **ASP.NET Core**  
+- 🔹 Integrated **OpenAPI (Swagger)** with ASP.NET Core for better documentation and testing  
+- 🔹 Practiced C# syntax in the context of back-end development, focusing on serialization and deserialization of data  
+- 🔹 Built and debugged a RESTful API project, implementing middleware components and server-side logic  
+
+---
+
 ## 📜 License
 
 This project is licensed under the [MIT License](LICENSE).
