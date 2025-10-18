@@ -1,0 +1,49 @@
+@namespace frontend.Shared
+@using Microsoft.AspNetCore.Components.Forms
+@using frontend.Models
+
+<div class="modal-backdrop" @onclick="Cancel"></div>
+
+<div class="modal-card" role="dialog">
+    <div class="modal-head">
+        <h5>@Title</h5>
+        <button class="icon" @onclick="Cancel"><i class="bi bi-x-lg"></i></button>
+    </div>
+
+    <div class="modal-body">
+        <EditForm Model="@Model" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+            <div class="grid">
+                <label>Name
+                    <InputText class="input" @bind-Value="Model.Name" />
+                    <ValidationMessage For="() => Model.Name" />
+                </label>
+
+                <label>Category
+                    <InputText class="input" @bind-Value="Model.Category" />
+                    <ValidationMessage For="() => Model.Category" />
+                </label>
+
+                <label>Price
+                    <InputNumber class="input" @bind-Value="Model.Price" />
+                    <ValidationMessage For="() => Model.Price" />
+                </label>
+            </div>
+
+            <div class="modal-foot">
+                <button type="button" class="btn btn-light" @onclick="Cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Product";
+    [Parameter] public Product Model { get; set; } = new();
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+
+    private async Task HandleSubmit() => await OnValidSubmit.InvokeAsync();
+    private async Task Cancel() => await OnCancel.InvokeAsync();
+}

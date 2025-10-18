@@ -1,0 +1,188 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
+@page "/"
+@inject ProductService ProductService
+
+<div class="shell">
+    <header class="hero">
+        <div class="hero-title">
+            <div class="emoji">🛍️</div>
+            <div>
+                <h1>Product Console</h1>
+                <p>Manage your catalog fast & clean</p>
+            </div>
+        </div>
+        <div class="hero-actions">
+            <input class="search" placeholder="Search by name or category…" @bind="Search" />
+            <button class="btn btn-primary" @onclick="ShowAddModal">+ Add Product</button>
+        </div>
+    </header>
+
+    <section class="stats">
+        <div class="stat">
+            <div class="stat-k">@((filtered?.Count ?? 0).ToString())</div>
+            <div class="stat-l">Items</div>
+        </div>
+        <div class="stat">
+            <div class="stat-k">@categories.Count</div>
+            <div class="stat-l">Categories</div>
+        </div>
+        <div class="stat">
+            <div class="stat-k">@avgPrice.ToString("C", euroCulture)</div>
+            <div class="stat-l">Avg. Price</div>
+        </div>
+    </section>
+
+    @if (products is null)
+    {
+        <div class="loading">
+            <div class="spinner-border" role="status"></div>
+            <span>Loading products…</span>
+        </div>
+    }
+    else if (filtered is null || filtered.Count == 0)
+    {
+        <div class="empty">
+            <div class="emoji">🗂️</div>
+            <h3>No results</h3>
+            <p>Try changing your search query.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th class="col-id">ID</th>
+                        <th>Name</th>
+                        <th class="col-cat">Category</th>
+                        <th class="col-price">Price</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var p in filtered)
+                {
+                    <tr>
+                        <td>@p.Id</td>
+                        <td>@p.Name</td>
+                        <td><span class="chip">@p.Category</span></td>
+                        <td class="col-price">@p.Price.ToString("C", euroCulture)</td>
+                        <td class="col-actions">
+                            <button class="btn btn-ghost edit" @onclick="() => ShowEditModal(p)">
+                                <i class="bi bi-pencil-square"></i> Edit
+                            </button>
+                            <button class="btn btn-ghost danger" @onclick="() => Delete(p.Id)">
+                                <i class="bi bi-trash3"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (showAddModal)
+    {
+        <ProductModal Title="Add Product"
+                      Model="newProduct"
+                      OnValidSubmit="AddProduct"
+                      OnCancel="CloseAddModal" />
+    }
+
+    @if (showEditModal)
+    {
+        <ProductModal Title="Edit Product"
+                      Model="editProduct"
+                      OnValidSubmit="UpdateProduct"
+                      OnCancel="CloseEditModal" />
+    }
+</div>
+
+@code {
+    private List<Product>? products;
+    private List<Product>? filtered;
+    private HashSet<string> categories = new(StringComparer.OrdinalIgnoreCase);
+    private decimal avgPrice;
+
+    private bool showAddModal;
+    private bool showEditModal;
+
+    private Product newProduct = new();
+    private Product editProduct = new();
+    private string search = string.Empty;
+
+    // ✅ формат для евро (Франция)
+    private readonly CultureInfo euroCulture = new("fr-FR");
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        products = await ProductService.GetAll() ?? new List<Product>();
+        ApplyFilter();
+        categories = products.Select(p => p.Category)
+                             .Where(c => !string.IsNullOrWhiteSpace(c))
+                             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        avgPrice = products.Count > 0 ? products.Average(p => p.Price) : 0m;
+    }
+
+    private void ApplyFilter()
+    {
+        if (products is null) { filtered = null; return; }
+        var q = (search ?? string.Empty).Trim();
+        filtered = string.IsNullOrEmpty(q)
+            ? products.OrderBy(p => p.Id).ToList()
+            : products.Where(p =>
+                   (p.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (p.Category?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false))
+                      .OrderBy(p => p.Id)
+                      .ToList();
+    }
+
+    private void ShowAddModal() => showAddModal = true;
+    private void CloseAddModal() => showAddModal = false;
+
+    private void ShowEditModal(Product p)
+    {
+        editProduct = new Product
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Category = p.Category,
+            Price = p.Price
+        };
+        showEditModal = true;
+    }
+
+    private void CloseEditModal() => showEditModal = false;
+
+    private async Task AddProduct()
+    {
+        await ProductService.Add(newProduct);
+        newProduct = new();
+        showAddModal = false;
+        await Reload();
+    }
+
+    private async Task UpdateProduct()
+    {
+        await ProductService.Update(editProduct);
+        showEditModal = false;
+        await Reload();
+    }
+
+    private async Task Delete(int id)
+    {
+        if (await ProductService.Delete(id))
+            await Reload();
+    }
+
+    private string Search
+    {
+        get => search;
+        set { search = value; ApplyFilter(); }
+    }
+}
