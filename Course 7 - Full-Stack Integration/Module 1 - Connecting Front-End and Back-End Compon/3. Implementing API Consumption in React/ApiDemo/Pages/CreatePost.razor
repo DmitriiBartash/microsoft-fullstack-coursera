@@ -1,0 +1,65 @@
+@page "/create-post"
+@using ApiDemo.Models
+@inject HttpClient Http
+
+<div class="card shadow-sm mt-4">
+    <div class="card-header bg-primary text-white fw-bold">
+        Create New Post
+    </div>
+    <div class="card-body">
+
+        @if (success)
+        {
+            <div class="alert alert-success">Post created successfully!</div>
+        }
+        @if (error)
+        {
+            <div class="alert alert-danger">Error creating post.</div>
+        }
+
+        <EditForm Model="newPost" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label class="form-label">Title</label>
+                <InputText class="form-control" @bind-Value="newPost.Title" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Body</label>
+                <InputTextArea class="form-control" rows="4" @bind-Value="newPost.Body" />
+            </div>
+
+            <button class="btn btn-success">
+                <span class="bi bi-check-circle"></span> Submit
+            </button>
+        </EditForm>
+
+    </div>
+</div>
+
+@code {
+    private Post newPost = new();
+    private bool success = false;
+    private bool error = false;
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                "https://jsonplaceholder.typicode.com/posts",
+                newPost);
+
+            success = response.IsSuccessStatusCode;
+            error = !success;
+
+            if (success)
+                newPost = new(); 
+        }
+        catch
+        {
+            error = true;
+        }
+    }
+}
