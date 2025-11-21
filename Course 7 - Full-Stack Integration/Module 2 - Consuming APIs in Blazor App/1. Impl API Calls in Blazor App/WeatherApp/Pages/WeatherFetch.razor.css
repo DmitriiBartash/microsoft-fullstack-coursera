@@ -1,0 +1,64 @@
+.weather-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.weather-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+    padding: 2rem;
+    border-radius: 20px;
+    text-align: center;
+    width: 320px;
+    color: white;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+    animation: fadeIn 0.7s ease-in-out;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.weather-icon {
+    font-size: 2.2rem;
+}
+
+.temperature {
+    font-size: 4rem;
+    font-weight: 600;
+    margin: 1rem 0;
+}
+
+.details {
+    font-size: 1.1rem;
+    margin-top: 1rem;
+}
+
+.details div {
+    margin: 0.3rem 0;
+}
+
+.loading-card, .error-card {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.loading-card p {
+    margin-top: 1rem;
+    font-size: 1.1rem;
+}
+
+.error-card {
+    border-left: 5px solid #ff4444;
+    font-size: 1.2rem;
+    padding: 1.5rem;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
