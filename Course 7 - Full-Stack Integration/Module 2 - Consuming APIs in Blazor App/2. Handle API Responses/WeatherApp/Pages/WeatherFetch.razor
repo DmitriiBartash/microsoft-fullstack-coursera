@@ -1,0 +1,58 @@
+@page "/"
+@page "/weatherfetch"
+@using WeatherApp.Models
+@inject HttpClient Http
+
+<div class="weather-container">
+
+    @if (errorMessage != null)
+    {
+        <div class="weather-card error-card">
+            <p>@errorMessage</p>
+        </div>
+    }
+    else if (weather != null)
+    {
+        <div class="weather-card">
+            <div class="card-header">
+                <h2>Chisinau, Moldova</h2>
+                <span class="bi bi-cloud-sun-fill weather-icon"></span>
+            </div>
+
+            <div class="temperature">
+                @weather.CurrentWeather?.Temperature &deg;C
+            </div>
+
+            <div class="details">
+                <div>
+                    <span class="bi bi-wind"></span>
+                    Wind: @weather.CurrentWeather?.WindSpeed km/h
+                </div>
+
+                <div>
+                    <span class="bi bi-cloud"></span>
+                    Code: @weather.CurrentWeather?.WeatherCode
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private OpenMeteoResponse? weather;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var url = "https://api.open-meteo.com/v1/forecast?latitude=47.0105&longitude=28.8638&current_weather=true";
+
+            weather = await Http.GetFromJsonAsync<OpenMeteoResponse>(url);
+        }
+        catch (Exception)
+        {
+            errorMessage = "Unable to load weather data.";
+        }
+    }
+}

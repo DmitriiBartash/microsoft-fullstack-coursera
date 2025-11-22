@@ -1,0 +1,90 @@
+:host {
+    display: block;
+    min-height: 100%;
+    padding: 2rem 1.25rem;
+    background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+    color: #0f172a;
+}
+
+.weather-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.weather-card {
+    width: 360px;
+    background: #f8fafc;
+    border: 1px solid #d9e2ec;
+    border-radius: 16px;
+    box-shadow: 0 16px 48px rgba(15, 23, 42, 0.14);
+    padding: 1.75rem;
+    text-align: center;
+    color: #0f172a;
+    animation: fadeIn 0.35s ease-in-out;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.card-header h2 {
+    font-size: 1.3rem;
+    margin: 0;
+}
+
+.weather-icon {
+    font-size: 2.3rem;
+    color: #0284c7;
+}
+
+.temperature {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin: 1rem 0;
+    color: #0ea5e9;
+}
+
+.details {
+    font-size: 1.05rem;
+    margin-top: 0.5rem;
+    color: #1f2937;
+}
+
+.details div {
+    margin: 0.35rem 0;
+    display: flex;
+    justify-content: center;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.error-card {
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+    color: #9f1239;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 640px) {
+    :host {
+        padding: 1.25rem 0.75rem;
+    }
+
+    .weather-card {
+        width: 100%;
+    }
+}

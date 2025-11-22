@@ -1,0 +1,114 @@
+@page "/dynamicweather"
+@using WeatherApp.Models
+@using WeatherApp.Services
+@inject HttpClient Http
+@inject WeatherStateService State
+@implements IDisposable
+
+<h3>Dynamic Weather & Users</h3>
+
+<div class="buttons">
+    <button class="btn btn-primary me-2" @onclick="FetchWeather">Fetch Weather</button>
+    <button class="btn btn-secondary" @onclick="FetchUsers">Fetch Users</button>
+</div>
+
+@if (State.CurrentWeather != null)
+{
+    <div class="card mt-3 p-3">
+        <h5>Weather</h5>
+        <p>Temperature: @State.CurrentWeather.Temperature &deg;C</p>
+        <p>Wind Speed: @State.CurrentWeather.WindSpeed km/h</p>
+        <p>Code: @State.CurrentWeather.WeatherCode</p>
+    </div>
+}
+
+@if (State.Users != null)
+{
+    <div class="card mt-3 p-3">
+        <h5>Users</h5>
+        @foreach (var user in State.Users)
+        {
+            <p>@user.Name - @user.Email</p>
+        }
+    </div>
+}
+
+@code {
+    private CancellationTokenSource? cts;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += StateHasChanged;
+    }
+
+    private async Task FetchWeather()
+    {
+        CancelPreviousRequest();
+
+        try
+        {
+            cts = new CancellationTokenSource();
+
+            var url = "https://api.open-meteo.com/v1/forecast?latitude=47.0105&longitude=28.8638&current_weather=true";
+            var result = await Http.GetFromJsonAsync<OpenMeteoResponse>(url, cts.Token);
+
+            if (result?.CurrentWeather is CurrentWeather currentWeather)
+            {
+                var weather = new WeatherData
+                {
+                    Temperature = currentWeather.Temperature,
+                    WindSpeed = currentWeather.WindSpeed,
+                    WeatherCode = currentWeather.WeatherCode ?? 0
+                };
+
+                State.SetWeather(weather);
+            }
+            else
+            {
+                Console.WriteLine("Weather response missing current weather data.");
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            Console.WriteLine("Weather request cancelled.");
+        }
+    }
+
+    private async Task FetchUsers()
+    {
+        CancelPreviousRequest();
+
+        try
+        {
+            cts = new CancellationTokenSource();
+
+            var url = "https://jsonplaceholder.typicode.com/users";
+            var users = await Http.GetFromJsonAsync<List<User>>(url, cts.Token);
+
+            if (users != null)
+            {
+                State.SetUsers(users);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            Console.WriteLine("User request cancelled.");
+        }
+    }
+
+    private void CancelPreviousRequest()
+    {
+        if (cts != null)
+        {
+            cts.Cancel();
+            cts.Dispose();
+            cts = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+        CancelPreviousRequest();
+    }
+}
