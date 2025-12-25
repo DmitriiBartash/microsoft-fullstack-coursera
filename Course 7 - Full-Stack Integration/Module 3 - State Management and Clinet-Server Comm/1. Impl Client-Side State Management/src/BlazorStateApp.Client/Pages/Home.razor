@@ -1,0 +1,339 @@
+@page "/"
+@inherits FluxorComponent
+@inject IState<CartState> CartState
+@inject IDispatcher Dispatcher
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject Blazored.SessionStorage.ISessionStorageService SessionStorage
+
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-grid-3x3-gap me-2"></i>Product Catalog
+                </h5>
+                @if (_wishlist.Count > 0)
+                {
+                    <span class="badge bg-danger">
+                        <i class="bi bi-heart-fill me-1"></i>@_wishlist.Count in Wishlist
+                    </span>
+                }
+            </div>
+            <div class="card-body">
+                <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+                    @foreach (var product in ProductCatalog.All)
+                    {
+                        var isInWishlist = _wishlist.Contains(product.Name);
+                        var isInCompare = _compareProducts.Contains(product.Name);
+                        var borderClass = (isInWishlist, isInCompare) switch
+                        {
+                            (true, true) => "border-both",
+                            (true, false) => "border-wishlist",
+                            (false, true) => "border-compare",
+                            _ => ""
+                        };
+                        <div class="col">
+                            <div class="card h-100 product-card @borderClass">
+                                <div class="card-body text-center position-relative">
+                                    <div class="position-absolute top-0 end-0 p-1 d-flex align-items-center">
+                                        <button class="btn btn-link p-1"
+                                                @onclick="() => ToggleCompare(product.Name)"
+                                                title="@(isInCompare ? "Remove from Compare" : "Add to Compare")">
+                                            <i class="bi @(isInCompare ? "bi-star-fill text-warning" : "bi-star text-secondary") fs-5"></i>
+                                        </button>
+                                        <span class="text-muted small">|</span>
+                                        <button class="btn btn-link p-1"
+                                                @onclick="() => ToggleWishlist(product.Name)"
+                                                title="@(isInWishlist ? "Remove from Wishlist" : "Add to Wishlist")">
+                                            <i class="bi @(isInWishlist ? "bi-heart-fill text-danger" : "bi-heart text-secondary") fs-5"></i>
+                                        </button>
+                                    </div>
+                                    <div class="display-4 mb-3">@product.Icon</div>
+                                    <h6 class="card-title">@product.Name</h6>
+                                    <p class="text-muted small mb-2">@product.Category</p>
+                                    <p class="h5 text-primary mb-3">$@product.Price.ToString("F2")</p>
+                                    <button class="btn btn-outline-primary btn-sm w-100"
+                                            @onclick="() => AddToCart(product)">
+                                        <i class="bi bi-cart-plus me-1"></i>Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-cart3 me-2"></i>Shopping Cart
+                </h5>
+                @if (CartState.Value.HasItems)
+                {
+                    <span class="badge bg-light text-dark">@CartState.Value.ItemCount items</span>
+                }
+            </div>
+            <div class="card-body">
+                @if (CartState.Value.IsLoading)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                }
+                else if (CartState.Value.IsEmpty)
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-cart-x display-4"></i>
+                        <p class="mt-2 mb-0">Your cart is empty</p>
+                        <small>Add some products to get started</small>
+                    </div>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush mb-3">
+                        @foreach (var item in CartState.Value.Items)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">@item.Name</div>
+                                    <small class="text-muted">$@item.Price.ToString("F2") each</small>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary"
+                                                @onclick="() => UpdateQuantity(item.Id, item.Quantity - 1)">
+                                            <i class="bi bi-dash"></i>
+                                        </button>
+                                        <span class="btn btn-outline-secondary disabled">@item.Quantity</span>
+                                        <button class="btn btn-outline-secondary"
+                                                @onclick="() => UpdateQuantity(item.Id, item.Quantity + 1)">
+                                            <i class="bi bi-plus"></i>
+                                        </button>
+                                    </div>
+                                    <button class="btn btn-outline-danger btn-sm"
+                                            @onclick="() => RemoveFromCart(item.Id)"
+                                            title="Remove">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+
+                    <div class="border-top pt-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Unique Items:</span>
+                            <strong>@CartState.Value.UniqueItemCount</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span>Total Quantity:</span>
+                            <strong>@CartState.Value.ItemCount</strong>
+                        </div>
+                        <div class="d-flex justify-content-between h5 mb-3">
+                            <span>Total:</span>
+                            <span class="text-success">$@CartState.Value.TotalPrice.ToString("F2")</span>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" @onclick="ConfirmOrder">
+                                <i class="bi bi-credit-card me-2"></i>Checkout
+                            </button>
+                            <button class="btn btn-outline-danger" @onclick="ClearCart">
+                                <i class="bi bi-trash me-2"></i>Clear Cart
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+            @if (CartState.Value.LastSyncedAt.HasValue)
+            {
+                <div class="card-footer text-muted small text-center">
+                    <i class="bi bi-database me-1"></i>IndexedDB
+                    <span class="mx-1">|</span>
+                    <i class="bi bi-clock me-1"></i>@CartState.Value.LastSyncedAt.Value.ToLocalTime().ToString("HH:mm:ss")
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (CartState.Value.HasItems)
+{
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-dark">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-receipt me-2"></i>Order Receipt
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Product</th>
+                                    <th>Category</th>
+                                    <th class="text-end">Price</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ var index = 1; }
+                                @foreach (var item in CartState.Value.Items)
+                                {
+                                    <tr>
+                                        <td>@(index++)</td>
+                                        <td><strong>@item.Name</strong></td>
+                                        <td><span class="badge bg-secondary">@(item.Category ?? "General")</span></td>
+                                        <td class="text-end">$@item.Price.ToString("F2")</td>
+                                        <td class="text-center">@item.Quantity</td>
+                                        <td class="text-end">$@item.Total.ToString("F2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="table-dark">
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Total Items:</strong></td>
+                                    <td class="text-center"><strong>@CartState.Value.ItemCount</strong></td>
+                                    <td class="text-end"><strong>$@CartState.Value.TotalPrice.ToString("F2")</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-end mt-3">
+                        <button class="btn btn-success btn-lg" @onclick="ConfirmOrder">
+                            <i class="bi bi-check-circle me-2"></i>Confirm Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm bg-body-tertiary">
+            <div class="card-body py-2">
+                <small class="text-muted">
+                    <i class="bi bi-hdd me-1"></i>Wishlist: <strong>LocalStorage</strong>
+                    <span class="mx-2">|</span>
+                    <i class="bi bi-clock-history me-1"></i>Compare: <strong>SessionStorage</strong>
+                    <span class="mx-2">|</span>
+                    <i class="bi bi-database me-1"></i>Cart: <strong>IndexedDB</strong>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_showConfirmation)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-check-circle-fill me-2"></i>Order Confirmed!
+                    </h5>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="display-1 text-success mb-3">
+                        <i class="bi bi-bag-check"></i>
+                    </div>
+                    <h4>Thank you for your order!</h4>
+                    <p class="text-muted mb-0">Your order has been successfully placed.</p>
+                    <p class="text-muted">Order total: <strong class="text-success">$@_confirmedTotal</strong></p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button class="btn btn-success" @onclick="CloseConfirmation">
+                        <i class="bi bi-arrow-left me-2"></i>Continue Shopping
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private const string WishlistKey = "wishlist";
+    private const string CompareKey = "compare-products";
+
+    private bool _showConfirmation;
+    private string _confirmedTotal = "0.00";
+    private HashSet<string> _wishlist = new();
+    private HashSet<string> _compareProducts = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadFromStorage();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadFromStorage()
+    {
+        var savedWishlist = await LocalStorage.GetItemAsync<List<string>>(WishlistKey);
+        if (savedWishlist != null)
+            _wishlist = savedWishlist.ToHashSet();
+
+        var savedCompare = await SessionStorage.GetItemAsync<List<string>>(CompareKey);
+        if (savedCompare != null)
+            _compareProducts = savedCompare.ToHashSet();
+    }
+
+    private async Task ToggleWishlist(string productName)
+    {
+        if (_wishlist.Contains(productName))
+            _wishlist.Remove(productName);
+        else
+            _wishlist.Add(productName);
+
+        await LocalStorage.SetItemAsync(WishlistKey, _wishlist.ToList());
+    }
+
+    private async Task ToggleCompare(string productName)
+    {
+        if (_compareProducts.Contains(productName))
+        {
+            _compareProducts.Remove(productName);
+        }
+        else if (_compareProducts.Count < 4)
+        {
+            _compareProducts.Add(productName);
+        }
+
+        await SessionStorage.SetItemAsync(CompareKey, _compareProducts.ToList());
+    }
+
+    private void AddToCart(Product product) =>
+        Dispatcher.Dispatch(new AddToCartAction(product.Name, product.Price, Category: product.Category));
+
+    private void RemoveFromCart(int itemId) =>
+        Dispatcher.Dispatch(new RemoveFromCartAction(itemId));
+
+    private void UpdateQuantity(int itemId, int quantity) =>
+        Dispatcher.Dispatch(new UpdateQuantityAction(itemId, quantity));
+
+    private void ClearCart() =>
+        Dispatcher.Dispatch(new ClearCartAction());
+
+    private void ConfirmOrder()
+    {
+        _confirmedTotal = CartState.Value.TotalPrice.ToString("F2");
+        _showConfirmation = true;
+        Dispatcher.Dispatch(new ClearCartAction());
+    }
+
+    private void CloseConfirmation() => _showConfirmation = false;
+}

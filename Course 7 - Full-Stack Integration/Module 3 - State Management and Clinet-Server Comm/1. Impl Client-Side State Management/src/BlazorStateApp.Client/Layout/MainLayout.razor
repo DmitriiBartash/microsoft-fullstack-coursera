@@ -1,0 +1,82 @@
+@inherits FluxorLayout
+@inject IState<ThemeState> ThemeState
+@inject IState<CartState> CartState
+@inject IDispatcher Dispatcher
+
+<div class="d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="">
+                <i class="bi bi-box-seam me-2"></i>Blazor State App
+            </a>
+
+            <div class="d-flex align-items-center gap-3">
+                <a href="/" class="btn btn-outline-secondary btn-sm" title="Home">
+                    <i class="bi bi-house"></i>
+                </a>
+                <a href="/cart" class="btn btn-outline-warning btn-sm" title="Compare Products">
+                    <i class="bi bi-star me-1"></i>Compare
+                </a>
+                <a href="/wishlist" class="btn btn-outline-danger btn-sm" title="Wishlist">
+                    <i class="bi bi-heart me-1"></i>Wishlist
+                </a>
+                <span class="position-relative">
+                    <i class="bi bi-bag fs-5"></i>
+                    @if (CartState.Value.HasItems)
+                    {
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            @CartState.Value.ItemCount
+                        </span>
+                    }
+                </span>
+
+                <div class="btn-group" role="group">
+                    <button type="button"
+                            class="btn btn-sm @(ThemeState.Value.CurrentTheme == Themes.Light ? "btn-primary" : "btn-outline-secondary")"
+                            @onclick="() => SetTheme(Themes.Light)"
+                            title="Light theme">
+                        <i class="bi bi-sun-fill"></i>
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm @(ThemeState.Value.CurrentTheme == Themes.Dark ? "btn-primary" : "btn-outline-secondary")"
+                            @onclick="() => SetTheme(Themes.Dark)"
+                            title="Dark theme">
+                        <i class="bi bi-moon-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow-1">
+        <div class="container py-4">
+            @Body
+        </div>
+    </main>
+
+    <footer class="bg-body-tertiary border-top py-3 mt-auto">
+        <div class="container text-center text-muted small">
+            <p class="mb-1">
+                <strong>Blazor State App</strong> — Fluxor + IndexedDB Demo
+            </p>
+            <p class="mb-0">
+                Theme: <span class="badge bg-secondary">@ThemeState.Value.CurrentTheme</span>
+                @if (ThemeState.Value.IsLoading)
+                {
+                    <span class="spinner-border spinner-border-sm ms-1"></span>
+                }
+            </p>
+        </div>
+    </footer>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        Dispatcher.Dispatch(new LoadThemeAction());
+        Dispatcher.Dispatch(new LoadCartAction());
+    }
+
+    private void SetTheme(string theme) => Dispatcher.Dispatch(new SetThemeAction(theme));
+}
