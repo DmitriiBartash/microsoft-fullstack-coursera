@@ -1,0 +1,201 @@
+@page "/settings"
+@inject IExchangeRateService ExchangeRateService
+@inject IUserStateService UserStateService
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+<PageTitle>Settings - Currency Exchange</PageTitle>
+
+<div class="settings-container animate-fadeIn">
+    <!-- Base Currency Card -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>General Settings</h3>
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label class="form-label">Base Currency</label>
+                <select class="converter-select" @bind="_baseCurrency">
+                    @foreach (var currency in _allCurrencies)
+                    {
+                        <option value="@currency.Key">@currency.Key - @currency.Value</option>
+                    }
+                </select>
+                <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">
+                    All rates and wallet values will be calculated relative to this currency.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Favorites Card -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>Favorite Currencies (Dashboard)</h3>
+        </div>
+        <div class="card-body">
+            <div class="favorite-grid">
+                @foreach (var currency in _allCurrencies)
+                {
+                    var isSelected = _selectedCurrencies.Contains(currency.Key);
+                    <div class="favorite-item @(isSelected ? "selected" : "")"
+                         @onclick="() => ToggleCurrency(currency.Key)">
+                        <div class="favorite-checkbox">
+                            @if (isSelected)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Style="color: white;" />
+                            }
+                        </div>
+                        <span class="favorite-code">@currency.Key</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="settings-actions">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Default"
+                   OnClick="ResetToDefaults"
+                   Style="border-color: #7f1d1d; color: #f87171;">
+            Reset All Settings
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveSettings"
+                   Disabled="_saving"
+                   Size="Size.Large">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Save Settings
+        </MudButton>
+    </div>
+</div>
+
+<style>
+    .settings-container {
+        max-width: 800px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-label {
+        font-size: 0.875rem;
+        color: #94a3b8;
+    }
+
+    .settings-actions {
+        padding-top: 1rem;
+        border-top: 1px solid #334155;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    @@media (max-width: 768px) {
+        .settings-actions {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .settings-actions > * {
+            width: 100%;
+        }
+    }
+</style>
+
+@code {
+    private Dictionary<string, string> _allCurrencies = new();
+    private string _baseCurrency = "USD";
+    private HashSet<string> _selectedCurrencies = [];
+    private bool _saving;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _allCurrencies = await ExchangeRateService.GetAvailableCurrenciesAsync();
+
+            var prefs = await UserStateService.GetPreferencesAsync();
+            _baseCurrency = prefs.BaseCurrency;
+            _selectedCurrencies = prefs.FavoriteCurrencies.ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load settings: {ex.Message}", Severity.Error);
+            _allCurrencies = UserPreferences.Default.FavoriteCurrencies
+                .ToDictionary(c => c, c => c);
+        }
+    }
+
+    private void ToggleCurrency(string currency)
+    {
+        if (_selectedCurrencies.Contains(currency))
+        {
+            _selectedCurrencies.Remove(currency);
+        }
+        else
+        {
+            _selectedCurrencies.Add(currency);
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        if (_selectedCurrencies.Count == 0)
+        {
+            Snackbar.Add("Please select at least one currency", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var preferences = new UserPreferences(
+                _baseCurrency,
+                _selectedCurrencies.ToList()
+            );
+
+            await UserStateService.SavePreferencesAsync(preferences);
+            Snackbar.Add("Settings saved successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ResetToDefaults()
+    {
+        _baseCurrency = UserPreferences.Default.BaseCurrency;
+        _selectedCurrencies = UserPreferences.Default.FavoriteCurrencies.ToHashSet();
+
+        await SaveSettings();
+        Snackbar.Add("Settings reset to defaults", Severity.Info);
+    }
+}

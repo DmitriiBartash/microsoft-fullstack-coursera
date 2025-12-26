@@ -1,0 +1,381 @@
+@page "/converter"
+@inject IExchangeRateService ExchangeRateService
+@inject IUserStateService UserStateService
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+<PageTitle>Converter - Currency Exchange</PageTitle>
+
+<div class="converter-container animate-fadeIn">
+    <!-- Converter Card -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>Currency Converter</h3>
+        </div>
+        <div class="card-body">
+            <div class="converter-form">
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label class="form-label">Amount</label>
+                        <input type="number"
+                               class="converter-input"
+                               value="@_amount"
+                               @oninput="OnAmountChanged"
+                               min="0"
+                               step="0.01" />
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label class="form-label">From Currency</label>
+                        <select class="converter-select" value="@_fromCurrency" @onchange="OnFromCurrencyChanged">
+                            @foreach (var currency in _currencies)
+                            {
+                                <option value="@currency">@currency - @GetCurrencyName(currency)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="swap-button-container">
+                        <button class="swap-button @(_swapping ? "swap-spin" : "")" @onclick="SwapCurrencies">
+                            <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" />
+                        </button>
+                    </div>
+
+                    <div class="form-group flex-1">
+                        <label class="form-label">To Currency</label>
+                        <select class="converter-select" value="@_toCurrency" @onchange="OnToCurrencyChanged">
+                            @foreach (var currency in _currencies)
+                            {
+                                <option value="@currency">@currency - @GetCurrencyName(currency)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="converter-result">
+                    <div class="result-label">Conversion Result</div>
+                    <div class="result-value">
+                        @_previewResult.ToString("N2")
+                        <span class="result-currency">@_toCurrency</span>
+                    </div>
+                    <div class="result-rate">
+                        1 @_fromCurrency = @GetRate().ToString("F4") @_toCurrency
+                    </div>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               OnClick="SaveConversion"
+                               Disabled="_converting"
+                               Class="mt-6">
+                        @if (_converting)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Save to History
+                    </MudButton>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Card -->
+    @if (_history.Count > 0)
+    {
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>Conversion History (Session Storage)</h3>
+            </div>
+            <div class="card-body">
+                @foreach (var record in _history)
+                {
+                    <div class="history-item">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <MudIcon Icon="@Icons.Material.Filled.History" Class="history-icon" />
+                            <span class="history-text">
+                                @record.Amount.ToString("N2") @record.FromCurrency
+                                <span style="color: #64748b; margin: 0 0.5rem;">→</span>
+                                @record.Result.ToString("N2") @record.ToCurrency
+                            </span>
+                        </div>
+                        <span class="history-time">@record.Timestamp.ToLocalTime().ToString("HH:mm")</span>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .converter-container {
+        max-width: 900px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .converter-form {
+        background: rgba(15, 23, 42, 0.5);
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        border: 1px solid #334155;
+    }
+
+    .form-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .flex-1 {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .form-label {
+        font-size: 0.875rem;
+        color: #94a3b8;
+    }
+
+    .swap-button-container {
+        padding-bottom: 0.25rem;
+    }
+
+    .swap-button {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background-color: #334155;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .swap-button:hover {
+        background-color: #475569;
+        color: white;
+    }
+
+    .swap-spin {
+        animation: swap-rotate 0.4s ease-out forwards;
+    }
+
+    @@keyframes swap-rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(180deg); }
+    }
+
+    .converter-result {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid #334155;
+    }
+
+    .result-label {
+        color: #94a3b8;
+        margin-bottom: 0.5rem;
+    }
+
+    .result-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: white;
+    }
+
+    .result-currency {
+        color: #3b82f6;
+    }
+
+    .result-rate {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin-top: 0.5rem;
+    }
+
+    @@media (max-width: 768px) {
+        .form-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .swap-button-container {
+            align-self: center;
+        }
+    }
+</style>
+
+@code {
+    private List<string> _currencies = [];
+    private string _fromCurrency = "USD";
+    private string _toCurrency = "EUR";
+    private decimal _amount = 100;
+    private decimal _previewResult;
+    private bool _converting;
+    private bool _swapping;
+    private List<ConversionRecord> _history = [];
+    private Dictionary<string, decimal> _rates = new();
+
+    private readonly Dictionary<string, string> _currencyNames = new()
+    {
+        ["USD"] = "US Dollar",
+        ["EUR"] = "Euro",
+        ["GBP"] = "British Pound",
+        ["JPY"] = "Japanese Yen",
+        ["CNY"] = "Chinese Yuan",
+        ["CHF"] = "Swiss Franc",
+        ["AUD"] = "Australian Dollar",
+        ["CAD"] = "Canadian Dollar",
+        ["PLN"] = "Polish Zloty",
+        ["RON"] = "Romanian Leu"
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private string GetCurrencyName(string code) =>
+        _currencyNames.TryGetValue(code, out var name) ? name : code;
+
+    private void OnAmountChanged(ChangeEventArgs e)
+    {
+        if (decimal.TryParse(e.Value?.ToString(), out var amount))
+        {
+            _amount = amount;
+            UpdatePreview();
+        }
+    }
+
+    private async Task OnFromCurrencyChanged(ChangeEventArgs e)
+    {
+        _fromCurrency = e.Value?.ToString() ?? "USD";
+        await ReloadRates();
+    }
+
+    private void OnToCurrencyChanged(ChangeEventArgs e)
+    {
+        _toCurrency = e.Value?.ToString() ?? "EUR";
+        UpdatePreview();
+        StateHasChanged();
+    }
+
+    private async Task ReloadRates()
+    {
+        var rates = await ExchangeRateService.GetLatestRatesAsync(_fromCurrency);
+        _rates = rates.ToDictionary(r => r.Currency, r => r.Rate);
+        _rates[_fromCurrency] = 1m;
+        UpdatePreview();
+        StateHasChanged();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            var prefs = await UserStateService.GetPreferencesAsync();
+            _currencies = prefs.FavoriteCurrencies;
+            _fromCurrency = prefs.BaseCurrency;
+
+            if (_currencies.Count > 0 && _currencies[0] != _fromCurrency)
+                _toCurrency = _currencies[0];
+            else if (_currencies.Count > 1)
+                _toCurrency = _currencies[1];
+
+            _history = await UserStateService.GetConversionHistoryAsync();
+
+            var rates = await ExchangeRateService.GetLatestRatesAsync(_fromCurrency);
+            _rates = rates.ToDictionary(r => r.Currency, r => r.Rate);
+            _rates[_fromCurrency] = 1m;
+
+            UpdatePreview();
+            StateHasChanged();
+        }
+        catch
+        {
+            _currencies = UserPreferences.Default.FavoriteCurrencies;
+        }
+    }
+
+    private void UpdatePreview()
+    {
+        var rate = GetRate();
+        _previewResult = _amount * rate;
+    }
+
+    private decimal GetRate()
+    {
+        if (_fromCurrency == _toCurrency)
+            return 1;
+
+        var fromRate = _rates.GetValueOrDefault(_fromCurrency, 1m);
+        var toRate = _rates.GetValueOrDefault(_toCurrency, 1m);
+
+        return toRate / fromRate;
+    }
+
+    private async Task SwapCurrencies()
+    {
+        _swapping = true;
+        StateHasChanged();
+
+        (_fromCurrency, _toCurrency) = (_toCurrency, _fromCurrency);
+        await ReloadRates();
+
+        await Task.Delay(400);
+        _swapping = false;
+    }
+
+    private async Task SaveConversion()
+    {
+        if (_amount <= 0)
+        {
+            Snackbar.Add("Please enter a valid amount", Severity.Warning);
+            return;
+        }
+
+        _converting = true;
+
+        try
+        {
+            var result = await ExchangeRateService.ConvertAsync(_fromCurrency, _toCurrency, _amount);
+
+            var record = new ConversionRecord(
+                _fromCurrency,
+                _toCurrency,
+                _amount,
+                result,
+                DateTime.UtcNow
+            );
+
+            await UserStateService.AddConversionAsync(record);
+            _history = await UserStateService.GetConversionHistoryAsync();
+
+            Snackbar.Add("Conversion saved to history", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Conversion failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _converting = false;
+        }
+    }
+}

@@ -1,0 +1,366 @@
+@page "/"
+@inject IExchangeRateService ExchangeRateService
+@inject IUserStateService UserStateService
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+<PageTitle>Dashboard - Currency Exchange</PageTitle>
+
+<div class="animate-fadeIn">
+    <!-- Stats Cards Row -->
+    <div class="stats-row">
+        <div class="stat-card card-gradient-blue">
+            <p class="stat-label">Base Currency</p>
+            <div class="stat-value">@_baseCurrency</div>
+            <div class="stat-hint">Used for calculations</div>
+        </div>
+
+        <div class="stat-card dashboard-card">
+            <div class="d-flex align-center justify-space-between">
+                <span class="stat-label">Data Status</span>
+                <span class="status-chip @(_isFromCache ? "cached" : "fresh")">
+                    @(_isFromCache ? "From Cache" : "Fresh Data")
+                </span>
+            </div>
+            <div class="mt-2" style="color: #cbd5e1; font-size: 0.875rem;">
+                Updated: @(_lastCacheTime.HasValue ? _lastCacheTime.Value.ToLocalTime().ToString("HH:mm:ss") : "---")
+            </div>
+            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+                Cache TTL: 5 minutes
+            </div>
+        </div>
+
+        <div class="stat-card dashboard-card" style="display: flex; align-items: center; justify-content: center;">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Large"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="RefreshRates"
+                       Disabled="_loading"
+                       FullWidth="true"
+                       Style="height: 100%; font-size: 1rem;">
+                @if (_loading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Refresh Rates
+            </MudButton>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="main-grid">
+        <!-- Rates Table Card -->
+        <div class="dashboard-card rates-card">
+            <div class="card-header">
+                <h3>Current Rates</h3>
+            </div>
+            <div class="card-body custom-scrollbar" style="max-height: 500px; overflow-y: auto;">
+                @if (_loading && _rates.Count == 0)
+                {
+                    <div style="text-align: center; padding: 2rem;">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                        <p style="color: #3b82f6; margin-top: 1rem;">Loading rates...</p>
+                    </div>
+                }
+                else if (_rates.Count > 0)
+                {
+                    <table style="width: 100%;">
+                        <thead>
+                            <tr style="color: #94a3b8; font-size: 0.875rem; border-bottom: 1px solid #334155;">
+                                <th style="padding-bottom: 0.75rem; text-align: left; padding-left: 0.5rem;">Currency</th>
+                                <th style="padding-bottom: 0.75rem; text-align: right;">Rate (to @_baseCurrency)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var rate in _rates)
+                            {
+                                <tr class="rate-row" @onclick="() => SelectCurrencyForChart(rate.Currency)">
+                                    <td style="padding: 0.75rem 0.5rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <div class="currency-badge">@rate.Currency.Substring(0, 2)</div>
+                                            <div>
+                                                <div style="font-weight: 500; color: white;">@rate.Currency</div>
+                                                <div style="font-size: 0.75rem; color: #64748b;">
+                                                    @GetCurrencyName(rate.Currency)
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="rate-value" style="text-align: right;">
+                                        @rate.Rate.ToString("F4")
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                        No rates available
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Chart Card -->
+        <div class="dashboard-card chart-card">
+            <div class="card-header">
+                <h3>
+                    @if (!string.IsNullOrEmpty(_selectedCurrency))
+                    {
+                        @($"{_selectedCurrency} / {_baseCurrency} Chart")
+                    }
+                    else
+                    {
+                        @("Select a currency to view chart")
+                    }
+                </h3>
+                @if (!string.IsNullOrEmpty(_selectedCurrency))
+                {
+                    <div class="period-buttons">
+                        @foreach (var period in new[] { 7, 30, 90 })
+                        {
+                            <button class="period-btn @(_chartDays == period ? "active" : "")"
+                                    @onclick="() => LoadChart(period)">
+                                @($"{period}D")
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="card-body">
+                @if (string.IsNullOrEmpty(_selectedCurrency))
+                {
+                    <div style="height: 400px; display: flex; align-items: center; justify-content: center; color: #64748b;">
+                        <div style="text-align: center;">
+                            <MudIcon Icon="@Icons.Material.Filled.ShowChart" Size="Size.Large" Style="font-size: 4rem; opacity: 0.3;" />
+                            <p style="margin-top: 1rem;">Click on a currency to view its chart</p>
+                        </div>
+                    </div>
+                }
+                else if (_chartLoading)
+                {
+                    <div style="height: 400px; display: flex; align-items: center; justify-content: center;">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    </div>
+                }
+                else if (_historicalRates.Count > 0)
+                {
+                    <ApexCharts.ApexChart @key="@($"{_selectedCurrency}_{_chartDays}")"
+                                          TItem="HistoricalRate"
+                                          Title=""
+                                          Height="400"
+                                          Options="_chartOptions">
+                        <ApexCharts.ApexPointSeries TItem="HistoricalRate"
+                                                    Items="_historicalRates"
+                                                    SeriesType="ApexCharts.SeriesType.Area"
+                                                    Name="@($"{_selectedCurrency}/{_baseCurrency}")"
+                                                    XValue="@(e => e.Date.ToString("MMM dd"))"
+                                                    YValue="@(e => e.Rate)" />
+                    </ApexCharts.ApexChart>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 1.5rem;
+    }
+
+    .rates-card {
+        height: fit-content;
+    }
+
+    .chart-card {
+        min-height: 500px;
+    }
+
+    @@media (max-width: 1024px) {
+        .stats-row {
+            grid-template-columns: 1fr;
+        }
+
+        .main-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    private List<ExchangeRate> _rates = [];
+    private List<HistoricalRate> _historicalRates = [];
+    private List<string> _availableCurrencies = [];
+    private string _baseCurrency = "USD";
+    private string _selectedCurrency = "";
+    private int _chartDays = 30;
+    private bool _loading = true;
+    private bool _chartLoading;
+    private bool _isFromCache;
+    private DateTime? _lastCacheTime;
+
+    private readonly ApexCharts.ApexChartOptions<HistoricalRate> _chartOptions = new()
+    {
+        Chart = new ApexCharts.Chart
+        {
+            Background = "transparent",
+            Toolbar = new ApexCharts.Toolbar { Show = false }
+        },
+        Tooltip = new ApexCharts.Tooltip
+        {
+            Theme = ApexCharts.Mode.Dark
+        },
+        Colors = ["#3b82f6"],
+        Stroke = new ApexCharts.Stroke
+        {
+            Curve = ApexCharts.Curve.Smooth,
+            Width = 2
+        },
+        Fill = new ApexCharts.Fill
+        {
+            Type = ApexCharts.FillType.Gradient,
+            Gradient = new ApexCharts.FillGradient
+            {
+                ShadeIntensity = 1,
+                OpacityFrom = 0.4,
+                OpacityTo = 0.05,
+                Stops = [0, 95]
+            }
+        },
+        Grid = new ApexCharts.Grid
+        {
+            BorderColor = "#334155",
+            StrokeDashArray = 3
+        },
+        Xaxis = new ApexCharts.XAxis
+        {
+            AxisBorder = new ApexCharts.AxisBorder { Show = false },
+            AxisTicks = new ApexCharts.AxisTicks { Show = false },
+            Labels = new ApexCharts.XAxisLabels
+            {
+                Style = new ApexCharts.AxisLabelStyle { Colors = "#94a3b8" }
+            }
+        },
+        Yaxis =
+        [
+            new ApexCharts.YAxis
+            {
+                Labels = new ApexCharts.YAxisLabels
+                {
+                    Style = new ApexCharts.AxisLabelStyle { Colors = "#94a3b8" }
+                }
+            }
+        ]
+    };
+
+    private readonly Dictionary<string, string> _currencyNames = new()
+    {
+        ["USD"] = "US Dollar",
+        ["EUR"] = "Euro",
+        ["GBP"] = "British Pound",
+        ["JPY"] = "Japanese Yen",
+        ["CNY"] = "Chinese Yuan",
+        ["CHF"] = "Swiss Franc",
+        ["AUD"] = "Australian Dollar",
+        ["CAD"] = "Canadian Dollar",
+        ["PLN"] = "Polish Zloty",
+        ["RON"] = "Romanian Leu"
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadPreferences();
+            await LoadRates();
+            StateHasChanged();
+        }
+    }
+
+    private string GetCurrencyName(string code) =>
+        _currencyNames.TryGetValue(code, out var name) ? name : code;
+
+    private async Task LoadPreferences()
+    {
+        try
+        {
+            var prefs = await UserStateService.GetPreferencesAsync();
+            _baseCurrency = prefs.BaseCurrency;
+            _availableCurrencies = prefs.FavoriteCurrencies;
+        }
+        catch
+        {
+            _availableCurrencies = UserPreferences.Default.FavoriteCurrencies;
+        }
+    }
+
+    private async Task LoadRates()
+    {
+        _loading = true;
+        try
+        {
+            var rates = await ExchangeRateService.GetLatestRatesAsync(_baseCurrency);
+            _rates = rates
+                .Where(r => _availableCurrencies.Contains(r.Currency))
+                .ToList();
+            _isFromCache = ExchangeRateService.IsFromCache;
+            _lastCacheTime = ExchangeRateService.LastCacheTime;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load rates: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RefreshRates()
+    {
+        ExchangeRateService.ClearRatesCache(_baseCurrency);
+        await LoadRates();
+        Snackbar.Add("Rates refreshed", Severity.Success);
+    }
+
+    private async Task SelectCurrencyForChart(string currency)
+    {
+        _selectedCurrency = currency;
+        await LoadChart(_chartDays);
+    }
+
+    private async Task LoadChart(int days)
+    {
+        _chartDays = days;
+        _chartLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var rates = await ExchangeRateService.GetHistoricalRatesAsync(
+                _baseCurrency, _selectedCurrency, days);
+            _historicalRates = rates.ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load chart: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _chartLoading = false;
+            StateHasChanged();
+        }
+    }
+}

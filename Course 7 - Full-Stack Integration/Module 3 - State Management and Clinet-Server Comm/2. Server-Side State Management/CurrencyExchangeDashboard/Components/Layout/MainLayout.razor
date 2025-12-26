@@ -1,0 +1,186 @@
+@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+
+<MudThemeProvider Theme="_theme" IsDarkMode="true" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="app-layout">
+    <aside class="sidebar @(_sidebarOpen ? "open" : "")">
+        <div class="sidebar-header">
+            <div class="logo-icon">
+                <MudIcon Icon="@Icons.Material.Filled.CurrencyExchange" Size="Size.Medium" />
+            </div>
+            <span class="logo-text">FinDashboard</span>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           Class="sidebar-close"
+                           OnClick="ToggleSidebar" />
+        </div>
+
+        <nav class="sidebar-nav">
+            <NavMenu OnNavigate="CloseSidebar" />
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-card">
+                <MudAvatar Size="Size.Small" Color="Color.Surface">U</MudAvatar>
+                <div class="user-info">
+                    <div class="user-name">Student User</div>
+                    <div class="user-role">Lab Work #4</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="sidebar-overlay @(_sidebarOpen ? "open" : "")" @onclick="CloseSidebar"></div>
+
+    <main class="main-content">
+        <header class="main-header">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                           Color="Color.Inherit"
+                           Size="Size.Medium"
+                           Class="hamburger-btn"
+                           OnClick="ToggleSidebar" />
+            <div class="header-actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                               Color="Color.Inherit"
+                               Size="Size.Small"
+                               Class="@(_refreshing ? "refresh-spin" : "")"
+                               OnClick="OnRefreshClick" />
+            </div>
+        </header>
+
+        <div class="content-wrapper">
+            @Body
+        </div>
+    </main>
+</div>
+
+<div class="mobile-nav">
+    <MudIconButton Icon="@Icons.Material.Filled.Dashboard"
+                   Color="@GetNavColor("/")"
+                   OnClick="@(() => NavigateTo("/"))" />
+    <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz"
+                   Color="@GetNavColor("/converter")"
+                   OnClick="@(() => NavigateTo("/converter"))" />
+    <MudIconButton Icon="@Icons.Material.Filled.AccountBalanceWallet"
+                   Color="@GetNavColor("/wallet")"
+                   OnClick="@(() => NavigateTo("/wallet"))" />
+    <MudIconButton Icon="@Icons.Material.Filled.Settings"
+                   Color="@GetNavColor("/settings")"
+                   OnClick="@(() => NavigateTo("/settings"))" />
+</div>
+
+<style>
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 99;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .sidebar-overlay.open {
+        display: block;
+        opacity: 1;
+    }
+
+    .sidebar-close {
+        display: flex;
+        margin-left: auto;
+    }
+
+    .hamburger-btn {
+        display: flex;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+    }
+
+    .refresh-spin {
+        animation: spin 0.6s ease-out forwards;
+    }
+
+    @@keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+@code {
+    private bool _sidebarOpen;
+    private bool _refreshing;
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#3b82f6",
+            Secondary = "#10b981",
+            Error = "#ef4444",
+            Success = "#10b981",
+            Warning = "#f59e0b",
+            Info = "#3b82f6",
+            Background = "#020617",
+            Surface = "#0f172a",
+            DrawerBackground = "#0f172a",
+            AppbarBackground = "#0f172a",
+            TextPrimary = "#e2e8f0",
+            TextSecondary = "#94a3b8",
+            ActionDefault = "#64748b",
+            Divider = "#1e293b"
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DefaultBorderRadius = "12px"
+        }
+    };
+
+    private void ToggleSidebar()
+    {
+        _sidebarOpen = !_sidebarOpen;
+    }
+
+    private void CloseSidebar()
+    {
+        _sidebarOpen = false;
+    }
+
+    private async Task OnRefreshClick()
+    {
+        _refreshing = true;
+        StateHasChanged();
+
+        await Task.Delay(600);
+
+        _refreshing = false;
+        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+    }
+
+    private Color GetNavColor(string href)
+    {
+        var currentPath = "/" + NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        return currentPath == href || (href == "/" && currentPath == "/")
+            ? Color.Primary
+            : Color.Default;
+    }
+
+    private void NavigateTo(string path)
+    {
+        NavigationManager.NavigateTo(path);
+    }
+}

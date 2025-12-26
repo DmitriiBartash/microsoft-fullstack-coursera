@@ -1,0 +1,366 @@
+@page "/wallet"
+@inject IExchangeRateService ExchangeRateService
+@inject IUserStateService UserStateService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+<PageTitle>Wallet - Currency Exchange</PageTitle>
+
+<div class="animate-fadeIn">
+    <!-- Portfolio Header -->
+    <div class="wallet-header-row">
+        <div class="portfolio-card card-gradient-green">
+            <div class="portfolio-label">Total Portfolio Value</div>
+            <div class="portfolio-value">
+                @_totalValue.ToString("C2", new System.Globalization.CultureInfo("en-US"))
+            </div>
+            <div class="portfolio-actions">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           StartIcon="@Icons.Material.Filled.TrendingUp"
+                           OnClick="OpenBuyDialog"
+                           Class="action-btn">
+                    Buy
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.TrendingDown"
+                           OnClick="OpenSellDialog"
+                           Disabled="@(_wallet.Count == 0)"
+                           Class="action-btn">
+                    Sell
+                </MudButton>
+            </div>
+        </div>
+
+        <div class="dashboard-card distribution-card">
+            <div class="card-header">
+                <h3>Distribution</h3>
+            </div>
+            <div class="card-body">
+                @if (_wallet.Count == 0)
+                {
+                    <div style="color: #64748b; text-align: center; padding: 1rem;">
+                        No assets yet
+                    </div>
+                }
+                else
+                {
+                    @foreach (var entry in _wallet)
+                    {
+                        var percent = GetShare(entry);
+                        <div class="distribution-item">
+                            <div class="distribution-header">
+                                <span class="distribution-label">@entry.Currency</span>
+                                <span class="distribution-percent">@percent.ToString("F0")%</span>
+                            </div>
+                            <div class="distribution-bar">
+                                <div class="distribution-fill" style="width: @percent%"></div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Assets and Transactions -->
+    <div class="wallet-content-row">
+        <div class="dashboard-card assets-card">
+            <div class="card-header">
+                <h3>Your Assets</h3>
+            </div>
+            <div class="card-body">
+                @if (_loading)
+                {
+                    <div style="text-align: center; padding: 2rem;">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    </div>
+                }
+                else if (_wallet.Count == 0)
+                {
+                    <div style="text-align: center; padding: 2rem; color: #64748b;">
+                        <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet"
+                                 Style="font-size: 3rem; opacity: 0.3;" />
+                        <p style="margin-top: 1rem;">Your wallet is empty. Click "Buy" to add currencies.</p>
+                    </div>
+                }
+                else
+                {
+                    <table style="width: 100%;">
+                        <thead>
+                            <tr style="color: #94a3b8; font-size: 0.875rem; border-bottom: 1px solid #334155;">
+                                <th style="padding-bottom: 0.75rem; text-align: left;">Currency</th>
+                                <th style="padding-bottom: 0.75rem; text-align: right;">Balance</th>
+                                <th style="padding-bottom: 0.75rem; text-align: right;">In @_baseCurrency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var entry in _wallet)
+                            {
+                                <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.5);">
+                                    <td style="padding: 0.75rem 0; font-weight: 500; color: white;">
+                                        @entry.Currency
+                                    </td>
+                                    <td style="padding: 0.75rem 0; text-align: right; color: #e2e8f0;">
+                                        @entry.Amount.ToString("N2")
+                                    </td>
+                                    <td style="padding: 0.75rem 0; text-align: right; color: #94a3b8;">
+                                        @GetValueInBase(entry).ToString("C2", new System.Globalization.CultureInfo("en-US"))
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+
+        <div class="dashboard-card transactions-card">
+            <div class="card-header">
+                <h3>Transaction History</h3>
+            </div>
+            <div class="card-body">
+                @if (_transactions.Count == 0)
+                {
+                    <div style="text-align: center; padding: 2rem; color: #64748b;">
+                        History is empty
+                    </div>
+                }
+                else
+                {
+                    @foreach (var tx in _transactions.Take(10))
+                    {
+                        var isBuy = tx.Type == TransactionType.Buy;
+                        <div class="transaction-item">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <div class="transaction-icon @(isBuy ? "buy" : "sell")">
+                                    <MudIcon Icon="@(isBuy ? Icons.Material.Filled.TrendingUp : Icons.Material.Filled.TrendingDown)"
+                                             Size="Size.Small" />
+                                </div>
+                                <div class="transaction-details">
+                                    <div class="transaction-type">
+                                        @(isBuy ? "Buy" : "Sell") @tx.Currency
+                                    </div>
+                                    <div class="transaction-date">
+                                        @tx.Timestamp.ToLocalTime().ToString("MMM dd, HH:mm")
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="transaction-amount @(isBuy ? "buy" : "sell")">
+                                <div style="font-weight: 500;">
+                                    @(isBuy ? "+" : "-")@tx.Amount.ToString("N2") @tx.Currency
+                                </div>
+                                <div class="transaction-cost">
+                                    @(isBuy ? "-" : "+")@tx.Total.ToString("N2") @_baseCurrency
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .wallet-header-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .portfolio-card {
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .distribution-card {
+        height: 100%;
+    }
+
+    .wallet-content-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    .action-btn {
+        min-width: 100px;
+    }
+
+    @@media (max-width: 1024px) {
+        .wallet-header-row {
+            grid-template-columns: 1fr;
+        }
+
+        .wallet-content-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    private List<WalletEntry> _wallet = [];
+    private List<Transaction> _transactions = [];
+    private List<string> _currencies = [];
+    private Dictionary<string, decimal> _rates = new();
+    private string _baseCurrency = "USD";
+    private decimal _totalValue;
+    private bool _loading = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var prefs = await UserStateService.GetPreferencesAsync();
+            _baseCurrency = prefs.BaseCurrency;
+            _currencies = prefs.FavoriteCurrencies;
+
+            _wallet = await UserStateService.GetWalletAsync();
+            _transactions = await UserStateService.GetTransactionsAsync();
+
+            var rates = await ExchangeRateService.GetLatestRatesAsync(_baseCurrency);
+            _rates = rates.ToDictionary(r => r.Currency, r => r.Rate);
+
+            CalculateTotalValue();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load wallet: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void CalculateTotalValue()
+    {
+        _totalValue = _wallet.Sum(w => GetValueInBase(w));
+    }
+
+    private decimal GetValueInBase(WalletEntry entry)
+    {
+        if (entry.Currency == _baseCurrency)
+            return entry.Amount;
+
+        if (_rates.TryGetValue(entry.Currency, out var rate) && rate > 0)
+            return entry.Amount / rate;
+
+        return 0;
+    }
+
+    private double GetShare(WalletEntry entry)
+    {
+        if (_totalValue == 0) return 0;
+        return (double)(GetValueInBase(entry) / _totalValue * 100);
+    }
+
+    private async Task OpenBuyDialog()
+    {
+        var parameters = new DialogParameters<BuyDialog>
+        {
+            { x => x.Currencies, _currencies },
+            { x => x.BaseCurrency, _baseCurrency },
+            { x => x.Rates, _rates }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<BuyDialog>("Buy Currency", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: Transaction tx })
+        {
+            await ProcessBuy(tx);
+        }
+    }
+
+    private async Task OpenSellDialog()
+    {
+        var parameters = new DialogParameters<SellDialog>
+        {
+            { x => x.Wallet, _wallet },
+            { x => x.BaseCurrency, _baseCurrency },
+            { x => x.Rates, _rates }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<SellDialog>("Sell Currency", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: Transaction tx })
+        {
+            await ProcessSell(tx);
+        }
+    }
+
+    private async Task ProcessBuy(Transaction tx)
+    {
+        var existing = _wallet.FirstOrDefault(w => w.Currency == tx.Currency);
+        if (existing is not null)
+        {
+            _wallet.Remove(existing);
+            _wallet.Add(existing with { Amount = existing.Amount + tx.Amount });
+        }
+        else
+        {
+            _wallet.Add(new WalletEntry(tx.Currency, tx.Amount));
+        }
+
+        await UserStateService.SaveWalletAsync(_wallet);
+        await UserStateService.AddTransactionAsync(tx);
+        _transactions = await UserStateService.GetTransactionsAsync();
+
+        CalculateTotalValue();
+        Snackbar.Add($"Bought {tx.Amount:N2} {tx.Currency}", Severity.Success);
+    }
+
+    private async Task ProcessSell(Transaction tx)
+    {
+        var existing = _wallet.FirstOrDefault(w => w.Currency == tx.Currency);
+        if (existing is not null)
+        {
+            _wallet.Remove(existing);
+            var newAmount = existing.Amount - tx.Amount;
+            if (newAmount > 0)
+            {
+                _wallet.Add(existing with { Amount = newAmount });
+            }
+        }
+
+        await UserStateService.SaveWalletAsync(_wallet);
+        await UserStateService.AddTransactionAsync(tx);
+        _transactions = await UserStateService.GetTransactionsAsync();
+
+        CalculateTotalValue();
+        Snackbar.Add($"Sold {tx.Amount:N2} {tx.Currency}", Severity.Success);
+    }
+}

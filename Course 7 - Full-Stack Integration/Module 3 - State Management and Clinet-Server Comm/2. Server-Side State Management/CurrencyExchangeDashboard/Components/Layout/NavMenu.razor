@@ -1,0 +1,56 @@
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<div class="nav-menu">
+    @foreach (var item in _navItems)
+    {
+        <div class="nav-item @(IsActive(item.Href) ? "active" : "")" @onclick="() => Navigate(item.Href)">
+            <MudIcon Icon="@item.Icon" Size="Size.Small" />
+            <span>@item.Label</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback OnNavigate { get; set; }
+
+    private record NavItem(string Href, string Label, string Icon);
+
+    private readonly List<NavItem> _navItems =
+    [
+        new("/", "Dashboard", Icons.Material.Filled.Dashboard),
+        new("/converter", "Converter", Icons.Material.Filled.SwapHoriz),
+        new("/wallet", "Wallet", Icons.Material.Filled.AccountBalanceWallet),
+        new("/settings", "Settings", Icons.Material.Filled.Settings)
+    ];
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    private async Task Navigate(string href)
+    {
+        NavigationManager.NavigateTo(href);
+        await OnNavigate.InvokeAsync();
+    }
+
+    private bool IsActive(string href)
+    {
+        var currentPath = "/" + NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        if (href == "/")
+            return currentPath == "/" || currentPath == "";
+        return currentPath.StartsWith(href);
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

@@ -1,0 +1,119 @@
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Sell" Class="mr-2" />
+            Sell Currency
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudSelect T="string" @bind-Value="_selectedCurrency"
+                   Label="Currency to Sell"
+                   Variant="Variant.Outlined"
+                   AnchorOrigin="Origin.BottomCenter"
+                   Class="mb-4">
+            @foreach (var entry in Wallet)
+            {
+                <MudSelectItem Value="@entry.Currency">
+                    @entry.Currency (Available: @entry.Amount.ToString("N2"))
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (!string.IsNullOrEmpty(_selectedCurrency))
+        {
+            var available = GetAvailable(_selectedCurrency);
+
+            <MudNumericField T="decimal" @bind-Value="_amountToSell"
+                             Label="@($"Amount to Sell (max: {available:N2})")"
+                             Variant="Variant.Outlined"
+                             Min="0.01M"
+                             Max="@available"
+                             Immediate="true"
+                             Class="mb-4" />
+
+            @if (_amountToSell > 0)
+            {
+                var rate = GetRate(_selectedCurrency);
+                var willReceive = rate > 0 ? _amountToSell / rate : 0;
+
+                <MudAlert Severity="Severity.Info" Class="mb-4">
+                    <MudText>Rate: 1 @_selectedCurrency = @(rate > 0 ? (1 / rate).ToString("F4") : "N/A") @BaseCurrency</MudText>
+                    <MudText Typo="Typo.h6" Class="mt-2">
+                        You will receive: @willReceive.ToString("N2") @BaseCurrency
+                    </MudText>
+                </MudAlert>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Error"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!IsValid())">
+            Sell
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public List<WalletEntry> Wallet { get; set; } = [];
+
+    [Parameter]
+    public string BaseCurrency { get; set; } = "USD";
+
+    [Parameter]
+    public Dictionary<string, decimal> Rates { get; set; } = new();
+
+    private string _selectedCurrency = "";
+    private decimal _amountToSell;
+
+    private decimal GetRate(string currency)
+    {
+        return Rates.TryGetValue(currency, out var rate) ? rate : 0;
+    }
+
+    private decimal GetAvailable(string currency)
+    {
+        return Wallet.FirstOrDefault(w => w.Currency == currency)?.Amount ?? 0;
+    }
+
+    private bool IsValid()
+    {
+        if (string.IsNullOrEmpty(_selectedCurrency)) return false;
+        if (_amountToSell <= 0) return false;
+        if (_amountToSell > GetAvailable(_selectedCurrency)) return false;
+        return true;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        if (!IsValid())
+        {
+            Snackbar.Add("Please fill all fields correctly", Severity.Warning);
+            return;
+        }
+
+        var rate = GetRate(_selectedCurrency);
+        var total = rate > 0 ? _amountToSell / rate : 0;
+
+        var transaction = new Transaction(
+            TransactionType.Sell,
+            _selectedCurrency,
+            _amountToSell,
+            rate,
+            total,
+            DateTime.UtcNow
+        );
+
+        MudDialog.Close(DialogResult.Ok(transaction));
+    }
+}
