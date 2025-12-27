@@ -1,0 +1,42 @@
+@page "/"
+@inject NavigationManager Navigation
+
+<PageTitle>NovaChat</PageTitle>
+
+<div class="landing-container">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <div class="landing-content">
+        <div class="logo-wrapper">
+            <div class="logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </div>
+        </div>
+
+        <h1 class="landing-title">NovaChat</h1>
+
+        <p class="landing-description">
+            A modern messenger for instant idea sharing.
+            Fast, secure, and beautifully designed.
+        </p>
+
+        <button @onclick="GoToLogin" class="start-button">
+            <span>Start Chatting</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="arrow-icon">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+        </button>
+    </div>
+</div>
+
+@code {
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+}

@@ -1,0 +1,110 @@
+@page "/login"
+@using Client.Services
+@inject UserStateService UserState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Login - NovaChat</PageTitle>
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <h2>Welcome</h2>
+            <p>Enter your name to get started</p>
+        </div>
+
+        <form @onsubmit="HandleSubmit" class="login-form">
+            <div class="input-group">
+                <label>Your Name</label>
+                <div class="input-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <input type="text"
+                           @bind="_userName"
+                           @bind:event="oninput"
+                           placeholder="e.g., Alex"
+                           class="@(_error != null ? "error" : "")" />
+                    @if (_error != null)
+                    {
+                        <span class="error-message @(_errorFading ? "fade-out" : "")">@_error</span>
+                    }
+                </div>
+            </div>
+
+            <button type="submit" class="join-button">
+                Join Chat
+            </button>
+        </form>
+    </div>
+</div>
+
+@code {
+    private string _userName = string.Empty;
+    private string? _error;
+    private bool _errorFading;
+    private System.Timers.Timer? _errorTimer;
+    private System.Timers.Timer? _fadeTimer;
+
+    protected override void OnInitialized()
+    {
+        if (UserState.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/chat");
+        }
+    }
+
+    private void ShowError(string message)
+    {
+        _errorTimer?.Stop();
+        _errorTimer?.Dispose();
+        _fadeTimer?.Stop();
+        _fadeTimer?.Dispose();
+
+        _error = message;
+        _errorFading = false;
+
+        _errorTimer = new System.Timers.Timer(2500);
+        _errorTimer.Elapsed += (s, e) =>
+        {
+            _errorFading = true;
+            _errorTimer?.Stop();
+            InvokeAsync(StateHasChanged);
+
+            _fadeTimer = new System.Timers.Timer(500);
+            _fadeTimer.Elapsed += (s2, e2) =>
+            {
+                _error = null;
+                _errorFading = false;
+                _fadeTimer?.Stop();
+                InvokeAsync(StateHasChanged);
+            };
+            _fadeTimer.AutoReset = false;
+            _fadeTimer.Start();
+        };
+        _errorTimer.AutoReset = false;
+        _errorTimer.Start();
+    }
+
+    private void HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(_userName))
+        {
+            ShowError("Please enter your name");
+            return;
+        }
+
+        _error = null;
+        UserState.Login(_userName.Trim());
+        Navigation.NavigateTo("/chat");
+    }
+
+    public void Dispose()
+    {
+        _errorTimer?.Stop();
+        _errorTimer?.Dispose();
+        _fadeTimer?.Stop();
+        _fadeTimer?.Dispose();
+    }
+}

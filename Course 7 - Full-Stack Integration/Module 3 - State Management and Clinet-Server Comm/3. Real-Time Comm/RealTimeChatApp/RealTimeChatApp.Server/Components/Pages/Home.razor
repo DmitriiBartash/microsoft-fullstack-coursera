@@ -1,0 +1,88 @@
+@page "/"
+@using Server.Services
+@inject ChatStatisticsService Statistics
+@implements IDisposable
+@rendermode InteractiveServer
+
+<PageTitle>NovaChat Server</PageTitle>
+
+<div class="dashboard">
+    <div class="dashboard-header">
+        <div class="logo">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </div>
+        <h1>NovaChat Server</h1>
+        <p class="subtitle">Real-time chat monitoring dashboard</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card users">
+            <div class="stat-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">@Statistics.ConnectedUsers</span>
+                <span class="stat-label">Connected Users</span>
+            </div>
+            <div class="stat-indicator @(Statistics.ConnectedUsers > 0 ? "active" : "")">
+                <span class="pulse"></span>
+            </div>
+        </div>
+
+        <div class="stat-card messages">
+            <div class="stat-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">@Statistics.TotalMessages</span>
+                <span class="stat-label">Total Messages</span>
+            </div>
+        </div>
+
+        <div class="stat-card status">
+            <div class="stat-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value status-online">Online</span>
+                <span class="stat-label">Server Status</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h2>SignalR Hub</h2>
+        <div class="endpoint-card">
+            <code>/chathub</code>
+            <span class="badge">WebSocket</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Statistics.OnStatisticsChanged += HandleStatisticsChanged;
+    }
+
+    private void HandleStatisticsChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Statistics.OnStatisticsChanged -= HandleStatisticsChanged;
+    }
+}

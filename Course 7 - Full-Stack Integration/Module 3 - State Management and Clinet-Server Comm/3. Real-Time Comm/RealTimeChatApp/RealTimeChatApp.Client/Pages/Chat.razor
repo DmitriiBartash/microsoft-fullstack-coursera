@@ -1,0 +1,211 @@
+@page "/chat"
+@using Client.Services
+@using Shared.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@inject ChatService ChatService
+@inject UserStateService UserState
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Chat - NovaChat</PageTitle>
+
+<div class="chat-screen">
+    <header class="chat-header">
+        <div class="header-left">
+            <div class="header-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+            </div>
+            <div class="header-info">
+                <h1>General Chat</h1>
+                <div class="connection-status @GetStatusClass()">
+                    @if (ChatService.ConnectionState == HubConnectionState.Reconnecting)
+                    {
+                        <svg class="spinner" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                        </svg>
+                    }
+                    else
+                    {
+                        <span class="status-dot"></span>
+                    }
+                    <span>@GetStatusText()</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <div class="user-info">
+                <span class="user-name">@UserState.UserName</span>
+                <span class="user-status">Online</span>
+            </div>
+            <div class="user-avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <button @onclick="Logout" class="logout-button" title="Logout">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="messages-area" @ref="_messagesContainer">
+        @if (!ChatService.Messages.Any())
+        {
+            <div class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"></path>
+                </svg>
+                <p>No messages yet. Be the first to say hi!</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var msg in ChatService.Messages)
+            {
+                var isOwnMessage = msg.User == UserState.UserName;
+                <div class="message-wrapper @(isOwnMessage ? "own" : "") message-animate">
+                    <div class="message-content @(isOwnMessage ? "own" : "")">
+                        @if (!isOwnMessage)
+                        {
+                            <span class="message-sender">@msg.User</span>
+                        }
+                        <div class="message-bubble @(isOwnMessage ? "own" : "")">
+                            <span class="message-text">@msg.Message</span>
+                            <span class="message-time">@msg.Timestamp.ToLocalTime().ToString("HH:mm")</span>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </main>
+
+    <footer class="input-area">
+        @if (!ChatService.IsConnected)
+        {
+            <div class="disconnected-overlay">
+                <span>Connection lost</span>
+            </div>
+        }
+
+        <div class="input-container">
+            <input type="text"
+                   @bind="_currentMessage"
+                   @bind:event="oninput"
+                   @onkeypress="HandleMessageKeyPress"
+                   placeholder="Type a message..."
+                   disabled="@(!ChatService.IsConnected)" />
+            <button @onclick="SendMessage"
+                    disabled="@(!ChatService.IsConnected || string.IsNullOrWhiteSpace(_currentMessage))"
+                    class="send-button @(string.IsNullOrWhiteSpace(_currentMessage) ? "" : "active")">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </footer>
+</div>
+
+@code {
+    private string _currentMessage = string.Empty;
+    private ElementReference _messagesContainer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!UserState.IsLoggedIn)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        ChatService.OnMessagesChanged += HandleMessagesChanged;
+        ChatService.OnConnectionStateChanged += HandleConnectionStateChanged;
+
+        await ChatService.StartAsync();
+        await Task.Delay(100);
+        await ScrollToBottom();
+    }
+
+    private void Logout()
+    {
+        UserState.Logout();
+        Navigation.NavigateTo("/login");
+    }
+
+    private async Task SendMessage()
+    {
+        if (!string.IsNullOrWhiteSpace(_currentMessage) && UserState.UserName != null)
+        {
+            await ChatService.SendMessageAsync(UserState.UserName, _currentMessage);
+            _currentMessage = string.Empty;
+        }
+    }
+
+    private async Task HandleMessageKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SendMessage();
+        }
+    }
+
+    private async void HandleMessagesChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            StateHasChanged();
+            await Task.Delay(50);
+            await ScrollToBottom();
+        });
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("chatInterop.scrollToBottom", ".messages-area");
+        }
+        catch { }
+    }
+
+    private void HandleConnectionStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetStatusClass()
+    {
+        return ChatService.ConnectionState switch
+        {
+            HubConnectionState.Connected => "connected",
+            HubConnectionState.Reconnecting => "reconnecting",
+            _ => "disconnected"
+        };
+    }
+
+    private string GetStatusText()
+    {
+        return ChatService.ConnectionState switch
+        {
+            HubConnectionState.Connected => "Connected",
+            HubConnectionState.Reconnecting => "Reconnecting...",
+            HubConnectionState.Connecting => "Connecting...",
+            _ => "Disconnected"
+        };
+    }
+
+    public void Dispose()
+    {
+        ChatService.OnMessagesChanged -= HandleMessagesChanged;
+        ChatService.OnConnectionStateChanged -= HandleConnectionStateChanged;
+    }
+}
