@@ -41,7 +41,13 @@ InventoryHub/
 ### Prerequisites
 
 - .NET 10 SDK
-- Node.js (optional, for tooling)
+
+### Applications
+
+| Application | URL | Description |
+|-------------|-----|-------------|
+| **API** | http://localhost:5000 | Backend REST API |
+| **Client** | http://localhost:5001 | Frontend Blazor WebAssembly |
 
 ### Run the Application
 
@@ -52,12 +58,14 @@ dotnet restore InventoryHub/InventoryHub.sln
 # 2. Apply database migrations
 dotnet ef database update -p InventoryHub/src/InventoryHub.Infrastructure -s InventoryHub/src/InventoryHub.API
 
-# 3. Run API (Terminal 1) - http://localhost:5000
+# 3. Run API (Terminal 1)
 dotnet run --project InventoryHub/src/InventoryHub.API
 
-# 4. Run Client (Terminal 2) - http://localhost:5001
+# 4. Run Client (Terminal 2)
 dotnet run --project InventoryHub/src/InventoryHub.Client
 ```
+
+Open http://localhost:5001 in browser.
 
 ### Build
 
@@ -158,9 +166,7 @@ dotnet ef database update \
 
 ### CORS
 
-API configured to allow requests from:
-- `http://localhost:5001` (Blazor Client)
-- `http://localhost:5173` (Vite dev server)
+API configured to allow requests from `http://localhost:5001` (Blazor Client).
 
 ## Key Patterns
 
@@ -173,4 +179,4 @@ API configured to allow requests from:
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).
