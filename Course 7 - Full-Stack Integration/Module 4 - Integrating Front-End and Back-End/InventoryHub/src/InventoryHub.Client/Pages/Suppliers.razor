@@ -1,0 +1,277 @@
+@page "/suppliers"
+@inject SupplierService SupplierService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Suppliers - InventoryHub</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Suppliers</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="2">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField @bind-Value="searchTerm"
+                          Label="Search"
+                          Placeholder="Name, contact, email, phone, address..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="400"
+                          OnDebounceIntervalElapsed="OnSearchChanged"
+                          Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="bool?"
+                       Label="Status"
+                       Value="activeFilter"
+                       ValueChanged="OnStatusFilterChanged"
+                       Clearable="true">
+                <MudSelectItem T="bool?" Value="@((bool?)true)">Active Only</MudSelectItem>
+                <MudSelectItem T="bool?" Value="@((bool?)false)">Inactive Only</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2" Class="d-flex align-end">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       FullWidth="true"
+                       OnClick="OpenCreateDialog">
+                Add Supplier
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<div style="position: relative;">
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Style="position: absolute; top: 0; left: 0; right: 0; z-index: 10;" />
+    }
+    <MudTable @ref="table"
+              ServerData="LoadDataAsync"
+              Dense="true"
+              Hover="true"
+              FixedHeader="true"
+              Height="calc(100vh - 300px)"
+              Loading="false"
+              Style="min-height: 400px;">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Contact Person</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>Phone</MudTh>
+        <MudTh>Products</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">
+            <MudText Typo="Typo.body2"><strong>@context.Name</strong></MudText>
+        </MudTd>
+        <MudTd DataLabel="Contact Person">
+            <MudText Typo="Typo.body2">@(context.ContactPerson ?? "-")</MudText>
+        </MudTd>
+        <MudTd DataLabel="Email">
+            @if (!string.IsNullOrEmpty(context.Email))
+            {
+                <MudLink Href="@($"mailto:{context.Email}")" Typo="Typo.body2">@context.Email</MudLink>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2">-</MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Phone">
+            <MudText Typo="Typo.body2">@(context.Phone ?? "-")</MudText>
+        </MudTd>
+        <MudTd DataLabel="Products">
+            <MudChip T="string" Color="Color.Info" Size="Size.Small">@context.ProductCount</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Status">
+            <MudChip T="string"
+                     Color="@(context.IsActive ? Color.Success : Color.Default)"
+                     Size="Size.Small"
+                     Variant="Variant.Filled">
+                @(context.IsActive ? "Active" : "Inactive")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Actions">
+            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           OnClick="@(() => OpenEditDialog(context))" />
+            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                           Color="Color.Error"
+                           Size="Size.Small"
+                           OnClick="@(() => DeleteSupplier(context))" />
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Typo="Typo.body1" Align="Align.Center" Class="py-4">
+            @if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                <span>No suppliers match "@searchTerm"</span>
+            }
+            else
+            {
+                <span>No suppliers found</span>
+            }
+        </MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+</div>
+
+@code {
+    private MudTable<SupplierDto>? table;
+    private string searchTerm = string.Empty;
+    private bool? activeFilter;
+    private bool isLoading;
+
+    private async Task<TableData<SupplierDto>> LoadDataAsync(TableState state, CancellationToken ct)
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var response = await SupplierService.GetSuppliersAsync(
+                state.Page + 1,
+                state.PageSize,
+                string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm,
+                activeFilter);
+
+            if (response?.Success == true && response.Data != null)
+            {
+                return new TableData<SupplierDto>
+                {
+                    Items = response.Data.Items,
+                    TotalItems = response.Data.TotalCount
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading suppliers: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+
+        return new TableData<SupplierDto> { Items = [], TotalItems = 0 };
+    }
+
+    private async Task OnSearchChanged()
+    {
+        if (table != null)
+            await table.ReloadServerData();
+    }
+
+    private async Task OnStatusFilterChanged(bool? value)
+    {
+        activeFilter = value;
+        if (table != null)
+            await table.ReloadServerData();
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters<SupplierDialog>
+        {
+            { x => x.Supplier, null },
+            { x => x.IsEdit, false }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<SupplierDialog>("Create Supplier", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            if (table != null)
+                await table.ReloadServerData();
+            Snackbar.Add("Supplier created successfully", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(SupplierDto supplier)
+    {
+        var parameters = new DialogParameters<SupplierDialog>
+        {
+            { x => x.Supplier, supplier },
+            { x => x.IsEdit, true }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+            BackdropClick = false
+        };
+
+        var dialog = await DialogService.ShowAsync<SupplierDialog>("Edit Supplier", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            if (table != null)
+                await table.ReloadServerData();
+            Snackbar.Add("Supplier updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task DeleteSupplier(SupplierDto supplier)
+    {
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Title, "Confirm Delete" },
+            { x => x.MarkupMessage, new MarkupString($"Are you sure you want to delete supplier '<strong>{supplier.Name}</strong>'?<br/>This action cannot be undone.") },
+            { x => x.YesText, "Delete" },
+            { x => x.NoText, "Cancel" }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small
+        };
+
+        var dialog = await DialogService.ShowAsync<MudMessageBox>("Confirm Delete", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            try
+            {
+                var response = await SupplierService.DeleteSupplierAsync(supplier.Id);
+
+                if (response?.Success == true)
+                {
+                    if (table != null)
+                        await table.ReloadServerData();
+                    Snackbar.Add("Supplier deleted successfully", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(response?.Error?.Message ?? "Failed to delete supplier", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting supplier: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

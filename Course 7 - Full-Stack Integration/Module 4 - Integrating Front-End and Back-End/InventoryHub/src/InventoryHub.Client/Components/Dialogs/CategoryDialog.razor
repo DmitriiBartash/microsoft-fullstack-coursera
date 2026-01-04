@@ -1,0 +1,140 @@
+@inject CategoryService CategoryService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@_model" Validation="@((Func<object, string?>)ValidateModel)">
+            <MudTextField @bind-Value="_model.Name"
+                          Label="Name"
+                          Required="true"
+                          MaxLength="100"
+                          Immediate="true"
+                          Variant="Variant.Outlined" />
+
+            <MudTextField @bind-Value="_model.Description"
+                          Label="Description"
+                          Lines="3"
+                          MaxLength="500"
+                          Class="mt-3"
+                          Variant="Variant.Outlined" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_processing">
+            @if (_processing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Processing...</MudText>
+            }
+            else
+            {
+                <MudText>@(_isEditMode ? "Update" : "Create")</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public CategoryDto? Category { get; set; }
+
+    private MudForm? _form;
+    private bool _processing = false;
+    private bool _isEditMode => Category != null;
+    private CategoryFormModel _model = new();
+
+    protected override void OnInitialized()
+    {
+        if (_isEditMode && Category != null)
+        {
+            _model = new CategoryFormModel
+                {
+                    Name = Category.Name,
+                    Description = Category.Description
+                };
+        }
+    }
+
+    private async Task Submit()
+    {
+        await _form!.Validate();
+
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _processing = true;
+        try
+        {
+            if (_isEditMode && Category != null)
+            {
+                var updateRequest = new UpdateCategoryRequest
+                    {
+                        Id = Category.Id,
+                        Name = _model.Name,
+                        Description = _model.Description
+                    };
+
+                var updateResponse = await CategoryService.UpdateCategoryAsync(updateRequest);
+                if (updateResponse?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(updateResponse?.Error?.Message ?? "Failed to update category", Severity.Error);
+                }
+            }
+            else
+            {
+                var createRequest = new CreateCategoryDto
+                    {
+                        Name = _model.Name,
+                        Description = _model.Description
+                    };
+
+                var createResponse = await CategoryService.CreateCategoryAsync(createRequest);
+                if (createResponse?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(createResponse?.Error?.Message ?? "Failed to create category", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private string? ValidateModel(object model)
+    {
+        var m = model as CategoryFormModel;
+        if (m == null) return "Invalid model";
+
+        if (string.IsNullOrWhiteSpace(m.Name))
+            return "Name is required";
+
+        return null;
+    }
+
+    private class CategoryFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+    }
+}

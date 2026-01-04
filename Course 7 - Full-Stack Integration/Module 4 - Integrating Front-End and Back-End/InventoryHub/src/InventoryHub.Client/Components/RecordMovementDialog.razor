@@ -1,0 +1,229 @@
+@inject InventoryService InventoryService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@isFormValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudAutocomplete T="ProductDto"
+                                     @bind-Value="model.SelectedProduct"
+                                     Label="Product"
+                                     Variant="Variant.Outlined"
+                                     SearchFunc="@SearchProducts"
+                                     ToStringFunc="@(p => p?.Name ?? string.Empty)"
+                                     Required="true"
+                                     RequiredError="Product is required"
+                                     ResetValueOnEmptyText="true"
+                                     CoerceText="true"
+                                     CoerceValue="true">
+                        <ItemTemplate Context="product">
+                            <MudText>@product.Name</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                SKU: @product.SKU | Current Stock: @product.CurrentStock
+                            </MudText>
+                        </ItemTemplate>
+                    </MudAutocomplete>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudSelect @bind-Value="model.Type"
+                               Label="Movement Type"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="Movement type is required"
+                               T="MovementType">
+                        <MudSelectItem Value="MovementType.In">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Filled.AddCircle" Color="Color.Success" Size="Size.Small" />
+                                <MudText>Stock In (Purchase/Return)</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                        <MudSelectItem Value="MovementType.Out">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Filled.RemoveCircle" Color="Color.Error" Size="Size.Small" />
+                                <MudText>Stock Out (Sale/Damage)</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                        <MudSelectItem Value="MovementType.Adjust">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Filled.Tune" Color="Color.Warning" Size="Size.Small" />
+                                <MudText>Adjustment</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudNumericField @bind-Value="model.Quantity"
+                                     Label="Quantity"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="Quantity is required"
+                                     Min="1"
+                                     HelperText="@GetQuantityHelperText()" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Reference"
+                                  Label="Reference"
+                                  Variant="Variant.Outlined"
+                                  HelperText="Order number, invoice number, etc."
+                                  MaxLength="100" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Notes"
+                                  Label="Notes"
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  MaxLength="500" />
+                </MudItem>
+
+                @if (model.SelectedProduct != null)
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            <MudText Typo="Typo.body2">
+                                <strong>Current Stock:</strong> @model.SelectedProduct.CurrentStock units
+                                <br />
+                                <strong>Expected New Stock:</strong> @GetExpectedStock() units
+                            </MudText>
+                        </MudAlert>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isSaving || model.SelectedProduct == null)">
+            @if (isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ml-2">Recording...</MudText>
+            }
+            else
+            {
+                <MudText>Record Movement</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public List<ProductDto> Products { get; set; } = new();
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isSaving;
+    private MovementFormModel model = new();
+
+    private async Task<IEnumerable<ProductDto>> SearchProducts(string value, CancellationToken token)
+    {
+        await Task.Delay(5, token);
+
+        if (string.IsNullOrWhiteSpace(value))
+            return Products;
+
+        return Products.Where(p =>
+            p.Name.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            p.SKU.Contains(value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string GetQuantityHelperText()
+    {
+        var action = model.Type switch
+        {
+            MovementType.In => "will be added to stock",
+            MovementType.Out => "will be removed from stock",
+            MovementType.Adjust => "sets the new stock level",
+            _ => ""
+        };
+
+        return $"Quantity that {action}";
+    }
+
+    private int GetExpectedStock()
+    {
+        if (model.SelectedProduct == null)
+            return 0;
+
+        return model.Type switch
+        {
+            MovementType.In => model.SelectedProduct.CurrentStock + model.Quantity,
+            MovementType.Out => model.SelectedProduct.CurrentStock - model.Quantity,
+            MovementType.Adjust => model.Quantity,
+            _ => model.SelectedProduct.CurrentStock
+        };
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        await form.Validate();
+
+        if (!isFormValid || model.SelectedProduct == null)
+            return;
+
+        if (model.Type == MovementType.Out &&
+            model.Quantity > model.SelectedProduct.CurrentStock)
+        {
+            Snackbar.Add("Quantity cannot exceed current stock for this movement type", Severity.Warning);
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            var request = new RecordMovementRequest
+            {
+                ProductId = model.SelectedProduct.Id,
+                Type = model.Type,
+                Quantity = model.Quantity,
+                Reference = model.Reference,
+                Notes = model.Notes
+            };
+
+            var response = await InventoryService.RecordMovementAsync(request);
+
+            if (response?.Success == true)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add(response?.Error?.Message ?? "Failed to record movement", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error recording movement: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private class MovementFormModel
+    {
+        public ProductDto? SelectedProduct { get; set; }
+        public MovementType Type { get; set; } = MovementType.In;
+        public int Quantity { get; set; } = 1;
+        public string? Reference { get; set; }
+        public string? Notes { get; set; }
+    }
+}

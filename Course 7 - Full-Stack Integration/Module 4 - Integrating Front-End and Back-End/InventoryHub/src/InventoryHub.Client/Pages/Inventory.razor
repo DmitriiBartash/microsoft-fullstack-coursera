@@ -1,0 +1,312 @@
+@page "/inventory"
+@inject InventoryService InventoryService
+@inject ISnackbar Snackbar
+
+<PageTitle>Inventory Movements - InventoryHub</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Inventory Movements</MudText>
+
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudTextField @bind-Value="searchText"
+                              Label="Search"
+                              Placeholder="Date, product, type, quantity, reference..."
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              AdornmentColor="Color.Primary"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="OnSearchChanged"
+                              Clearable="true" />
+            </MudItem>
+
+            <MudItem xs="12" md="2">
+                <MudSelect @bind-Value="selectedType"
+                           @bind-Value:after="OnFilterChanged"
+                           Label="Movement Type"
+                           Variant="Variant.Outlined"
+                           Clearable="true"
+                           T="MovementType?"
+                           AdornmentIcon="@Icons.Material.Filled.SwapVert"
+                           AdornmentColor="Color.Primary">
+                    <MudSelectItem Value="@((MovementType?)MovementType.In)">Stock In</MudSelectItem>
+                    <MudSelectItem Value="@((MovementType?)MovementType.Out)">Stock Out</MudSelectItem>
+                    <MudSelectItem Value="@((MovementType?)MovementType.Adjust)">Adjustment</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="6" md="3">
+                <MudDatePicker @bind-Date="startDate"
+                               @bind-Date:after="OnFilterChanged"
+                               Label="Start Date"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               MaxDate="@(endDate ?? DateTime.Today)"
+                               AutoClose="true" />
+            </MudItem>
+
+            <MudItem xs="6" md="3">
+                <MudDatePicker @bind-Date="endDate"
+                               @bind-Date:after="OnFilterChanged"
+                               Label="End Date"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               MinDate="@startDate"
+                               MaxDate="DateTime.Today"
+                               AutoClose="true" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+    }
+
+    <MudDataGrid @ref="dataGrid"
+                     T="InventoryMovementDto"
+                     Items="@filteredMovements"
+                     Hover="true"
+                     Dense="true"
+                     ReadOnly="true"
+                     SortMode="SortMode.Single"
+                     Filterable="false">
+            <Columns>
+                <PropertyColumn Property="x => x.CreatedAt" Title="Date">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2">
+                            @context.Item.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                        </MudText>
+                    </CellTemplate>
+                </PropertyColumn>
+
+                <PropertyColumn Property="x => x.ProductName" Title="Product">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2">
+                            <strong>@context.Item.ProductName</strong>
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @context.Item.ProductSKU
+                        </MudText>
+                    </CellTemplate>
+                </PropertyColumn>
+
+                <PropertyColumn Property="x => x.Type" Title="Type">
+                    <CellTemplate>
+                        @{
+                            var (color, icon) = GetMovementTypeStyle(context.Item.Type);
+                        }
+                        <MudChip T="string" Color="@color"
+                                 Size="Size.Small"
+                                 Variant="Variant.Filled"
+                                 Icon="@icon">
+                            @context.Item.TypeDisplay
+                        </MudChip>
+                    </CellTemplate>
+                </PropertyColumn>
+
+                <PropertyColumn Property="x => x.Quantity" Title="Quantity">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2">
+                            @{
+                                var quantityColor = GetQuantityColor(context.Item.Type);
+                                var sign = GetQuantitySign(context.Item.Type);
+                            }
+                            <span style="color: @quantityColor; font-weight: bold;">
+                                @sign@context.Item.Quantity
+                            </span>
+                        </MudText>
+                    </CellTemplate>
+                </PropertyColumn>
+
+                <PropertyColumn Property="x => x.PreviousStock" Title="Previous Stock">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @context.Item.PreviousStock
+                        </MudText>
+                    </CellTemplate>
+                </PropertyColumn>
+
+                <PropertyColumn Property="x => x.NewStock" Title="New Stock">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2">
+                            <strong>@context.Item.NewStock</strong>
+                        </MudText>
+                    </CellTemplate>
+                </PropertyColumn>
+
+                <PropertyColumn Property="x => x.Reference" Title="Reference">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2">
+                            @(context.Item.Reference ?? "-")
+                        </MudText>
+                    </CellTemplate>
+                </PropertyColumn>
+
+                <PropertyColumn Property="x => x.Notes" Title="Notes">
+                    <CellTemplate>
+                        @if (!string.IsNullOrEmpty(context.Item.Notes))
+                        {
+                            <MudTooltip Text="@context.Item.Notes">
+                                <MudIcon Icon="@Icons.Material.Filled.Comment" Size="Size.Small" Color="Color.Info" />
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2">-</MudText>
+                        }
+                    </CellTemplate>
+                </PropertyColumn>
+            </Columns>
+
+            <NoRecordsContent>
+                <MudText Typo="Typo.body1" Align="Align.Center" Class="py-8">
+                    No inventory movements found. Click "Record Movement" to add one.
+                </MudText>
+            </NoRecordsContent>
+        </MudDataGrid>
+
+        @if (totalPages > 1)
+        {
+            <MudDivider Class="my-4" />
+            <MudStack Row="true" Justify="Justify.Center" AlignItems="AlignItems.Center">
+                <MudPagination Count="@totalPages"
+                               Selected="@currentPage"
+                               SelectedChanged="OnPageChanged"
+                               Color="Color.Primary"
+                               ShowFirstButton="true"
+                               ShowLastButton="true" />
+            </MudStack>
+        }
+</MudContainer>
+
+@code {
+    private MudDataGrid<InventoryMovementDto>? dataGrid;
+    private List<InventoryMovementDto> movements = new();
+    private List<InventoryMovementDto> filteredMovements = new();
+    private bool isLoading;
+    private string? searchText;
+    private MovementType? selectedType;
+    private DateTime? startDate;
+    private DateTime? endDate;
+    private int currentPage = 1;
+    private int pageSize = 15;
+    private int totalPages = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMovements();
+    }
+
+    private async Task OnFilterChanged()
+    {
+        currentPage = 1;
+        await LoadMovements();
+    }
+
+    private async Task OnSearchChanged()
+    {
+        currentPage = 1;
+        ApplySearchFilter();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadMovements()
+    {
+        isLoading = true;
+
+        try
+        {
+            var response = await InventoryService.GetMovementsAsync(
+                currentPage,
+                pageSize,
+                productId: null,
+                selectedType,
+                startDate,
+                endDate);
+
+            if (response?.Success == true && response.Data != null)
+            {
+                movements = response.Data.Items;
+                totalPages = response.Data.TotalPages;
+                ApplySearchFilter();
+            }
+            else
+            {
+                Snackbar.Add(response?.Error?.Message ?? "Failed to load inventory movements", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading inventory movements: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplySearchFilter()
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            filteredMovements = movements;
+            return;
+        }
+
+        var search = searchText.Trim();
+        filteredMovements = movements.Where(m =>
+        {
+            var quantityWithSign = $"{GetQuantitySign(m.Type)}{m.Quantity}";
+            return m.CreatedAt.ToString("MMM dd, yyyy HH:mm").Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                m.ProductName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                m.ProductSKU.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                m.TypeDisplay.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                quantityWithSign.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                m.PreviousStock.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                m.NewStock.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                (m.Reference?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (m.Notes?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
+        }).ToList();
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        currentPage = page;
+        await LoadMovements();
+    }
+
+    private (Color color, string icon) GetMovementTypeStyle(MovementType type)
+    {
+        return type switch
+        {
+            MovementType.In => (Color.Success, Icons.Material.Filled.AddCircle),
+            MovementType.Out => (Color.Error, Icons.Material.Filled.RemoveCircle),
+            MovementType.Adjust => (Color.Warning, Icons.Material.Filled.Tune),
+            _ => (Color.Default, Icons.Material.Filled.Circle)
+        };
+    }
+
+    private string GetQuantityColor(MovementType type)
+    {
+        return type switch
+        {
+            MovementType.In => "var(--mud-palette-success)",
+            MovementType.Out => "var(--mud-palette-error)",
+            _ => "var(--mud-palette-warning)"
+        };
+    }
+
+    private string GetQuantitySign(MovementType type)
+    {
+        return type switch
+        {
+            MovementType.In => "+",
+            MovementType.Out => "-",
+            _ => ""
+        };
+    }
+}

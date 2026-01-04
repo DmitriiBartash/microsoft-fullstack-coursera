@@ -1,0 +1,214 @@
+@inject ProductService ProductService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@_model" Validation="@((Func<object, string?>)ValidateModel)">
+            <MudTextField @bind-Value="_model.SKU"
+                          Label="SKU"
+                          Required="true"
+                          ReadOnly="@(_isEditMode)"
+                          Disabled="@(_isEditMode)"
+                          MaxLength="50"
+                          Immediate="true" />
+
+            <MudTextField @bind-Value="_model.Name"
+                          Label="Name"
+                          Required="true"
+                          MaxLength="200"
+                          Immediate="true"
+                          Class="mt-3" />
+
+            <MudTextField @bind-Value="_model.Description"
+                          Label="Description"
+                          Lines="5"
+                          MaxLength="1000"
+                          Class="mt-3" />
+
+            <MudSelect @bind-Value="_model.CategoryId"
+                       Label="Category"
+                       Required="true"
+                       ToStringFunc="@(id => Categories.FirstOrDefault(c => c.Id == id)?.Name ?? string.Empty)"
+                       Class="mt-3">
+                @foreach (var category in Categories)
+                {
+                    <MudSelectItem T="Guid" Value="@category.Id">@category.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudNumericField @bind-Value="_model.Price"
+                             Label="Price"
+                             Required="true"
+                             Min="0.01m"
+                             Step="0.01m"
+                             Format="F2"
+                             Adornment="Adornment.Start"
+                             AdornmentIcon="@Icons.Material.Filled.AttachMoney"
+                             Class="mt-3" />
+
+            @if (!_isEditMode)
+            {
+                <MudNumericField @bind-Value="_model.InitialStock"
+                                 Label="Initial Stock"
+                                 Min="0"
+                                 HelperText="Leave 0 if no initial inventory"
+                                 Class="mt-3" />
+            }
+
+            <MudNumericField @bind-Value="_model.MinimumStock"
+                             Label="Minimum Stock"
+                             Required="true"
+                             Min="0"
+                             Class="mt-3" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="_processing">
+            @if (_processing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Processing...</MudText>
+            }
+            else
+            {
+                <MudText>@(_isEditMode ? "Update" : "Create")</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public ProductDto? Product { get; set; }
+
+    [Parameter]
+    public List<CategoryDto> Categories { get; set; } = new();
+
+    private MudForm? _form;
+    private bool _processing = false;
+    private bool _isEditMode => Product != null;
+    private ProductFormModel _model = new();
+
+    protected override void OnInitialized()
+    {
+        if (_isEditMode && Product != null)
+        {
+            _model = new ProductFormModel
+                {
+                    SKU = Product.SKU,
+                    Name = Product.Name,
+                    Description = Product.Description,
+                    CategoryId = Product.CategoryId,
+                    Price = Product.Price,
+                    MinimumStock = Product.MinimumStock
+                };
+        }
+    }
+
+    private async Task Submit()
+    {
+        await _form!.Validate();
+
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _processing = true;
+        try
+        {
+            if (_isEditMode && Product != null)
+            {
+                var updateRequest = new UpdateProductDto
+                    {
+                        Name = _model.Name,
+                        Description = _model.Description,
+                        CategoryId = _model.CategoryId,
+                        Price = _model.Price,
+                        MinimumStock = _model.MinimumStock
+                    };
+
+                var updateResponse = await ProductService.UpdateProductAsync(Product.Id, updateRequest);
+                if (updateResponse?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(updateResponse?.Error?.Message ?? "Failed to update product", Severity.Error);
+                }
+            }
+            else
+            {
+                var createRequest = new CreateProductDto
+                    {
+                        SKU = _model.SKU,
+                        Name = _model.Name,
+                        Description = _model.Description,
+                        CategoryId = _model.CategoryId,
+                        Price = _model.Price,
+                        InitialStock = _model.InitialStock,
+                        MinimumStock = _model.MinimumStock
+                    };
+
+                var createResponse = await ProductService.CreateProductAsync(createRequest);
+                if (createResponse?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(createResponse?.Error?.Message ?? "Failed to create product", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private string? ValidateModel(object model)
+    {
+        var m = model as ProductFormModel;
+        if (m == null) return "Invalid model";
+
+        if (string.IsNullOrWhiteSpace(m.SKU))
+            return "SKU is required";
+
+        if (string.IsNullOrWhiteSpace(m.Name))
+            return "Name is required";
+
+        if (m.CategoryId == Guid.Empty)
+            return "Category is required";
+
+        if (m.Price <= 0)
+            return "Price must be greater than 0";
+
+        if (m.MinimumStock < 0)
+            return "Minimum stock cannot be negative";
+
+        return null;
+    }
+
+    private class ProductFormModel
+    {
+        public string SKU { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public Guid CategoryId { get; set; }
+        public decimal Price { get; set; }
+        public int InitialStock { get; set; }
+        public int MinimumStock { get; set; }
+    }
+}

@@ -1,0 +1,247 @@
+@page "/"
+@using InventoryHub.Client.Models
+@inject DashboardService DashboardService
+@inject ISnackbar Snackbar
+
+<PageTitle>Dashboard - InventoryHub</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
+
+@if (_loading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+}
+else if (_stats == null)
+{
+    <MudAlert Severity="Severity.Error">Failed to load dashboard data</MudAlert>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <div class="d-flex align-center justify-space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary">Total Products</MudText>
+                        <MudText Typo="Typo.h4">@_stats.TotalProducts</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory" Size="Size.Large" Color="Color.Primary" />
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <div class="d-flex align-center justify-space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Color="Color.Warning">Low Stock</MudText>
+                        <MudText Typo="Typo.h4">@_stats.LowStockCount</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Large" Color="Color.Warning" />
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <div class="d-flex align-center justify-space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Color="Color.Error">Out of Stock</MudText>
+                        <MudText Typo="Typo.h4">@_stats.OutOfStockCount</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.RemoveCircle" Size="Size.Large" Color="Color.Error" />
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="2">
+                <div class="d-flex align-center justify-space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle2" Color="Color.Success">Total Value</MudText>
+                        <MudText Typo="Typo.h4">@_stats.TotalInventoryValue.ToString("C")</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.AttachMoney" Size="Size.Large" Color="Color.Success" />
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Class="mt-4" Style="align-items: stretch;">
+        <MudItem xs="12" md="6" Class="d-flex">
+            <MudPaper Class="pa-4 flex-grow-1 d-flex flex-column" Elevation="2">
+                <div class="d-flex align-center justify-space-between mb-3">
+                    <MudText Typo="Typo.h6">Low Stock Products</MudText>
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                   Color="Color.Primary"
+                                   OnClick="LoadDataAsync"
+                                   Size="Size.Small" />
+                </div>
+
+                <div class="flex-grow-1" style="overflow-y: auto;">
+                    @if (_lowStockProducts.Any())
+                    {
+                        <MudTable Items="@_lowStockProducts" Dense="true" Hover="true" Elevation="0" FixedHeader="true">
+                            <HeaderContent>
+                                <MudTh>SKU</MudTh>
+                                <MudTh>Name</MudTh>
+                                <MudTh>Stock</MudTh>
+                                <MudTh>Min</MudTh>
+                                <MudTh>Needed</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="SKU">@context.SKU</MudTd>
+                                <MudTd DataLabel="Name">@context.Name</MudTd>
+                                <MudTd DataLabel="Stock">
+                                    <MudChip T="string" Color="@(context.CurrentStock == 0 ? Color.Error : Color.Warning)"
+                                             Size="Size.Small">
+                                        @context.CurrentStock
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Min">@context.MinimumStock</MudTd>
+                                <MudTd DataLabel="Needed">@context.StockNeeded</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No low stock products</MudText>
+                    }
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="6" Class="d-flex">
+            <MudPaper Class="pa-4 flex-grow-1 d-flex flex-column" Elevation="2">
+                <div class="d-flex align-center justify-space-between mb-3">
+                    <MudText Typo="Typo.h6">Recent Movements</MudText>
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                   Color="Color.Primary"
+                                   OnClick="LoadDataAsync"
+                                   Size="Size.Small" />
+                </div>
+
+                <div class="flex-grow-1" style="overflow-y: auto;">
+                    @if (_recentMovements.Any())
+                    {
+                        <MudTable Items="@_recentMovements" Dense="true" Hover="true" Elevation="0" FixedHeader="true">
+                            <HeaderContent>
+                                <MudTh>Product</MudTh>
+                                <MudTh>Type</MudTh>
+                                <MudTh>Quantity</MudTh>
+                                <MudTh>Date</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Product">
+                                    <div>
+                                        <MudText Typo="Typo.body2">@context.ProductName</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.ProductSKU</MudText>
+                                    </div>
+                                </MudTd>
+                                <MudTd DataLabel="Type">
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@GetMovementColor(context.Type)">
+                                        @GetMovementDisplay(context.Type)
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Quantity">
+                                    <MudText Typo="Typo.body2"
+                                             Color="@GetMovementColor(context.Type)">
+                                        @GetQuantityDisplay(context.Type, context.Quantity)
+                                    </MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Date">@context.CreatedAt.ToString("MMM dd, HH:mm")</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No recent movements</MudText>
+                    }
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private bool _loading = true;
+    private DashboardStatsDto? _stats;
+    private List<LowStockProductDto> _lowStockProducts = new();
+    private List<RecentMovementDto> _recentMovements = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var statsResponse = await DashboardService.GetStatsAsync();
+            if (statsResponse?.Success == true && statsResponse.Data != null)
+            {
+                _stats = statsResponse.Data;
+            }
+            else
+            {
+                Snackbar.Add(statsResponse?.Error?.Message ?? "Failed to load statistics", Severity.Error);
+            }
+
+            var lowStockResponse = await DashboardService.GetLowStockProductsAsync(10);
+            if (lowStockResponse?.Success == true && lowStockResponse.Data != null)
+            {
+                _lowStockProducts = lowStockResponse.Data;
+            }
+
+            var movementsResponse = await DashboardService.GetRecentMovementsAsync(9);
+            if (movementsResponse?.Success == true && movementsResponse.Data != null)
+            {
+                _recentMovements = movementsResponse.Data;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading dashboard data: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Color GetMovementColor(MovementType type)
+    {
+        return type switch
+        {
+            MovementType.In => Color.Success,
+            MovementType.Out => Color.Error,
+            MovementType.Adjust => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private string GetMovementDisplay(MovementType type)
+    {
+        return type switch
+        {
+            MovementType.In => "Stock In",
+            MovementType.Out => "Stock Out",
+            MovementType.Adjust => "Adjustment",
+            _ => type.ToString()
+        };
+    }
+
+    private string GetQuantityDisplay(MovementType type, int quantity)
+    {
+        return type switch
+        {
+            MovementType.In => $"+{quantity}",
+            MovementType.Out => $"-{quantity}",
+            MovementType.Adjust => quantity.ToString(),
+            _ => quantity.ToString()
+        };
+    }
+}

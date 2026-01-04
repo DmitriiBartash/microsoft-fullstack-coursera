@@ -1,0 +1,213 @@
+@inject ClientService ClientService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@isFormValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Name"
+                                  Label="Client Name"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Name is required"
+                                  MaxLength="200"
+                                  Immediate="true" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.ContactPerson"
+                                  Label="Contact Person"
+                                  Variant="Variant.Outlined"
+                                  MaxLength="100" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="model.Email"
+                                  Label="Email"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Email"
+                                  MaxLength="100" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="model.Phone"
+                                  Label="Phone"
+                                  Variant="Variant.Outlined"
+                                  MaxLength="50" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Address"
+                                  Label="Billing Address"
+                                  Variant="Variant.Outlined"
+                                  Lines="2"
+                                  MaxLength="500" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.ShippingAddress"
+                                  Label="Shipping Address"
+                                  Variant="Variant.Outlined"
+                                  Lines="2"
+                                  MaxLength="500"
+                                  HelperText="Leave empty to use billing address" />
+                </MudItem>
+
+                @if (IsEdit)
+                {
+                    <MudItem xs="12">
+                        <MudSwitch @bind-Value="model.IsActive"
+                                   Label="Active"
+                                   Color="Color.Success" />
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isSaving)">
+            @if (isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ml-2">Saving...</MudText>
+            }
+            else
+            {
+                <MudText>@(IsEdit ? "Update" : "Create")</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public ClientDto? Client { get; set; }
+
+    [Parameter]
+    public bool IsEdit { get; set; }
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isSaving;
+    private ClientFormModel model = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && IsEdit)
+        {
+            await form.Validate();
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsEdit && Client != null)
+        {
+            model = new ClientFormModel
+            {
+                Name = Client.Name,
+                ContactPerson = Client.ContactPerson,
+                Email = Client.Email,
+                Phone = Client.Phone,
+                Address = Client.Address,
+                ShippingAddress = Client.ShippingAddress,
+                IsActive = Client.IsActive
+            };
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        await form.Validate();
+
+        if (!isFormValid)
+            return;
+
+        isSaving = true;
+
+        try
+        {
+            if (IsEdit && Client != null)
+            {
+                var request = new UpdateClientRequest
+                {
+                    Id = Client.Id,
+                    Name = model.Name,
+                    ContactPerson = model.ContactPerson,
+                    Email = model.Email,
+                    Phone = model.Phone,
+                    Address = model.Address,
+                    ShippingAddress = model.ShippingAddress,
+                    IsActive = model.IsActive
+                };
+
+                var response = await ClientService.UpdateClientAsync(request);
+
+                if (response?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(response?.Error?.Message ?? "Failed to update client", Severity.Error);
+                }
+            }
+            else
+            {
+                var request = new CreateClientRequest
+                {
+                    Name = model.Name,
+                    ContactPerson = model.ContactPerson,
+                    Email = model.Email,
+                    Phone = model.Phone,
+                    Address = model.Address,
+                    ShippingAddress = model.ShippingAddress
+                };
+
+                var response = await ClientService.CreateClientAsync(request);
+
+                if (response?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(response?.Error?.Message ?? "Failed to create client", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving client: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private class ClientFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? ContactPerson { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+        public string? ShippingAddress { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}

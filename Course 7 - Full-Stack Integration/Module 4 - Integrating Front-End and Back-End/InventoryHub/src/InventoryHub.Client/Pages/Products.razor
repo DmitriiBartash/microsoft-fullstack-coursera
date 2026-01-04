@@ -1,0 +1,428 @@
+@page "/products"
+@using InventoryHub.Client.Models
+@inject ProductService ProductService
+@inject CategoryService CategoryService
+@inject InventoryService InventoryService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Products - InventoryHub</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Products</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="2">
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField @bind-Value="_searchString"
+                          Label="Search"
+                          Placeholder="Search by name, SKU, price..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="OnSearchChanged" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid?"
+                       Label="Category"
+                       Value="_selectedCategoryId"
+                       ValueChanged="OnCategoryChanged">
+                <MudSelectItem T="Guid?" Value="@((Guid?)null)">All Categories</MudSelectItem>
+                @foreach (var category in _categories)
+                {
+                    <MudSelectItem T="Guid?" Value="@((Guid?)category.Id)">@category.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="bool?"
+                       Label="Stock Filter"
+                       Value="_lowStockFilter"
+                       ValueChanged="OnStockFilterChanged">
+                <MudSelectItem Value="@((bool?)null)">All Products</MudSelectItem>
+                <MudSelectItem Value="@((bool?)true)">Low Stock Only</MudSelectItem>
+                <MudSelectItem Value="@((bool?)false)">Normal Stock</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2" Class="d-flex align-end">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       FullWidth="true"
+                       OnClick="OpenCreateDialog">
+                Add Product
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-0" />
+}
+<MudTable @ref="_table"
+          ServerData="LoadDataAsync"
+          Dense="true"
+          Hover="true"
+          Loading="false">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortLabel="sku" T="ProductDto">SKU</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="name" T="ProductDto">Name</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="category" T="ProductDto">Category</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="price" T="ProductDto">Price</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="stock" T="ProductDto">Stock</MudTableSortLabel></MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="SKU">
+                <MudText Typo="Typo.body2">@context.SKU</MudText>
+            </MudTd>
+            <MudTd DataLabel="Name">
+                <div>
+                    <MudText Typo="Typo.body2">@context.Name</MudText>
+                    @if (!string.IsNullOrEmpty(context.Description))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Description</MudText>
+                    }
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Category">
+                <MudChip T="string" Size="Size.Small" Style="@GetCategoryStyle(context.CategoryId)">@context.CategoryName</MudChip>
+            </MudTd>
+            <MudTd DataLabel="Price">
+                <MudText Typo="Typo.body2">@context.Price.ToString("C")</MudText>
+            </MudTd>
+            <MudTd DataLabel="Stock">
+                <div class="d-flex align-center gap-2">
+                    <div class="stock-control">
+                        <button class="stock-btn stock-btn-minus" disabled="@(context.CurrentStock <= 0 || _adjustingProductId == context.Id)"
+                                @onclick="@(() => AdjustStock(context, -1))">
+                            <MudIcon Icon="@Icons.Material.Filled.Remove" Size="Size.Small" />
+                        </button>
+                        <input type="number"
+                               class="stock-input @(GetStockValueClass(context)) @(_adjustingProductId == context.Id ? "stock-loading" : "")"
+                               value="@context.CurrentStock"
+                               min="0"
+                               disabled="@(_adjustingProductId == context.Id)"
+                               @onchange="@(e => SetStock(context, e))" />
+                        <button class="stock-btn stock-btn-plus" disabled="@(_adjustingProductId == context.Id)"
+                                @onclick="@(() => AdjustStock(context, 1))">
+                            <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                        </button>
+                    </div>
+                    <MudTooltip Text="Minimum stock level">
+                        <span class="stock-min @(context.CurrentStock <= context.MinimumStock ? "stock-min-warning" : "")">
+                            min: @context.MinimumStock
+                        </span>
+                    </MudTooltip>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Size="Size.Small"
+                         Color="@GetStockStatusColor(context)">
+                    @GetStockStatus(context)
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="() => OpenEditDialog(context)" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Color="Color.Error"
+                               Size="Size.Small"
+                               OnClick="() => DeleteProduct(context.Id)" />
+            </MudTd>
+        </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<ProductDto>? _table;
+    private string _searchString = string.Empty;
+    private Guid? _selectedCategoryId;
+    private Guid? _adjustingProductId;
+    private bool? _lowStockFilter;
+    private List<CategoryDto> _categories = new();
+    private bool _loading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategoriesAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        var response = await CategoryService.GetAllCategoriesAsync();
+        if (response?.Success == true && response.Data != null)
+        {
+            _categories = response.Data;
+        }
+    }
+
+    private async Task<TableData<ProductDto>> LoadDataAsync(TableState state, CancellationToken token)
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var sortDirection = state.SortDirection == SortDirection.Descending ? "desc" : "asc";
+            var response = await ProductService.GetProductsAsync(
+                page: state.Page + 1,
+                pageSize: state.PageSize,
+                search: string.IsNullOrWhiteSpace(_searchString) ? null : _searchString,
+                categoryId: _selectedCategoryId,
+                lowStock: _lowStockFilter,
+                sortBy: state.SortLabel,
+                sortDirection: sortDirection
+            );
+
+            if (response?.Success == true && response.Data != null)
+            {
+                return new TableData<ProductDto>
+                {
+                    Items = response.Data.Items,
+                    TotalItems = response.Data.TotalCount
+                };
+            }
+
+            Snackbar.Add(response?.Error?.Message ?? "Failed to load products", Severity.Error);
+            return new TableData<ProductDto> { Items = new List<ProductDto>(), TotalItems = 0 };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading products: {ex.Message}", Severity.Error);
+            return new TableData<ProductDto> { Items = new List<ProductDto>(), TotalItems = 0 };
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnSearchChanged()
+    {
+        await _table!.ReloadServerData();
+    }
+
+    private async Task OnCategoryChanged(Guid? value)
+    {
+        _selectedCategoryId = value;
+        await _table!.ReloadServerData();
+    }
+
+    private async Task OnStockFilterChanged(bool? value)
+    {
+        _lowStockFilter = value;
+        await _table!.ReloadServerData();
+    }
+
+    private async Task AdjustStock(ProductDto product, int adjustment)
+    {
+        if (_adjustingProductId.HasValue) return;
+
+        _adjustingProductId = product.Id;
+        StateHasChanged();
+
+        try
+        {
+            var movementType = adjustment > 0 ? MovementType.In : MovementType.Out;
+            var request = new RecordMovementRequest
+            {
+                ProductId = product.Id,
+                Type = movementType,
+                Quantity = Math.Abs(adjustment),
+                Notes = "Quick adjustment from Products page"
+            };
+
+            var response = await InventoryService.RecordMovementAsync(request);
+            if (response?.Success == true)
+            {
+                product.CurrentStock += adjustment;
+            }
+            else
+            {
+                Snackbar.Add(response?.Error?.Message ?? "Failed to adjust stock", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adjusting stock: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _adjustingProductId = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SetStock(ProductDto product, ChangeEventArgs e)
+    {
+        if (_adjustingProductId.HasValue) return;
+
+        if (!int.TryParse(e.Value?.ToString(), out var newStock) || newStock < 0)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        var adjustment = newStock - product.CurrentStock;
+        if (adjustment == 0) return;
+
+        _adjustingProductId = product.Id;
+        StateHasChanged();
+
+        try
+        {
+            var movementType = adjustment > 0 ? MovementType.In : MovementType.Out;
+            var request = new RecordMovementRequest
+            {
+                ProductId = product.Id,
+                Type = movementType,
+                Quantity = Math.Abs(adjustment),
+                Notes = "Manual stock adjustment from Products page"
+            };
+
+            var response = await InventoryService.RecordMovementAsync(request);
+            if (response?.Success == true)
+            {
+                product.CurrentStock = newStock;
+            }
+            else
+            {
+                Snackbar.Add(response?.Error?.Message ?? "Failed to set stock", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error setting stock: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _adjustingProductId = null;
+            StateHasChanged();
+        }
+    }
+
+    private Color GetStockButtonColor(ProductDto product)
+    {
+        if (product.IsOutOfStock) return Color.Error;
+        if (product.IsLowStock) return Color.Warning;
+        return Color.Default;
+    }
+
+    private string GetStockValueClass(ProductDto product)
+    {
+        if (product.IsOutOfStock) return "stock-error";
+        if (product.IsLowStock) return "stock-warning";
+        return "stock-normal";
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["Categories"] = _categories
+        };
+
+        var dialog = await DialogService.ShowAsync<ProductDialog>("Create Product", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await _table!.ReloadServerData();
+            Snackbar.Add("Product created successfully", Severity.Success);
+        }
+    }
+
+    private async Task OpenEditDialog(ProductDto product)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Product"] = product,
+            ["Categories"] = _categories
+        };
+
+        var dialog = await DialogService.ShowAsync<ProductDialog>("Edit Product", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await _table!.ReloadServerData();
+            Snackbar.Add("Product updated successfully", Severity.Success);
+        }
+    }
+
+    private async Task DeleteProduct(Guid id)
+    {
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = "Are you sure you want to delete this product? This action cannot be undone.",
+            ["ButtonText"] = "Delete",
+            ["Color"] = Color.Error
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Product", parameters);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            try
+            {
+                var response = await ProductService.DeleteProductAsync(id);
+                if (response?.Success == true)
+                {
+                    await _table!.ReloadServerData();
+                    Snackbar.Add("Product deleted successfully", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(response?.Error?.Message ?? "Failed to delete product", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting product: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private string GetStockStatus(ProductDto product)
+    {
+        if (product.IsOutOfStock) return "Out of Stock";
+        if (product.IsLowStock) return "Low Stock";
+        return "In Stock";
+    }
+
+    private Color GetStockStatusColor(ProductDto product)
+    {
+        if (product.IsOutOfStock) return Color.Error;
+        if (product.IsLowStock) return Color.Warning;
+        return Color.Success;
+    }
+
+    private static readonly string[] _categoryColors =
+    {
+        "#1565C0",
+        "#7B1FA2",
+        "#00838F",
+        "#2E7D32",
+        "#E65100",
+        "#C62828",
+        "#4527A0",
+        "#00695C",
+        "#AD1457",
+        "#37474F"
+    };
+
+    private string GetCategoryStyle(Guid categoryId)
+    {
+        var index = Math.Abs(categoryId.GetHashCode()) % _categoryColors.Length;
+        return $"background-color: {_categoryColors[index]}; color: white;";
+    }
+}

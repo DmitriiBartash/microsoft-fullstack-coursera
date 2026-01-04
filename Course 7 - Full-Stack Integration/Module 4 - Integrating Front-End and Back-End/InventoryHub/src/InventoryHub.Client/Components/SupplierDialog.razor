@@ -1,0 +1,200 @@
+@inject SupplierService SupplierService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@isFormValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Name"
+                                  Label="Supplier Name"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Name is required"
+                                  MaxLength="100"
+                                  Immediate="true" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.ContactPerson"
+                                  Label="Contact Person"
+                                  Variant="Variant.Outlined"
+                                  MaxLength="100" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="model.Email"
+                                  Label="Email"
+                                  Variant="Variant.Outlined"
+                                  InputType="InputType.Email"
+                                  MaxLength="100" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="model.Phone"
+                                  Label="Phone"
+                                  Variant="Variant.Outlined"
+                                  MaxLength="20" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Address"
+                                  Label="Address"
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  MaxLength="500" />
+                </MudItem>
+
+                @if (IsEdit)
+                {
+                    <MudItem xs="12">
+                        <MudSwitch @bind-Value="model.IsActive"
+                                   Label="Active"
+                                   Color="Color.Success" />
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isSaving)">
+            @if (isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ml-2">Saving...</MudText>
+            }
+            else
+            {
+                <MudText>@(IsEdit ? "Update" : "Create")</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public SupplierDto? Supplier { get; set; }
+
+    [Parameter]
+    public bool IsEdit { get; set; }
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isSaving;
+    private SupplierFormModel model = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && IsEdit)
+        {
+            await form.Validate();
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsEdit && Supplier != null)
+        {
+            model = new SupplierFormModel
+            {
+                Name = Supplier.Name,
+                ContactPerson = Supplier.ContactPerson,
+                Email = Supplier.Email,
+                Phone = Supplier.Phone,
+                Address = Supplier.Address,
+                IsActive = Supplier.IsActive
+            };
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        await form.Validate();
+
+        if (!isFormValid)
+            return;
+
+        isSaving = true;
+
+        try
+        {
+            if (IsEdit && Supplier != null)
+            {
+                var request = new UpdateSupplierRequest
+                {
+                    Id = Supplier.Id,
+                    Name = model.Name,
+                    ContactPerson = model.ContactPerson,
+                    Email = model.Email,
+                    Phone = model.Phone,
+                    Address = model.Address,
+                    IsActive = model.IsActive
+                };
+
+                var response = await SupplierService.UpdateSupplierAsync(request);
+
+                if (response?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(response?.Error?.Message ?? "Failed to update supplier", Severity.Error);
+                }
+            }
+            else
+            {
+                var request = new CreateSupplierRequest
+                {
+                    Name = model.Name,
+                    ContactPerson = model.ContactPerson,
+                    Email = model.Email,
+                    Phone = model.Phone,
+                    Address = model.Address
+                };
+
+                var response = await SupplierService.CreateSupplierAsync(request);
+
+                if (response?.Success == true)
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(response?.Error?.Message ?? "Failed to create supplier", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving supplier: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private class SupplierFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? ContactPerson { get; set; }
+        public string? Email { get; set; }
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+}

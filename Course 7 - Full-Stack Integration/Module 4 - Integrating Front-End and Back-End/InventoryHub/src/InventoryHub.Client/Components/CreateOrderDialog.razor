@@ -1,0 +1,340 @@
+@inject OrderService OrderService
+@inject ProductService ProductService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@isFormValid">
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudSelect @bind-Value="model.SupplierId"
+                               Label="Supplier"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               RequiredError="Supplier is required"
+                               Placeholder="Select a supplier"
+                               T="Guid?">
+                        @foreach (var supplier in Suppliers)
+                        {
+                            <MudSelectItem T="Guid?" Value="@((Guid?)supplier.Id)">@supplier.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="model.Notes"
+                                  Label="Notes"
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  MaxLength="500" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+
+        <MudGrid>
+            <MudItem xs="12">
+                <MudDivider Class="my-2" />
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" Color="Color.Primary" Size="Size.Small" />
+                        <MudText Typo="Typo.subtitle1"><strong>Order Items</strong></MudText>
+                    </MudStack>
+                </MudItem>
+
+                <MudItem xs="12" md="5">
+                    <MudAutocomplete T="ProductDto"
+                                     Value="selectedProduct"
+                                     ValueChanged="OnProductSelected"
+                                     Label="Product"
+                                     Placeholder="Search by name or SKU..."
+                                     Variant="Variant.Outlined"
+                                     SearchFunc="@SearchProducts"
+                                     ToStringFunc="@(p => p?.Name ?? string.Empty)"
+                                     ResetValueOnEmptyText="true"
+                                     CoerceText="true"
+                                     CoerceValue="true"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Search">
+                        <ItemTemplate Context="product">
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.body1">@product.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    SKU: @product.SKU · @product.Price.ToString("C2")
+                                </MudText>
+                            </MudStack>
+                        </ItemTemplate>
+                    </MudAutocomplete>
+                </MudItem>
+                <MudItem xs="4" md="2">
+                    <MudNumericField @bind-Value="itemQuantity"
+                                     Label="Qty"
+                                     Variant="Variant.Outlined"
+                                     Min="1" />
+                </MudItem>
+                <MudItem xs="5" md="3">
+                    <MudNumericField @bind-Value="itemPrice"
+                                     Label="Unit Price"
+                                     Variant="Variant.Outlined"
+                                     Min="0M"
+                                     Step="0.01M"
+                                     Format="N2"
+                                     Adornment="Adornment.Start"
+                                     AdornmentText="$" />
+                </MudItem>
+                <MudItem xs="3" md="2">
+                    <MudField Label=" " Variant="Variant.Text" Underline="false">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddItem"
+                                   Disabled="@(!CanAddItem())"
+                                   FullWidth="true">
+                            Add
+                        </MudButton>
+                    </MudField>
+                </MudItem>
+
+                @if (model.Items.Any())
+                {
+                    <MudItem xs="12">
+                        <MudTable Items="@model.Items" Hover="true" Dense="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>Product</MudTh>
+                                <MudTh>SKU</MudTh>
+                                <MudTh Style="text-align: center;">Quantity</MudTh>
+                                <MudTh Style="text-align: center;">Unit Price</MudTh>
+                                <MudTh Style="text-align: right;">Total</MudTh>
+                                <MudTh></MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Product">@context.ProductName</MudTd>
+                                <MudTd DataLabel="SKU">@context.ProductSKU</MudTd>
+                                <MudTd DataLabel="Quantity">
+                                    <MudNumericField @bind-Value="context.Quantity"
+                                                     Min="1"
+                                                     Variant="Variant.Outlined"
+                                                     Margin="Margin.Dense"
+                                                     Style="width: 80px; margin: 0 auto;" />
+                                </MudTd>
+                                <MudTd DataLabel="Unit Price">
+                                    <MudNumericField @bind-Value="context.UnitPrice"
+                                                     Min="0M"
+                                                     Step="0.01M"
+                                                     Format="N2"
+                                                     Variant="Variant.Outlined"
+                                                     Margin="Margin.Dense"
+                                                     Adornment="Adornment.Start"
+                                                     AdornmentText="$"
+                                                     Style="width: 120px; margin: 0 auto;" />
+                                </MudTd>
+                                <MudTd DataLabel="Total" Style="text-align: right;">
+                                    <strong>@((context.Quantity * context.UnitPrice).ToString("C2"))</strong>
+                                </MudTd>
+                                <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => RemoveItem(context))" />
+                                </MudTd>
+                            </RowTemplate>
+                            <FooterContent>
+                                <MudTd colspan="4" Style="text-align: right;"><strong>Total Amount:</strong></MudTd>
+                                <MudTd Style="text-align: right;">
+                                    <MudText Typo="Typo.h6" Color="Color.Primary">
+                                        @model.Items.Sum(i => i.Quantity * i.UnitPrice).ToString("C2")
+                                    </MudText>
+                                </MudTd>
+                                <MudTd></MudTd>
+                            </FooterContent>
+                        </MudTable>
+                    </MudItem>
+                }
+                else
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Info">
+                            No items added yet. Please add at least one product to create the order.
+                        </MudAlert>
+                    </MudItem>
+                }
+            </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || !model.Items.Any() || isSaving)">
+            @if (isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ml-2">Creating...</MudText>
+            }
+            else
+            {
+                <MudText>Create Order</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public List<SupplierDto> Suppliers { get; set; } = new();
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isSaving;
+    private List<ProductDto> allProducts = new();
+    private ProductDto? selectedProduct;
+    private int itemQuantity = 1;
+    private decimal itemPrice = 0;
+    private CreateOrderFormModel model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProducts();
+    }
+
+    private async Task LoadProducts()
+    {
+        try
+        {
+            var response = await ProductService.GetProductsAsync(1, 1000);
+            if (response?.Success == true && response.Data != null)
+            {
+                allProducts = response.Data.Items;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading products: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task<IEnumerable<ProductDto>> SearchProducts(string value, CancellationToken token)
+    {
+        await Task.Delay(5, token);
+
+        if (string.IsNullOrWhiteSpace(value))
+            return allProducts;
+
+        return allProducts.Where(p =>
+            p.Name.Contains(value, StringComparison.OrdinalIgnoreCase) ||
+            p.SKU.Contains(value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void OnProductSelected(ProductDto? product)
+    {
+        selectedProduct = product;
+        if (product != null)
+        {
+            itemPrice = product.Price;
+        }
+    }
+
+    private bool CanAddItem()
+    {
+        return selectedProduct != null && itemQuantity > 0 && itemPrice >= 0m;
+    }
+
+    private void AddItem()
+    {
+        if (selectedProduct == null || itemQuantity <= 0 || itemPrice < 0)
+            return;
+
+        var existingItem = model.Items.FirstOrDefault(i => i.ProductId == selectedProduct.Id);
+        if (existingItem != null)
+        {
+            Snackbar.Add("Product already added to this order", Severity.Warning);
+            return;
+        }
+
+        model.Items.Add(new OrderItemFormModel
+        {
+            ProductId = selectedProduct.Id,
+            ProductName = selectedProduct.Name,
+            ProductSKU = selectedProduct.SKU,
+            Quantity = itemQuantity,
+            UnitPrice = itemPrice
+        });
+
+        selectedProduct = null;
+        itemQuantity = 1;
+        itemPrice = 0;
+
+        StateHasChanged();
+    }
+
+    private void RemoveItem(OrderItemFormModel item)
+    {
+        model.Items.Remove(item);
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        await form.Validate();
+
+        if (!isFormValid || !model.Items.Any() || !model.SupplierId.HasValue)
+            return;
+
+        isSaving = true;
+
+        try
+        {
+            var request = new CreateOrderRequest
+            {
+                SupplierId = model.SupplierId.Value,
+                Notes = model.Notes,
+                Items = model.Items.Select(i => new CreateOrderItemRequest
+                {
+                    ProductId = i.ProductId,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice
+                }).ToList()
+            };
+
+            var response = await OrderService.CreateOrderAsync(request);
+
+            if (response?.Success == true)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add(response?.Error?.Message ?? "Failed to create order", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating order: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private class CreateOrderFormModel
+    {
+        public Guid? SupplierId { get; set; }
+        public string? Notes { get; set; }
+        public List<OrderItemFormModel> Items { get; set; } = new();
+    }
+
+    private class OrderItemFormModel
+    {
+        public Guid ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public string ProductSKU { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public decimal UnitPrice { get; set; }
+    }
+}

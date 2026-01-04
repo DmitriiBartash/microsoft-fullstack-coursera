@@ -1,0 +1,608 @@
+@page "/orders"
+@inject OrderService OrderService
+@inject SalesOrderService SalesOrderService
+@inject SupplierService SupplierService
+@inject ClientService ClientService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Orders - InventoryHub</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Orders</MudText>
+
+    <MudTabs @bind-ActivePanelIndex="activeTab" Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Class="mb-4">
+        <MudTabPanel Text="Purchase Orders" Icon="@Icons.Material.Filled.ShoppingCart">
+            <MudPaper Class="pa-4 mb-4" Elevation="0">
+                <MudGrid>
+                    <MudItem xs="12" md="3">
+                        <MudTextField @bind-Value="purchaseSearchString"
+                                      Label="Search"
+                                      Placeholder="Order #, supplier, notes..."
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Immediate="true"
+                                      DebounceInterval="300"
+                                      OnDebounceIntervalElapsed="OnPurchaseSearchChanged" />
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudSelect Value="purchaseSelectedStatus"
+                                   ValueChanged="@((string value) => OnPurchaseStatusFilterChanged(value))"
+                                   Label="Filter by Status"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   T="string">
+                            <MudSelectItem T="string" Value="@OrderStatus.Draft">Draft</MudSelectItem>
+                            <MudSelectItem T="string" Value="@OrderStatus.Submitted">Submitted</MudSelectItem>
+                            <MudSelectItem T="string" Value="@OrderStatus.Confirmed">Confirmed</MudSelectItem>
+                            <MudSelectItem T="string" Value="@OrderStatus.Shipped">Shipped</MudSelectItem>
+                            <MudSelectItem T="string" Value="@OrderStatus.Received">Received</MudSelectItem>
+                            <MudSelectItem T="string" Value="@OrderStatus.Cancelled">Cancelled</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudSelect Value="purchaseSelectedSupplierId"
+                                   ValueChanged="@((Guid? value) => OnSupplierFilterChanged(value))"
+                                   Label="Filter by Supplier"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   T="Guid?">
+                            @foreach (var supplier in suppliers)
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)supplier.Id)">@supplier.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="3" Class="d-flex align-end justify-end">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="OpenCreatePurchaseOrderDialog">
+                            Create Order
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <div style="position: relative;">
+                @if (isPurchaseLoading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Style="position: absolute; top: 0; left: 0; right: 0; z-index: 10;" />
+                }
+
+                <MudDataGrid T="OrderDto"
+                         Items="@purchaseOrders"
+                         Hover="true"
+                         Dense="true"
+                         ReadOnly="true">
+                <Columns>
+                    <PropertyColumn Property="x => x.OrderNumber" Title="Order #">
+                        <CellTemplate>
+                            <MudText Typo="Typo.body2"><strong>@context.Item.OrderNumber</strong></MudText>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="x => x.OrderDate" Title="Order Date">
+                        <CellTemplate>
+                            <MudText Typo="Typo.body2">@context.Item.OrderDate.ToString("MMM dd, yyyy")</MudText>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="x => x.SupplierName" Title="Supplier" />
+                    <TemplateColumn Title="Status" Sortable="false">
+                        <CellTemplate>
+                            <MudMenu AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                                <ActivatorContent>
+                                    <MudChip T="string" Color="@GetPurchaseStatusColor(context.Item.Status)"
+                                             Size="Size.Small" Variant="Variant.Filled" Style="cursor: pointer;">
+                                        @context.Item.Status
+                                        <MudIcon Icon="@Icons.Material.Filled.ArrowDropDown" Size="Size.Small" />
+                                    </MudChip>
+                                </ActivatorContent>
+                                <ChildContent>
+                                    @foreach (var status in GetOrderedPurchaseStatuses(context.Item.Status))
+                                    {
+                                        <MudMenuItem Icon="@GetPurchaseStatusIcon(status)"
+                                                     IconColor="@GetPurchaseStatusColor(status)"
+                                                     OnClick="@(() => ChangePurchaseStatus(context.Item, status))">
+                                            @status
+                                        </MudMenuItem>
+                                    }
+                                </ChildContent>
+                            </MudMenu>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.TotalAmount" Title="Total">
+                        <CellTemplate>
+                            <MudText Typo="Typo.body2"><strong>@context.Item.TotalAmount.ToString("C2")</strong></MudText>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn Title="Items">
+                        <CellTemplate>
+                            <MudChip T="string" Color="Color.Info" Size="Size.Small">@context.Item.Items.Count</MudChip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Actions" Sortable="false">
+                        <CellTemplate>
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Info" Size="Size.Small"
+                                           OnClick="@(() => ViewPurchaseOrderDetails(context.Item))" />
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body1" Align="Align.Center" Class="py-8">No purchase orders found.</MudText>
+                </NoRecordsContent>
+            </MudDataGrid>
+
+                @if (purchaseTotalPages > 1)
+                {
+                    <MudDivider Class="my-4" />
+                    <MudStack Row="true" Justify="Justify.Center">
+                        <MudPagination Count="@purchaseTotalPages" Selected="@purchaseCurrentPage"
+                                       SelectedChanged="OnPurchasePageChanged" Color="Color.Primary" />
+                    </MudStack>
+                }
+            </div>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Sales Orders" Icon="@Icons.Material.Filled.LocalShipping">
+            <MudPaper Class="pa-4 mb-4" Elevation="0">
+                <MudGrid>
+                    <MudItem xs="12" md="3">
+                        <MudTextField @bind-Value="salesSearchString"
+                                      Label="Search"
+                                      Placeholder="Order #, client, address, notes..."
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Immediate="true"
+                                      DebounceInterval="300"
+                                      OnDebounceIntervalElapsed="OnSalesSearchChanged" />
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudSelect Value="salesSelectedStatus"
+                                   ValueChanged="@((string value) => OnSalesStatusFilterChanged(value))"
+                                   Label="Filter by Status"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   T="string">
+                            <MudSelectItem T="string" Value="@SalesOrderStatus.Draft">Draft</MudSelectItem>
+                            <MudSelectItem T="string" Value="@SalesOrderStatus.Confirmed">Confirmed</MudSelectItem>
+                            <MudSelectItem T="string" Value="@SalesOrderStatus.Shipped">Shipped</MudSelectItem>
+                            <MudSelectItem T="string" Value="@SalesOrderStatus.Delivered">Delivered</MudSelectItem>
+                            <MudSelectItem T="string" Value="@SalesOrderStatus.Cancelled">Cancelled</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudSelect Value="salesSelectedClientId"
+                                   ValueChanged="@((Guid? value) => OnClientFilterChanged(value))"
+                                   Label="Filter by Client"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   T="Guid?">
+                            @foreach (var client in clients)
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)client.Id)">@client.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" md="3" Class="d-flex align-end justify-end">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="OpenCreateSalesOrderDialog">
+                            Create Order
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <div style="position: relative;">
+                @if (isSalesLoading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Style="position: absolute; top: 0; left: 0; right: 0; z-index: 10;" />
+                }
+
+                <MudDataGrid T="SalesOrderDto"
+                         Items="@salesOrders"
+                         Hover="true"
+                         Dense="true"
+                         ReadOnly="true">
+                <Columns>
+                    <PropertyColumn Property="x => x.OrderNumber" Title="Order #">
+                        <CellTemplate>
+                            <MudText Typo="Typo.body2"><strong>@context.Item.OrderNumber</strong></MudText>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="x => x.OrderDate" Title="Order Date">
+                        <CellTemplate>
+                            <MudText Typo="Typo.body2">@context.Item.OrderDate.ToString("MMM dd, yyyy")</MudText>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="x => x.ClientName" Title="Client" />
+                    <TemplateColumn Title="Status" Sortable="false">
+                        <CellTemplate>
+                            <MudMenu AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                                <ActivatorContent>
+                                    <MudChip T="string" Color="@GetSalesStatusColor(context.Item.Status)"
+                                             Size="Size.Small" Variant="Variant.Filled" Style="cursor: pointer;">
+                                        @context.Item.Status
+                                        <MudIcon Icon="@Icons.Material.Filled.ArrowDropDown" Size="Size.Small" />
+                                    </MudChip>
+                                </ActivatorContent>
+                                <ChildContent>
+                                    @foreach (var status in GetOrderedSalesStatuses(context.Item.Status))
+                                    {
+                                        <MudMenuItem Icon="@GetSalesStatusIcon(status)"
+                                                     IconColor="@GetSalesStatusColor(status)"
+                                                     OnClick="@(() => ChangeSalesStatus(context.Item, status))">
+                                            @status
+                                        </MudMenuItem>
+                                    }
+                                </ChildContent>
+                            </MudMenu>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.TotalAmount" Title="Total">
+                        <CellTemplate>
+                            <MudText Typo="Typo.body2"><strong>@context.Item.TotalAmount.ToString("C2")</strong></MudText>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn Title="Items">
+                        <CellTemplate>
+                            <MudChip T="string" Color="Color.Info" Size="Size.Small">@context.Item.Items.Count</MudChip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Actions" Sortable="false">
+                        <CellTemplate>
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Info" Size="Size.Small"
+                                           OnClick="@(() => ViewSalesOrderDetails(context.Item))" />
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body1" Align="Align.Center" Class="py-8">No sales orders found.</MudText>
+                </NoRecordsContent>
+            </MudDataGrid>
+
+                @if (salesTotalPages > 1)
+                {
+                    <MudDivider Class="my-4" />
+                    <MudStack Row="true" Justify="Justify.Center">
+                        <MudPagination Count="@salesTotalPages" Selected="@salesCurrentPage"
+                                       SelectedChanged="OnSalesPageChanged" Color="Color.Primary" />
+                    </MudStack>
+                }
+            </div>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+    @code {
+    private int activeTab = 0;
+
+    private List<OrderDto> purchaseOrders = [];
+    private List<SupplierDto> suppliers = [];
+    private bool isPurchaseLoading = false;
+    private string? purchaseSelectedStatus;
+    private Guid? purchaseSelectedSupplierId;
+    private string? purchaseSearchString;
+    private int purchaseCurrentPage = 1;
+    private int purchaseTotalPages = 1;
+
+    private List<SalesOrderDto> salesOrders = [];
+    private List<ClientDto> clients = [];
+    private bool isSalesLoading = false;
+    private string? salesSelectedStatus;
+    private Guid? salesSelectedClientId;
+    private string? salesSearchString;
+    private int salesCurrentPage = 1;
+    private int salesTotalPages = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(
+            LoadSuppliers(),
+            LoadClients(),
+            LoadPurchaseOrders(),
+            LoadSalesOrders()
+        );
+    }
+
+    private async Task LoadSuppliers()
+    {
+        try
+        {
+            var response = await SupplierService.GetAllSuppliersAsync();
+            if (response?.Success == true && response.Data != null)
+                suppliers = response.Data;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading suppliers: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadPurchaseOrders()
+    {
+        isPurchaseLoading = true;
+        try
+        {
+            var response = await OrderService.GetOrdersAsync(
+                purchaseCurrentPage, 10, purchaseSelectedStatus, purchaseSelectedSupplierId, purchaseSearchString);
+            if (response?.Success == true && response.Data != null)
+            {
+                purchaseOrders = response.Data.Items;
+                purchaseTotalPages = response.Data.TotalPages;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading purchase orders: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isPurchaseLoading = false;
+        }
+    }
+
+    private async Task OnPurchaseSearchChanged()
+    {
+        purchaseCurrentPage = 1;
+        await LoadPurchaseOrders();
+    }
+
+    private async Task OnPurchaseStatusFilterChanged(string? value)
+    {
+        purchaseSelectedStatus = value;
+        purchaseCurrentPage = 1;
+        await LoadPurchaseOrders();
+    }
+
+    private async Task OnSupplierFilterChanged(Guid? value)
+    {
+        purchaseSelectedSupplierId = value;
+        purchaseCurrentPage = 1;
+        await LoadPurchaseOrders();
+    }
+
+    private async Task OnPurchasePageChanged(int page)
+    {
+        purchaseCurrentPage = page;
+        await LoadPurchaseOrders();
+    }
+
+    private Color GetPurchaseStatusColor(string status) => status switch
+    {
+        OrderStatus.Draft => Color.Default,
+        OrderStatus.Submitted => Color.Info,
+        OrderStatus.Confirmed => Color.Success,
+        OrderStatus.Shipped => Color.Warning,
+        OrderStatus.Received => Color.Tertiary,
+        OrderStatus.Cancelled => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetPurchaseStatusIcon(string status) => status switch
+    {
+        OrderStatus.Draft => Icons.Material.Filled.Edit,
+        OrderStatus.Submitted => Icons.Material.Filled.Send,
+        OrderStatus.Confirmed => Icons.Material.Filled.CheckCircle,
+        OrderStatus.Shipped => Icons.Material.Filled.LocalShipping,
+        OrderStatus.Received => Icons.Material.Filled.Inventory,
+        OrderStatus.Cancelled => Icons.Material.Filled.Cancel,
+        _ => Icons.Material.Filled.Circle
+    };
+
+    private IEnumerable<string> GetOrderedPurchaseStatuses(string currentStatus)
+    {
+        var allStatuses = new[]
+        {
+            OrderStatus.Draft,
+            OrderStatus.Submitted,
+            OrderStatus.Confirmed,
+            OrderStatus.Shipped,
+            OrderStatus.Received,
+            OrderStatus.Cancelled
+        };
+        return allStatuses.Where(s => s != currentStatus);
+    }
+
+    private async Task ChangePurchaseStatus(OrderDto order, string newStatus)
+    {
+        try
+        {
+            var response = await OrderService.ChangeStatusAsync(order.Id, newStatus);
+            if (response?.Success == true)
+            {
+                await LoadPurchaseOrders();
+                Snackbar.Add($"Status changed to {newStatus}", GetPurchaseStatusSeverity(newStatus));
+            }
+            else
+            {
+                Snackbar.Add(response?.Error?.Message ?? "Failed to change status", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Severity GetPurchaseStatusSeverity(string status) => status switch
+    {
+        OrderStatus.Draft => Severity.Normal,
+        OrderStatus.Submitted => Severity.Info,
+        OrderStatus.Confirmed => Severity.Success,
+        OrderStatus.Shipped => Severity.Warning,
+        OrderStatus.Received => Severity.Success,
+        OrderStatus.Cancelled => Severity.Error,
+        _ => Severity.Normal
+    };
+
+    private async Task OpenCreatePurchaseOrderDialog()
+    {
+        var parameters = new DialogParameters<CreateOrderDialog> { { x => x.Suppliers, suppliers } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<CreateOrderDialog>("Create Purchase Order", parameters, options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await LoadPurchaseOrders();
+            Snackbar.Add("Purchase order created successfully", Severity.Success);
+        }
+    }
+
+    private async Task ViewPurchaseOrderDetails(OrderDto order)
+    {
+        var parameters = new DialogParameters<OrderDetailsDialog> { { x => x.OrderId, order.Id } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+        await DialogService.ShowAsync<OrderDetailsDialog>($"Order Details - {order.OrderNumber}", parameters, options);
+    }
+
+    private async Task LoadClients()
+    {
+        try
+        {
+            var response = await ClientService.GetAllClientsAsync();
+            if (response?.Success == true && response.Data != null)
+                clients = response.Data;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading clients: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadSalesOrders()
+    {
+        isSalesLoading = true;
+        try
+        {
+            var response = await SalesOrderService.GetSalesOrdersAsync(
+                salesCurrentPage, 10, salesSelectedStatus, salesSelectedClientId, salesSearchString);
+            if (response?.Success == true && response.Data != null)
+            {
+                salesOrders = response.Data.Items;
+                salesTotalPages = response.Data.TotalPages;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading sales orders: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSalesLoading = false;
+        }
+    }
+
+    private async Task OnSalesSearchChanged()
+    {
+        salesCurrentPage = 1;
+        await LoadSalesOrders();
+    }
+
+    private async Task OnSalesStatusFilterChanged(string? value)
+    {
+        salesSelectedStatus = value;
+        salesCurrentPage = 1;
+        await LoadSalesOrders();
+    }
+
+    private async Task OnClientFilterChanged(Guid? value)
+    {
+        salesSelectedClientId = value;
+        salesCurrentPage = 1;
+        await LoadSalesOrders();
+    }
+
+    private async Task OnSalesPageChanged(int page)
+    {
+        salesCurrentPage = page;
+        await LoadSalesOrders();
+    }
+
+    private Color GetSalesStatusColor(string status) => status switch
+    {
+        SalesOrderStatus.Draft => Color.Default,
+        SalesOrderStatus.Confirmed => Color.Info,
+        SalesOrderStatus.Shipped => Color.Warning,
+        SalesOrderStatus.Delivered => Color.Success,
+        SalesOrderStatus.Cancelled => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetSalesStatusIcon(string status) => status switch
+    {
+        SalesOrderStatus.Draft => Icons.Material.Filled.Edit,
+        SalesOrderStatus.Confirmed => Icons.Material.Filled.CheckCircle,
+        SalesOrderStatus.Shipped => Icons.Material.Filled.LocalShipping,
+        SalesOrderStatus.Delivered => Icons.Material.Filled.Done,
+        SalesOrderStatus.Cancelled => Icons.Material.Filled.Cancel,
+        _ => Icons.Material.Filled.Circle
+    };
+
+    private IEnumerable<string> GetOrderedSalesStatuses(string currentStatus)
+    {
+        var allStatuses = new[]
+        {
+            SalesOrderStatus.Draft,
+            SalesOrderStatus.Confirmed,
+            SalesOrderStatus.Shipped,
+            SalesOrderStatus.Delivered,
+            SalesOrderStatus.Cancelled
+        };
+        return allStatuses.Where(s => s != currentStatus);
+    }
+
+    private async Task ChangeSalesStatus(SalesOrderDto order, string newStatus)
+    {
+        try
+        {
+            var response = await SalesOrderService.ChangeStatusAsync(order.Id, newStatus);
+            if (response?.Success == true)
+            {
+                await LoadSalesOrders();
+                Snackbar.Add($"Status changed to {newStatus}", GetSalesStatusSeverity(newStatus));
+            }
+            else
+            {
+                Snackbar.Add(response?.Error?.Message ?? "Failed to change status", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Severity GetSalesStatusSeverity(string status) => status switch
+    {
+        SalesOrderStatus.Draft => Severity.Normal,
+        SalesOrderStatus.Confirmed => Severity.Info,
+        SalesOrderStatus.Shipped => Severity.Warning,
+        SalesOrderStatus.Delivered => Severity.Success,
+        SalesOrderStatus.Cancelled => Severity.Error,
+        _ => Severity.Normal
+    };
+
+    private async Task OpenCreateSalesOrderDialog()
+    {
+        var parameters = new DialogParameters<CreateSalesOrderDialog> { { x => x.Clients, clients } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<CreateSalesOrderDialog>("Create Sales Order", parameters, options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await LoadSalesOrders();
+            Snackbar.Add("Sales order created successfully", Severity.Success);
+        }
+    }
+
+    private async Task ViewSalesOrderDetails(SalesOrderDto order)
+    {
+        var parameters = new DialogParameters<SalesOrderDetailsDialog> { { x => x.OrderId, order.Id } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true };
+        await DialogService.ShowAsync<SalesOrderDetailsDialog>($"Sales Order - {order.OrderNumber}", parameters, options);
+    }
+}

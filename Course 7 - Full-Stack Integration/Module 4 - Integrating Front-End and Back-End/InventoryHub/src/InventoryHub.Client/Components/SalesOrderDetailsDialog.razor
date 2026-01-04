@@ -1,0 +1,216 @@
+@inject SalesOrderService SalesOrderService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (isLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            <MudText Align="Align.Center" Class="my-4">Loading order details...</MudText>
+        }
+        else if (order != null)
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Order Number</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">
+                        <strong>@order.OrderNumber</strong>
+                    </MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Status</MudText>
+                    <MudChip T="string" Color="@GetStatusColor(order.Status)"
+                             Size="Size.Small"
+                             Variant="Variant.Filled"
+                             Class="mb-3">
+                        @order.Status
+                    </MudChip>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Client</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">@order.ClientName</MudText>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Order Date</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-3">
+                        @order.OrderDate.ToString("MMMM dd, yyyy")
+                    </MudText>
+                </MudItem>
+
+                @if (order.RequiredDate.HasValue)
+                {
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Required Date</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-3">
+                            @order.RequiredDate.Value.ToString("MMMM dd, yyyy")
+                        </MudText>
+                    </MudItem>
+                }
+
+                @if (!string.IsNullOrEmpty(order.ShippingAddress))
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Shipping Address</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-3" Style="white-space: pre-line;">@order.ShippingAddress</MudText>
+                    </MudItem>
+                }
+
+                @if (!string.IsNullOrEmpty(order.Notes))
+                {
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Notes</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-3">@order.Notes</MudText>
+                    </MudItem>
+                }
+
+                <MudItem xs="12">
+                    <MudDivider Class="my-2" />
+                    <MudText Typo="Typo.h6" Class="mb-3">Order Items</MudText>
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTable Items="@order.Items" Hover="true" Dense="true" Striped="true">
+                        <HeaderContent>
+                            <MudTh>Product</MudTh>
+                            <MudTh>SKU</MudTh>
+                            <MudTh Style="text-align: right;">Current Stock</MudTh>
+                            <MudTh Style="text-align: right;">Quantity</MudTh>
+                            <MudTh Style="text-align: right;">Unit Price</MudTh>
+                            <MudTh Style="text-align: right;">Total Price</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Product">
+                                <MudText Typo="Typo.body2">@context.ProductName</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="SKU">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@context.ProductSKU</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Current Stock" Style="text-align: right;">
+                                @if (order.Status == SalesOrderStatus.Draft || order.Status == SalesOrderStatus.Confirmed)
+                                {
+                                    <MudChip T="string"
+                                             Color="@(context.CurrentStock >= context.Quantity ? Color.Success : Color.Error)"
+                                             Size="Size.Small">
+                                        @context.CurrentStock
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2">@context.CurrentStock</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Quantity" Style="text-align: right;">
+                                <MudText Typo="Typo.body2">@context.Quantity</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Unit Price" Style="text-align: right;">
+                                <MudText Typo="Typo.body2">@context.UnitPrice.ToString("C2")</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Total Price" Style="text-align: right;">
+                                <MudText Typo="Typo.body2">
+                                    <strong>@context.LineTotal.ToString("C2")</strong>
+                                </MudText>
+                            </MudTd>
+                        </RowTemplate>
+                        <FooterContent>
+                            <MudTd colspan="5" Style="text-align: right; padding-right: 1rem;">
+                                <MudText Typo="Typo.h6">Total Amount:</MudText>
+                            </MudTd>
+                            <MudTd Style="text-align: right;">
+                                <MudText Typo="Typo.h6" Color="Color.Primary">
+                                    @order.TotalAmount.ToString("C2")
+                                </MudText>
+                            </MudTd>
+                        </FooterContent>
+                    </MudTable>
+                </MudItem>
+
+                @if (HasInsufficientStock() && (order.Status == SalesOrderStatus.Draft || order.Status == SalesOrderStatus.Confirmed))
+                {
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Warning">
+                            Some items have insufficient stock. The order cannot be shipped until stock is available.
+                        </MudAlert>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Error">Failed to load order details</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Close">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Guid OrderId { get; set; }
+
+    private SalesOrderDto? order;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrderDetails();
+    }
+
+    private async Task LoadOrderDetails()
+    {
+        isLoading = true;
+
+        try
+        {
+            var response = await SalesOrderService.GetSalesOrderAsync(OrderId);
+
+            if (response?.Success == true && response.Data != null)
+            {
+                order = response.Data;
+            }
+            else
+            {
+                Snackbar.Add(response?.Error?.Message ?? "Failed to load order details", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading order details: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool HasInsufficientStock()
+    {
+        return order?.Items.Any(i => i.CurrentStock < i.Quantity) ?? false;
+    }
+
+    private Color GetStatusColor(string status)
+    {
+        return status switch
+        {
+            SalesOrderStatus.Draft => Color.Default,
+            SalesOrderStatus.Confirmed => Color.Info,
+            SalesOrderStatus.Shipped => Color.Warning,
+            SalesOrderStatus.Delivered => Color.Success,
+            SalesOrderStatus.Cancelled => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private void Close()
+    {
+        MudDialog.Close();
+    }
+}
