@@ -1,0 +1,200 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    var userEmail = User.Identity?.Name ?? "User";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+            margin-top: -1rem;
+            margin-left: calc(-50vw + 50%);
+            margin-right: calc(-50vw + 50%);
+        }
+
+        .feature-card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .icon-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .icon-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .icon-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .icon-info {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .tech-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            background: #f8f9fa;
+            margin: 0.25rem;
+            font-size: 0.85rem;
+            color: #495057;
+        }
+
+        .welcome-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 1rem;
+        }
+    </style>
+}
+
+<div class="dashboard-header">
+    <div class="container text-center">
+        <div class="welcome-avatar">
+            <i class="bi bi-person-check-fill"></i>
+        </div>
+        <h1 class="display-5 fw-bold mb-2">Welcome, @userEmail!</h1>
+        <p class="lead mb-0">You have successfully authenticated using ASP.NET Identity</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row mb-5">
+        <div class="col-12 text-center mb-4">
+            <h2 class="fw-bold">User Registration & Authentication Demo</h2>
+            <p class="text-muted">This application demonstrates ASP.NET Identity with In-Memory Storage</p>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-md-6 col-lg-3">
+            <div class="card feature-card">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon icon-primary mx-auto">
+                        <i class="bi bi-person-plus"></i>
+                    </div>
+                    <h5 class="card-title">User Registration</h5>
+                    <p class="card-text text-muted small">Create new accounts with email validation and secure password hashing</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card feature-card">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon icon-success mx-auto">
+                        <i class="bi bi-shield-lock"></i>
+                    </div>
+                    <h5 class="card-title">Authentication</h5>
+                    <p class="card-text text-muted small">Secure login with cookie-based authentication and remember me</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card feature-card">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon icon-warning mx-auto">
+                        <i class="bi bi-database"></i>
+                    </div>
+                    <h5 class="card-title">In-Memory Storage</h5>
+                    <p class="card-text text-muted small">No database setup required - perfect for demos and testing</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+            <div class="card feature-card">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon icon-info mx-auto">
+                        <i class="bi bi-key"></i>
+                    </div>
+                    <h5 class="card-title">ASP.NET Identity</h5>
+                    <p class="card-text text-muted small">Built-in user management with UserManager and SignInManager</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card feature-card">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-3"><i class="bi bi-code-slash me-2"></i>Technologies Used</h5>
+                    <div class="d-flex flex-wrap">
+                        <span class="tech-badge"><i class="bi bi-microsoft me-1"></i>ASP.NET Core MVC</span>
+                        <span class="tech-badge"><i class="bi bi-shield-check me-1"></i>ASP.NET Identity</span>
+                        <span class="tech-badge"><i class="bi bi-database me-1"></i>Entity Framework Core</span>
+                        <span class="tech-badge"><i class="bi bi-memory me-1"></i>In-Memory Database</span>
+                        <span class="tech-badge"><i class="bi bi-bootstrap me-1"></i>Bootstrap 5</span>
+                        <span class="tech-badge"><i class="bi bi-filetype-cs me-1"></i>C# .NET</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card feature-card bg-light">
+                <div class="card-body p-4">
+                    <h5 class="card-title"><i class="bi bi-info-circle me-2 text-primary"></i>About This Demo</h5>
+                    <p class="card-text">This is a demonstration of implementing user registration and authentication using ASP.NET Identity. The application uses an in-memory database for storage, which means all data is lost when the application restarts.</p>
+                    <p class="card-text mb-0"><strong>Note:</strong> This is ideal for learning and testing purposes.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card feature-card bg-light">
+                <div class="card-body p-4">
+                    <h5 class="card-title"><i class="bi bi-list-check me-2 text-success"></i>Key Features</h5>
+                    <ul class="mb-0">
+                        <li>User registration with validation</li>
+                        <li>Secure password hashing</li>
+                        <li>Cookie-based authentication</li>
+                        <li>Remember me functionality</li>
+                        <li>Protected routes with [Authorize]</li>
+                        <li>Automatic sign-in after registration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

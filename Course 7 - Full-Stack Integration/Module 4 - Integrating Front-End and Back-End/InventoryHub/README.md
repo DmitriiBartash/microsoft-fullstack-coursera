@@ -1,4 +1,4 @@
-# InventoryHub Pro
+# InventoryHub
 
 Full-stack inventory management system for small business.
 
