@@ -1,0 +1,107 @@
+@page "/register"
+@layout MinimalLayout
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center justify-center" Style="min-height: 100vh; position: relative; z-index: 1;">
+    <MudPaper Class="pa-8 glass-card" Elevation="0" Style="width: 100%;">
+        <div class="d-flex justify-center mb-3">
+            <MudAvatar Style="background: rgba(255,255,255,0.15); width: 56px; height: 56px;">
+                <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Style="color: #fff; font-size: 28px;" />
+            </MudAvatar>
+        </div>
+        <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-2" Style="color: #fff; font-weight: 700;">Create Account</MudText>
+        <MudText Typo="Typo.body2" Align="Align.Center" Style="color: rgba(255,255,255,0.6);" Class="mb-6">
+            Join the HR Management System
+        </MudText>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" Variant="Variant.Filled"
+                      CloseIconClicked="() => _error = null">@_error</MudAlert>
+        }
+
+        <EditForm Model="_model" OnValidSubmit="HandleRegister">
+            <MudGrid Spacing="3">
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_model.FirstName" Label="First Name" Variant="Variant.Outlined" Required="true"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="_model.LastName" Label="Last Name" Variant="Variant.Outlined" Required="true"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.Email" Label="Email" Variant="Variant.Outlined"
+                                  InputType="InputType.Email" Required="true"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.Password" Label="Password" Variant="Variant.Outlined"
+                                  InputType="InputType.Password" Required="true"
+                                  HelperText="Min 6 chars with uppercase, lowercase, digit, and special char"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.ConfirmPassword" Label="Confirm Password" Variant="Variant.Outlined"
+                                  InputType="InputType.Password" Required="true"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               FullWidth="true" Disabled="_loading" Size="Size.Large"
+                               Style="text-transform: none; font-weight: 600;">
+                        @if (_loading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Register
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </EditForm>
+
+        <MudDivider Class="my-4" Style="border-color: rgba(255,255,255,0.15);" />
+        <MudText Typo="Typo.body2" Align="Align.Center">
+            Already have an account?
+            <MudLink Href="/login">Sign In</MudLink>
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private RegisterModel _model = new();
+    private string? _error;
+    private bool _loading;
+
+    private class RegisterModel
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    private async Task HandleRegister()
+    {
+        if (_model.Password != _model.ConfirmPassword)
+        {
+            _error = "Passwords do not match";
+            return;
+        }
+
+        _loading = true;
+        _error = null;
+
+        var (success, error) = await AuthService.RegisterAsync(
+            new RegisterRequest(_model.Email, _model.Password, _model.FirstName, _model.LastName));
+
+        if (success)
+            Navigation.NavigateTo("/dashboard");
+        else
+            _error = error;
+
+        _loading = false;
+    }
+}

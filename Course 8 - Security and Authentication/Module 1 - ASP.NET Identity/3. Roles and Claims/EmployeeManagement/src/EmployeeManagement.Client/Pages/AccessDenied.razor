@@ -1,0 +1,35 @@
+@page "/access-denied"
+@inject NavigationManager Navigation
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center justify-center" Style="height: 70vh;">
+    <MudPaper Class="pa-8 text-center flat-card" Elevation="0">
+        <div class="d-flex justify-center mb-4">
+            <MudAvatar Style="width: 80px; height: 80px; background: linear-gradient(135deg, #FEE2E2, #FECACA);">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Style="font-size: 2.5rem; color: #EF4444;" />
+            </MudAvatar>
+        </div>
+        <MudText Typo="Typo.h4" Class="mb-2 gradient-text">Access Denied</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
+            You don't have permission to access this page.
+        </MudText>
+
+        <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body2" Class="mb-4">
+                    Your current roles:
+                    @foreach (var role in context.User.FindAll(ClaimTypes.Role).Select(c => c.Value))
+                    {
+                        <MudChip T="string" Size="Size.Small" Class="ml-1">@role</MudChip>
+                    }
+                </MudText>
+            </Authorized>
+        </AuthorizeView>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                   OnClick="@(() => Navigation.NavigateTo("/dashboard"))"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   Style="text-transform: none; font-weight: 600;">
+            Back to Dashboard
+        </MudButton>
+    </MudPaper>
+</MudContainer>

@@ -1,0 +1,206 @@
+@page "/dashboard"
+@attribute [Authorize]
+@inject EmployeeService EmployeeService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<AuthorizeView>
+    <Authorized>
+        @if (_loading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+            var department = context.User.FindFirst("Department")?.Value ?? "N/A";
+            var firstName = context.User.FindFirst("FirstName")?.Value ?? "User";
+
+            <div class="welcome-banner mb-6">
+                <MudText Typo="Typo.h4" Style="font-weight: 700;">
+                    Welcome back, @firstName!
+                </MudText>
+                <MudText Typo="Typo.body1" Class="mt-1 mud-text-secondary">
+                    @if (roles.Contains("Admin")) { <text>System Administrator — full access to all resources</text> }
+                    else if (roles.Contains("Manager")) { <text>Manager — @department department</text> }
+                    else { <text>Employee — @department department</text> }
+                </MudText>
+            </div>
+
+            @if (roles.Contains("Admin"))
+            {
+                <MudGrid Spacing="3" Class="mb-6">
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Class="pa-5 d-flex align-center gap-4 stat-card-1 hover-lift" Elevation="0">
+                            <MudAvatar Size="Size.Large">
+                                <MudIcon Icon="@Icons.Material.Filled.People" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.h4" Style="font-weight: 700;">@_employees.Count</MudText>
+                                <MudText Typo="Typo.body2">Total Employees</MudText>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Class="pa-5 d-flex align-center gap-4 stat-card-2 hover-lift" Elevation="0">
+                            <MudAvatar Size="Size.Large">
+                                <MudIcon Icon="@Icons.Material.Filled.Business" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.h4" Style="font-weight: 700;">@_employees.Select(e => e.Department).Distinct().Count()</MudText>
+                                <MudText Typo="Typo.body2">Departments</MudText>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudPaper Class="pa-5 d-flex align-center gap-4 stat-card-3 hover-lift" Elevation="0">
+                            <MudAvatar Size="Size.Large">
+                                <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.h4" Style="font-weight: 700;">@_employees.Count(e => e.Position.Contains("Manager"))</MudText>
+                                <MudText Typo="Typo.body2">Managers</MudText>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <MudPaper Class="pa-5 flat-card" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-4">Department Distribution</MudText>
+                    <MudSimpleTable Hover="true">
+                        <thead>
+                            <tr>
+                                <th>Department</th>
+                                <th>Employees</th>
+                                <th>Distribution</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var dept in _employees.GroupBy(e => e.Department))
+                            {
+                                var pct = _employees.Count > 0 ? (double)dept.Count() / _employees.Count * 100 : 0;
+                                <tr>
+                                    <td>
+                                        <MudChip T="string" Color="GetDeptColor(dept.Key)" Size="Size.Small">@dept.Key</MudChip>
+                                    </td>
+                                    <td>@dept.Count()</td>
+                                    <td>
+                                        <MudProgressLinear Value="pct" Color="GetDeptColor(dept.Key)" Size="Size.Medium"
+                                                           Style="min-width: 200px;" Rounded="true" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudPaper>
+            }
+            else if (roles.Contains("Manager"))
+            {
+                <MudGrid Spacing="3" Class="mb-6">
+                    <MudItem xs="12" sm="6">
+                        <MudPaper Class="pa-5 d-flex align-center gap-4 stat-card-1 hover-lift" Elevation="0">
+                            <MudAvatar Size="Size.Large">
+                                <MudIcon Icon="@Icons.Material.Filled.Business" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.h5" Style="font-weight: 600;">@department</MudText>
+                                <MudText Typo="Typo.body2">Your Department</MudText>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudPaper Class="pa-5 d-flex align-center gap-4 stat-card-2 hover-lift" Elevation="0">
+                            <MudAvatar Size="Size.Large">
+                                <MudIcon Icon="@Icons.Material.Filled.Group" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.h4" Style="font-weight: 700;">@_employees.Count</MudText>
+                                <MudText Typo="Typo.body2">Team Members</MudText>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <MudPaper Class="pa-5 flat-card" Elevation="0">
+                    <MudText Typo="Typo.h6" Class="mb-4">@department Team</MudText>
+                    <MudSimpleTable Hover="true">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Position</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var emp in _employees)
+                            {
+                                <tr>
+                                    <td>@emp.FirstName @emp.LastName</td>
+                                    <td>@emp.Email</td>
+                                    <td>@emp.Position</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudPaper>
+            }
+            else
+            {
+                <MudPaper Class="pa-6 flat-card" Elevation="0">
+                    <MudText Typo="Typo.h5" Class="mb-2">Your Info</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">
+                        You are logged in as an Employee in the @department department.
+                    </MudText>
+                    <MudDivider Class="mb-4" />
+                    @if (_profile is not null)
+                    {
+                        <MudGrid Spacing="2">
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Position</MudText>
+                                <MudText Typo="Typo.body1">@_profile.Position</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Department</MudText>
+                                <MudText Typo="Typo.body1">@_profile.Department</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Email</MudText>
+                                <MudText Typo="Typo.body1">@_profile.Email</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    }
+                </MudPaper>
+            }
+        }
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private List<EmployeeResponse> _employees = [];
+    private EmployeeResponse? _profile;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var roles = authState.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+        try
+        {
+            if (roles.Contains("Admin") || roles.Contains("Manager"))
+                _employees = await EmployeeService.GetEmployeesAsync();
+
+            _profile = await EmployeeService.GetProfileAsync();
+        }
+        catch { }
+
+        _loading = false;
+    }
+
+    private Color GetDeptColor(string dept) => dept switch
+    {
+        "IT" => Color.Primary,
+        "HR" => Color.Secondary,
+        "Finance" => Color.Tertiary,
+        _ => Color.Default
+    };
+}

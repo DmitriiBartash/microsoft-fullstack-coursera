@@ -1,0 +1,71 @@
+@inject AuthenticationStateProvider AuthStateProvider
+
+<MudNavMenu Class="mt-2">
+    <AuthorizeView>
+        <Authorized>
+            <div class="nav-user-section d-flex flex-column align-center">
+                <MudAvatar Size="Size.Large" Class="mb-2">
+                    @GetInitials(context)
+                </MudAvatar>
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">@GetFullName(context)</MudText>
+                <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.7) !important;">@GetPrimaryRole(context)</MudText>
+            </div>
+            <MudDivider Class="my-2" />
+            <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.Dashboard" IconColor="Color.Primary" Match="NavLinkMatch.All">
+                Dashboard
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="Admin,Manager">
+        <Authorized>
+            <MudNavLink Href="/employees" Icon="@Icons.Material.Filled.People" IconColor="Color.Secondary" Match="NavLinkMatch.Prefix">
+                Employee Directory
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="Admin">
+        <Authorized>
+            <MudNavLink Href="/user-management" Icon="@Icons.Material.Filled.AdminPanelSettings" IconColor="Color.Warning" Match="NavLinkMatch.Prefix">
+                User Management
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
+
+    <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.Person" IconColor="Color.Info" Match="NavLinkMatch.Prefix">
+                Profile
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
+</MudNavMenu>
+
+@code {
+    private string GetInitials(AuthenticationState context)
+    {
+        var first = context.User.FindFirst("FirstName")?.Value ?? "";
+        var last = context.User.FindFirst("LastName")?.Value ?? "";
+        if (string.IsNullOrEmpty(first) && string.IsNullOrEmpty(last))
+            return context.User.Identity?.Name?.Substring(0, 1).ToUpper() ?? "?";
+        return $"{(first.Length > 0 ? first[0] : ' ')}{(last.Length > 0 ? last[0] : ' ')}".Trim();
+    }
+
+    private string GetFullName(AuthenticationState context)
+    {
+        var first = context.User.FindFirst("FirstName")?.Value ?? "";
+        var last = context.User.FindFirst("LastName")?.Value ?? "";
+        var name = $"{first} {last}".Trim();
+        return string.IsNullOrEmpty(name) ? context.User.Identity?.Name ?? "User" : name;
+    }
+
+    private string GetPrimaryRole(AuthenticationState context)
+    {
+        var roles = context.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        if (roles.Contains("Admin")) return "Administrator";
+        if (roles.Contains("Manager")) return "Manager";
+        if (roles.Contains("Employee")) return "Employee";
+        return "User";
+    }
+}

@@ -1,0 +1,218 @@
+@page "/user-management"
+@attribute [Authorize(Roles = "Admin")]
+@inject UserManagementService UserService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<div class="page-header">
+    <MudText Typo="Typo.h4">User Management</MudText>
+    <MudText Typo="Typo.body2" Class="page-subtitle">Manage user roles and claims</MudText>
+</div>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudPaper Elevation="0" Class="flat-card">
+        <MudDataGrid T="UserResponse" Items="_users" Hover="true" Dense="true" Class="pa-2">
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">Users</MudText>
+                <MudSpacer />
+            </ToolBarContent>
+            <Columns>
+                <TemplateColumn Title="User" Sortable="false">
+                    <CellTemplate>
+                        <div class="d-flex align-center gap-3">
+                            <MudAvatar Color="Color.Primary" Size="Size.Medium">
+                                @($"{context.Item.FirstName[0]}{context.Item.LastName[0]}")
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">@context.Item.FirstName @context.Item.LastName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Item.Email</MudText>
+                            </div>
+                        </div>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Roles" Sortable="false">
+                    <CellTemplate>
+                        <div class="d-flex gap-1 flex-wrap">
+                            @foreach (var role in context.Item.Roles)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="GetRoleColor(role)" Variant="Variant.Filled"
+                                         OnClose="() => RemoveRole(context.Item, role)">
+                                    @role
+                                </MudChip>
+                            }
+                        </div>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Claims" Sortable="false">
+                    <CellTemplate>
+                        <div class="d-flex gap-1 flex-wrap">
+                            @foreach (var claim in context.Item.Claims)
+                            {
+                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                         OnClose="() => RemoveClaim(context.Item, claim.Key)">
+                                    @claim.Key: @claim.Value
+                                </MudChip>
+                            }
+                        </div>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Actions" Sortable="false">
+                    <CellTemplate>
+                        <div class="d-flex gap-1">
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.PersonAdd"
+                                       OnClick="() => OpenAddRoleDialog(context.Item)"
+                                       Style="text-transform: none;">
+                                Role
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Secondary"
+                                       StartIcon="@Icons.Material.Filled.Policy"
+                                       OnClick="() => OpenAddClaimDialog(context.Item)"
+                                       Style="text-transform: none;">
+                                Claim
+                            </MudButton>
+                        </div>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="UserResponse" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+}
+
+@code {
+    private List<UserResponse> _users = [];
+    private bool _loading = true;
+
+    private readonly string[] _allRoles = ["Admin", "Manager", "Employee"];
+    private readonly string[] _claimTypes = ["Department", "AccessLevel"];
+    private readonly Dictionary<string, string[]> _claimValues = new()
+    {
+        ["Department"] = ["IT", "HR", "Finance"],
+        ["AccessLevel"] = ["Read", "Write", "Full"]
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadUsers();
+
+    private async Task LoadUsers()
+    {
+        _loading = true;
+        try { _users = await UserService.GetAllUsersAsync(); }
+        catch { }
+        _loading = false;
+    }
+
+    private async Task RemoveRole(UserResponse user, string role)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Remove Role", $"Remove role '{role}' from {user.FirstName} {user.LastName}?",
+            yesText: "Remove", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await UserService.RemoveRoleAsync(user.Id, role);
+            Snackbar.Add($"Role '{role}' removed", Severity.Success);
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemoveClaim(UserResponse user, string claimType)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Remove Claim", $"Remove claim '{claimType}' from {user.FirstName} {user.LastName}?",
+            yesText: "Remove", cancelText: "Cancel");
+
+        if (confirmed != true) return;
+
+        try
+        {
+            await UserService.RemoveClaimAsync(user.Id, claimType);
+            Snackbar.Add($"Claim '{claimType}' removed", Severity.Success);
+            await LoadUsers();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenAddRoleDialog(UserResponse user)
+    {
+        var availableRoles = _allRoles.Except(user.Roles).ToList();
+        if (availableRoles.Count == 0)
+        {
+            Snackbar.Add("User already has all roles", Severity.Info);
+            return;
+        }
+
+        var parameters = new DialogParameters<AddRoleDialog>
+        {
+            { x => x.UserName, $"{user.FirstName} {user.LastName}" },
+            { x => x.AvailableRoles, availableRoles }
+        };
+        var dialog = await DialogService.ShowAsync<AddRoleDialog>("Add Role", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: string role })
+        {
+            try
+            {
+                await UserService.AssignRoleAsync(user.Id, role);
+                Snackbar.Add($"Role '{role}' assigned", Severity.Success);
+                await LoadUsers();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenAddClaimDialog(UserResponse user)
+    {
+        var parameters = new DialogParameters<AddClaimDialog>
+        {
+            { x => x.UserName, $"{user.FirstName} {user.LastName}" },
+            { x => x.ClaimTypes, _claimTypes },
+            { x => x.ClaimValues, _claimValues },
+            { x => x.ExistingClaims, user.Claims }
+        };
+        var dialog = await DialogService.ShowAsync<AddClaimDialog>("Manage Claims", parameters);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: AddClaimResult claimResult })
+        {
+            try
+            {
+                await UserService.AddClaimAsync(user.Id, claimResult.ClaimType, claimResult.ClaimValue);
+                Snackbar.Add($"Claim '{claimResult.ClaimType}={claimResult.ClaimValue}' added", Severity.Success);
+                await LoadUsers();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private Color GetRoleColor(string role) => role switch
+    {
+        "Admin" => Color.Error,
+        "Manager" => Color.Warning,
+        "Employee" => Color.Info,
+        _ => Color.Default
+    };
+}

@@ -1,0 +1,137 @@
+@page "/profile"
+@attribute [Authorize]
+@inject EmployeeService EmployeeService
+@inject AuthenticationStateProvider AuthStateProvider
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (_profile is not null)
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12" sm="4">
+            <MudPaper Elevation="0" Class="flat-card" Style="overflow: hidden;">
+                <div class="profile-header">
+                    <MudAvatar Color="Color.Primary" Size="Size.Large"
+                               Style="width: 80px; height: 80px; font-size: 2rem; margin: 0 auto;" Class="mb-3">
+                        @(_profile.FirstName[0])@(_profile.LastName[0])
+                    </MudAvatar>
+                    <MudText Typo="Typo.h5" Style="font-weight: 600;">@_profile.FirstName @_profile.LastName</MudText>
+                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.7) !important;">@_profile.Email</MudText>
+                </div>
+                <div class="pa-5">
+                    <MudText Typo="Typo.overline" Class="mb-2" Color="Color.Secondary" Style="letter-spacing: 0.1em;">ROLES</MudText>
+                    <div class="d-flex justify-center gap-1 flex-wrap mb-4">
+                        @foreach (var role in _roles)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="GetRoleColor(role)" Variant="Variant.Filled">@role</MudChip>
+                        }
+                    </div>
+
+                    <MudText Typo="Typo.overline" Class="mb-2" Color="Color.Secondary" Style="letter-spacing: 0.1em;">CLAIMS</MudText>
+                    <div class="d-flex justify-center gap-1 flex-wrap">
+                        @foreach (var claim in _claims)
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@claim.Key: @claim.Value</MudChip>
+                        }
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="8">
+            <MudPaper Class="pa-6 flat-card" Elevation="0">
+                <MudText Typo="Typo.h6" Class="mb-4">Profile Information</MudText>
+                <MudGrid Spacing="3">
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">First Name</MudText>
+                        <MudText Typo="Typo.body1">@_profile.FirstName</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Last Name</MudText>
+                        <MudText Typo="Typo.body1">@_profile.LastName</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Email</MudText>
+                        <MudText Typo="Typo.body1">@_profile.Email</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Position</MudText>
+                        <MudText Typo="Typo.body1">@_profile.Position</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Department</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="GetDeptColor(_profile.Department)">
+                            @_profile.Department
+                        </MudChip>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <MudPaper Class="pa-6 mt-3 flat-card" Elevation="0">
+                <MudText Typo="Typo.h6" Class="mb-3">Access Information</MudText>
+                <MudSimpleTable Hover="true">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var role in _roles)
+                        {
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">Role</MudText></td>
+                                <td><MudChip T="string" Size="Size.Small" Color="GetRoleColor(role)">@role</MudChip></td>
+                            </tr>
+                        }
+                        @foreach (var claim in _claims)
+                        {
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">@claim.Key</MudText></td>
+                                <td>@claim.Value</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private EmployeeResponse? _profile;
+    private List<string> _roles = [];
+    private Dictionary<string, string> _claims = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _roles = authState.User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        _claims = authState.User.Claims
+            .Where(c => c.Type is "Department" or "AccessLevel")
+            .ToDictionary(c => c.Type, c => c.Value);
+
+        try { _profile = await EmployeeService.GetProfileAsync(); }
+        catch { }
+        _loading = false;
+    }
+
+    private Color GetRoleColor(string role) => role switch
+    {
+        "Admin" => Color.Error,
+        "Manager" => Color.Warning,
+        "Employee" => Color.Info,
+        _ => Color.Default
+    };
+
+    private Color GetDeptColor(string dept) => dept switch
+    {
+        "IT" => Color.Primary,
+        "HR" => Color.Secondary,
+        "Finance" => Color.Tertiary,
+        _ => Color.Default
+    };
+}

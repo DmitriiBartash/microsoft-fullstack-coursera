@@ -1,0 +1,32 @@
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <RedirectToAccessDenied />
+                    }
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center justify-center" Style="height: 60vh;">
+                    <MudPaper Class="pa-8 text-center" Elevation="3">
+                        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Warning" Class="mb-4" />
+                        <MudText Typo="Typo.h4" Class="mb-2">Page Not Found</MudText>
+                        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">The page you're looking for doesn't exist.</MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/dashboard">Go to Dashboard</MudButton>
+                    </MudPaper>
+                </MudContainer>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

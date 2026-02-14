@@ -1,0 +1,141 @@
+@page "/login"
+@page "/"
+@layout MinimalLayout
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="d-flex align-center justify-center" Style="min-height: 100vh; position: relative; z-index: 1;">
+    <MudGrid Justify="Justify.Center">
+        <MudItem xs="12">
+            <MudText Typo="Typo.h4" Align="Align.Center" Class="mb-2" Style="color: #fff; font-weight: 700;">
+                HR Employee Management
+            </MudText>
+            <MudText Typo="Typo.subtitle1" Align="Align.Center" Class="mb-6" Style="color: rgba(255,255,255,0.7);">
+                Roles & Claims Authorization Demo
+            </MudText>
+        </MudItem>
+
+        <MudItem xs="12" sm="5">
+            <MudPaper Class="pa-6 glass-card" Elevation="0">
+                <MudText Typo="Typo.h5" Class="mb-4" Style="color: #fff; font-weight: 600;">Sign In</MudText>
+
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" Variant="Variant.Filled"
+                              CloseIconClicked="() => _error = null">@_error</MudAlert>
+                }
+
+                <EditForm Model="_loginModel" OnValidSubmit="HandleLogin">
+                    <MudTextField @bind-Value="_loginModel.Email" Label="Email" Variant="Variant.Outlined"
+                                  InputType="InputType.Email" Class="mb-3" Required="true"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" />
+                    <MudTextField @bind-Value="_loginModel.Password" Label="Password" Variant="Variant.Outlined"
+                                  InputType="InputType.Password" Class="mb-4" Required="true"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                               FullWidth="true" Disabled="_loading" Size="Size.Large"
+                               Style="text-transform: none; font-weight: 600;">
+                        @if (_loading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Sign In
+                    </MudButton>
+                </EditForm>
+
+                <MudDivider Class="my-4" Style="border-color: rgba(255,255,255,0.15);" />
+                <MudText Typo="Typo.body2" Align="Align.Center">
+                    Don't have an account?
+                    <MudLink Href="/register">Register</MudLink>
+                </MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="7">
+            <MudPaper Class="pa-6 glass-card" Elevation="0">
+                <MudText Typo="Typo.h6" Class="mb-3" Style="color: #fff; font-weight: 600;">Quick Demo Login</MudText>
+                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.6);" Class="mb-4">
+                    Click any card to sign in as a demo user
+                </MudText>
+                <MudGrid Spacing="2">
+                    @foreach (var user in _demoUsers)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudCard Class="demo-card" Elevation="0"
+                                     @onclick="() => QuickLogin(user.Email)">
+                                <MudCardContent Class="pa-3">
+                                    <div class="d-flex align-center gap-3">
+                                        <MudAvatar Color="@user.AvatarColor" Size="Size.Medium">
+                                            @user.Initials
+                                        </MudAvatar>
+                                        <div>
+                                            <MudText Typo="Typo.subtitle2">@user.Name</MudText>
+                                            <MudText Typo="Typo.caption">@user.Email</MudText>
+                                            <div class="d-flex gap-1 mt-1">
+                                                <MudChip T="string" Size="Size.Small" Color="@user.RoleColor" Variant="Variant.Filled">
+                                                    @user.Role
+                                                </MudChip>
+                                                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
+                                                         Style="border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.8);">
+                                                    @user.Department
+                                                </MudChip>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private LoginModel _loginModel = new();
+    private string? _error;
+    private bool _loading;
+
+    private class LoginModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+
+    private record DemoUser(string Name, string Email, string Role, string Department, string Initials, Color AvatarColor, Color RoleColor);
+
+    private readonly List<DemoUser> _demoUsers =
+    [
+        new("Alex Admin", "admin@hr.com", "Admin", "IT", "AA", Color.Error, Color.Error),
+        new("Ivan Petrov", "manager.it@hr.com", "Manager", "IT", "IP", Color.Primary, Color.Warning),
+        new("Maria Sidorova", "manager.hr@hr.com", "Manager", "HR", "MS", Color.Secondary, Color.Warning),
+        new("Dmitry Volkov", "manager.finance@hr.com", "Manager", "Finance", "DV", Color.Tertiary, Color.Warning),
+        new("Sergey Kozlov", "dev@hr.com", "Employee", "IT", "SK", Color.Info, Color.Info),
+        new("Anna Morozova", "recruiter@hr.com", "Employee", "HR", "AM", Color.Success, Color.Info),
+        new("Elena Sokolova", "analyst@hr.com", "Employee", "Finance", "ES", Color.Dark, Color.Info)
+    ];
+
+    private async Task HandleLogin()
+    {
+        _loading = true;
+        _error = null;
+
+        var (success, error) = await AuthService.LoginAsync(
+            new LoginRequest(_loginModel.Email, _loginModel.Password));
+
+        if (success)
+            Navigation.NavigateTo("/dashboard");
+        else
+            _error = error;
+
+        _loading = false;
+    }
+
+    private async Task QuickLogin(string email)
+    {
+        _loginModel.Email = email;
+        _loginModel.Password = "Demo123!";
+        await HandleLogin();
+    }
+}

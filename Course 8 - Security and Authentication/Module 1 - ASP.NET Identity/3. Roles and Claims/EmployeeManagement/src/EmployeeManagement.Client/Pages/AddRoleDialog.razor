@@ -1,0 +1,31 @@
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">Select a role to assign to <strong>@UserName</strong>:</MudText>
+        <MudRadioGroup T="string" @bind-Value="_selectedRole">
+            @foreach (var role in AvailableRoles)
+            {
+                <MudRadio T="string" Value="@role" Color="Color.Primary">@role</MudRadio>
+            }
+        </MudRadioGroup>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Style="text-transform: none;">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="string.IsNullOrEmpty(_selectedRole)" Style="text-transform: none;">
+            Assign Role
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string UserName { get; set; } = string.Empty;
+    [Parameter] public List<string> AvailableRoles { get; set; } = [];
+
+    private string? _selectedRole;
+
+    private void Cancel() => MudDialog.Cancel();
+    private void Submit() => MudDialog.Close(DialogResult.Ok(_selectedRole));
+}

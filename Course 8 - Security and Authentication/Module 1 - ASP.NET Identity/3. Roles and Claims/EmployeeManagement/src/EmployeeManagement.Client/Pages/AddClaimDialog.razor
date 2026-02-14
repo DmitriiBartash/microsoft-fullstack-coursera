@@ -1,0 +1,55 @@
+<MudDialog>
+    <DialogContent>
+        <MudText Class="mb-4">Manage claims for <strong>@UserName</strong>:</MudText>
+
+        @if (ExistingClaims.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Current Claims:</MudText>
+            <div class="d-flex gap-1 flex-wrap mb-4">
+                @foreach (var claim in ExistingClaims)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@claim.Key: @claim.Value</MudChip>
+                }
+            </div>
+        }
+
+        <MudSelect T="string" @bind-Value="_selectedType" Label="Claim Type" Variant="Variant.Outlined" Class="mb-3">
+            @foreach (var type in ClaimTypes)
+            {
+                <MudSelectItem T="string" Value="@type">@type</MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (!string.IsNullOrEmpty(_selectedType) && ClaimValues.TryGetValue(_selectedType, out var values))
+        {
+            <MudSelect T="string" @bind-Value="_selectedValue" Label="Claim Value" Variant="Variant.Outlined">
+                @foreach (var val in values)
+                {
+                    <MudSelectItem T="string" Value="@val">@val</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Style="text-transform: none;">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit"
+                   Disabled="string.IsNullOrEmpty(_selectedType) || string.IsNullOrEmpty(_selectedValue)"
+                   Style="text-transform: none;">
+            Save Claim
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public string UserName { get; set; } = string.Empty;
+    [Parameter] public string[] ClaimTypes { get; set; } = [];
+    [Parameter] public Dictionary<string, string[]> ClaimValues { get; set; } = new();
+    [Parameter] public Dictionary<string, string> ExistingClaims { get; set; } = new();
+
+    private string? _selectedType;
+    private string? _selectedValue;
+
+    private void Cancel() => MudDialog.Cancel();
+    private void Submit() => MudDialog.Close(DialogResult.Ok(new AddClaimResult(_selectedType!, _selectedValue!)));
+}
