@@ -1,0 +1,75 @@
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.jwt-token {
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+    line-height: 1.6;
+}
+
+.jwt-header { color: #60a5fa; }
+.jwt-payload { color: #4ade80; }
+.jwt-signature { color: #f87171; }
+.jwt-dot { color: #9ca3af; font-weight: bold; }
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.green { background-color: #4ade80; box-shadow: 0 0 6px #4ade80; }
+.status-dot.yellow { background-color: #facc15; box-shadow: 0 0 6px #facc15; }
+.status-dot.red { background-color: #f87171; box-shadow: 0 0 6px #f87171; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.note-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.note-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.json-viewer {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.json-key { color: #60a5fa; }
+.json-string { color: #4ade80; }
+.json-number { color: #facc15; }
+.json-boolean { color: #c084fc; }
+
+.countdown {
+    font-variant-numeric: tabular-nums;
+    font-family: 'Courier New', monospace;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #1f2937; }
+::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #6b7280; }
