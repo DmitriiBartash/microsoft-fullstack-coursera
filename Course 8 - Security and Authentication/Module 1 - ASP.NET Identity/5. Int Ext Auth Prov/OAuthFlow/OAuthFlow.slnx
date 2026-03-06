@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OAuthFlow.Server/OAuthFlow.Server.csproj" />
+    <Project Path="src/OAuthFlow.Client/OAuthFlow.Client.csproj" />
+  </Folder>
+</Solution>

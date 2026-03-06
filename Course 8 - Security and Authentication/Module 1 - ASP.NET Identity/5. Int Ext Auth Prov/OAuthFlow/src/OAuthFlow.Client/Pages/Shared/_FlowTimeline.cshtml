@@ -1,0 +1,47 @@
+@model List<OAuthFlowStep>
+
+<div class="timeline">
+    @for (int i = 0; i < 6; i++)
+    {
+        var step = Model.FirstOrDefault(s => s.StepNumber == i + 1);
+        var status = step?.Status ?? "pending";
+        <div class="timeline-step @status">
+            <div class="step-marker">
+                <span class="step-number">@(i + 1)</span>
+            </div>
+            <div class="step-content">
+                <h4>@(step?.Title ?? GetDefaultTitle(i + 1))</h4>
+                @if (step is not null)
+                {
+                    <time>@step.Timestamp.ToString("HH:mm:ss.fff") UTC</time>
+                    <details>
+                        <summary>Details</summary>
+                        <div class="step-details">
+                            <div class="detail-block">
+                                <strong>Request</strong>
+                                <pre>@step.RequestInfo</pre>
+                            </div>
+                            <div class="detail-block">
+                                <strong>Response</strong>
+                                <pre>@step.ResponseInfo</pre>
+                            </div>
+                        </div>
+                    </details>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@functions {
+    static string GetDefaultTitle(int step) => step switch
+    {
+        1 => "Redirect to Authorization Server",
+        2 => "User Authentication & Consent",
+        3 => "Authorization Code Received",
+        4 => "Token Exchange",
+        5 => "User Info Request",
+        6 => "Dashboard Ready",
+        _ => "Unknown Step"
+    };
+}

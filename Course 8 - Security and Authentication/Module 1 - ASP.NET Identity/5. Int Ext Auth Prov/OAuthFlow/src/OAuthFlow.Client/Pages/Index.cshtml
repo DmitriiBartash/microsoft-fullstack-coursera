@@ -1,0 +1,44 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="hero">
+    <h1>OAuth 2.0 Authorization Code Flow</h1>
+    <p class="hero-desc">
+        This demo implements the complete OAuth 2.0 Authorization Code Flow
+        between a Client application and an Authorization Server.
+        Click the button below to start the flow.
+    </p>
+    <div class="flow-diagram">
+        <div class="flow-step-preview">
+            <span class="step-num">1</span>
+            <span>Client redirects to Authorization Server</span>
+        </div>
+        <div class="flow-step-preview">
+            <span class="step-num">2</span>
+            <span>User authenticates and grants consent</span>
+        </div>
+        <div class="flow-step-preview">
+            <span class="step-num">3</span>
+            <span>Server redirects back with authorization code</span>
+        </div>
+        <div class="flow-step-preview">
+            <span class="step-num">4</span>
+            <span>Client exchanges code for access token</span>
+        </div>
+        <div class="flow-step-preview">
+            <span class="step-num">5</span>
+            <span>Client fetches user info with token</span>
+        </div>
+        <div class="flow-step-preview">
+            <span class="step-num">6</span>
+            <span>Dashboard displays profile and token details</span>
+        </div>
+    </div>
+    <form method="post">
+        <button type="submit" class="btn-primary">Login with OAuth</button>
+    </form>
+    <p class="hint">Demo credentials: <strong>demo</strong> / <strong>password</strong> or <strong>alice</strong> / <strong>password</strong></p>
+</div>

@@ -1,0 +1,51 @@
+@page
+@model DashboardModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1>OAuth 2.0 Flow Complete</h1>
+        <form method="post" asp-page-handler="Logout">
+            <button type="submit" class="btn-logout">Logout</button>
+        </form>
+    </div>
+
+    <section class="card user-profile">
+        <div class="profile-header">
+            <div class="avatar">@(Model.UserInfo?.Name?.Length > 0 ? Model.UserInfo.Name[..1] : "?")</div>
+            <div class="profile-info">
+                <h2>@Model.UserInfo?.Name</h2>
+                <p class="email">@Model.UserInfo?.Email</p>
+                <p class="sub">Sub: @Model.UserInfo?.Sub</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="card jwt-inspector">
+        <h2>JWT Token Inspector</h2>
+        <div class="jwt-raw">
+            <code>@Model.AccessToken</code>
+        </div>
+        <div class="jwt-parts">
+            <div class="jwt-part jwt-header">
+                <h3>Header</h3>
+                <pre>@Model.JwtHeader</pre>
+            </div>
+            <div class="jwt-part jwt-payload">
+                <h3>Payload</h3>
+                <pre>@Model.JwtPayload</pre>
+            </div>
+            <div class="jwt-part jwt-signature">
+                <h3>Signature</h3>
+                <pre>@(Model.JwtSignature?.Length > 40 ? Model.JwtSignature[..40] + "..." : Model.JwtSignature)</pre>
+            </div>
+        </div>
+    </section>
+
+    <section class="card flow-timeline-section">
+        <h2>OAuth Flow Timeline</h2>
+        @await Html.PartialAsync("Shared/_FlowTimeline", Model.FlowSteps)
+    </section>
+</div>
