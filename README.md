@@ -17,6 +17,8 @@ This certificate is designed to prepare learners for roles such as **Full-Stack 
 - ✅ Building front-end applications with **HTML**, **CSS**, **JavaScript**, and **Blazor**
 - ✅ Writing clean, modular, and testable code
 - ✅ Working with **databases** (SQL and NoSQL) using **Entity Framework Core**
+- ✅ Integrating front-end and back-end components with **RESTful APIs** and **state management**
+- ✅ Implementing **security and authentication**: ASP.NET Identity, JWT, OAuth 2.0, RBAC, encryption
 - ✅ Setting up and managing **CI/CD pipelines** for deployment automation
 - ✅ Using **Microsoft Copilot** to write, debug, and improve code
 - ✅ Understanding **graph theory**, **load balancing**, and software architecture
@@ -25,9 +27,10 @@ This certificate is designed to prepare learners for roles such as **Full-Stack 
 
 ## 🔧 Tools & Technologies I’m Using
 
-- **C#**, **.NET Core**, **ASP.NET Core**
+- **C#**, **.NET Core**, **ASP.NET Core**, **ASP.NET Identity**
 - **JavaScript**, **HTML**, **CSS**, **Blazor**
 - **SQL**, **Entity Framework Core**
+- **JWT**, **OAuth 2.0**, **AES Encryption**, **RBAC**
 - **Microsoft Copilot**
 - **Visual Studio**, **Visual Studio Code**
 - **Git**, **CI/CD**, **DevOps Workflows**
@@ -89,6 +92,38 @@ This roadmap outlines my progress through the Coursera **Microsoft Full-Stack We
 - 🔹 Integrated **OpenAPI (Swagger)** with ASP.NET Core for better documentation and testing  
 - 🔹 Practiced C# syntax in the context of back-end development, focusing on serialization and deserialization of data  
 - 🔹 Built and debugged a RESTful API project, implementing middleware components and server-side logic  
+
+---
+
+### ✅ Course 6: Database Integration and Management
+
+- 🔹 Explored the core features of **Entity Framework Core (EF Core)** for working with relational databases  
+- 🔹 Set up relational databases, modeled data, and performed **CRUD operations** using EF Core  
+- 🔹 Mastered SQL fundamentals: **SELECT**, **INSERT**, **UPDATE**, **DELETE**, **JOINs**, and aggregate functions  
+- 🔹 Applied advanced query techniques, **transactions**, **concurrency control**, and **stored procedures**  
+- 🔹 Learned performance tuning, query optimization, and security best practices for SQL databases  
+- 🔹 Used **Microsoft Copilot** to write, debug, and optimize complex SQL queries  
+
+---
+
+### ✅ Course 7: Full-Stack Integration
+
+- 🔹 Explored the architecture of full-stack development and connected front-end and back-end components  
+- 🔹 Built and consumed **RESTful APIs** in front-end applications with **ASP.NET Core**  
+- 🔹 Learned API consumption in **Blazor** applications, including asynchronous programming patterns  
+- 🔹 Implemented **client-side and server-side state management** techniques  
+- 🔹 Practiced real-time client-server communication strategies  
+- 🔹 Developed a full-stack integration project using **Microsoft Copilot** for writing and debugging integration code  
+
+---
+
+### 🔄 Course 8: Security and Authentication *(in progress)*
+
+- 🔹 Implemented user registration, authentication, and role management with **ASP.NET Identity**  
+- 🔹 Secured APIs using **token-based authentication**, **JWT**, and **role-based access control (RBAC)**  
+- 🔹 Built **OAuth 2.0 Authorization Code Flow** for external authentication  
+- 🔹 Applied data protection principles: **AES-256 encryption/decryption**, data masking, and secure storage  
+- 🔹 Learning to leverage **Microsoft Copilot** for writing secure code and resolving security issues  
 
 ---
 
