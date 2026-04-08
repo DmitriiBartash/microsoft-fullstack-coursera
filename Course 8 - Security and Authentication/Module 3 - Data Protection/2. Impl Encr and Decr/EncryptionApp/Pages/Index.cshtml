@@ -1,0 +1,205 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "File Encryption & Decryption";
+}
+
+<style>
+    .crypto-card {
+        max-width: 640px;
+        margin: 2rem auto;
+    }
+    .drop-zone {
+        border: 2px dashed #6c757d;
+        border-radius: 12px;
+        padding: 2.5rem 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background-color 0.2s;
+        background-color: #f8f9fa;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+        border-color: #0d6efd;
+        background-color: #e8f0fe;
+    }
+    .drop-zone .icon {
+        font-size: 2.5rem;
+        color: #6c757d;
+    }
+    .drop-zone.drag-over .icon {
+        color: #0d6efd;
+    }
+    .file-name {
+        font-weight: 600;
+        word-break: break-all;
+    }
+    .btn-encrypt {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: #fff;
+    }
+    .btn-encrypt:hover {
+        background: linear-gradient(135deg, #5a6fd6 0%, #6a4292 100%);
+        color: #fff;
+    }
+    .btn-decrypt {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        border: none;
+        color: #fff;
+    }
+    .btn-decrypt:hover {
+        background: linear-gradient(135deg, #0f8a80 0%, #2fd96e 100%);
+        color: #fff;
+    }
+</style>
+
+<div class="crypto-card">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold">&#128274; File Encryption & Decryption</h2>
+        <p class="text-muted">Upload a file to encrypt it with AES-256, or upload an encrypted file to decrypt it.</p>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <form method="post" enctype="multipart/form-data" id="cryptoForm">
+                <div class="drop-zone mb-3" id="dropZone">
+                    <div class="icon">&#128451;</div>
+                    <p class="mt-2 mb-1">Drag & drop a file here or <span class="text-primary fw-semibold">browse</span></p>
+                    <small class="text-muted">Any file type supported</small>
+                    <input type="file" name="UploadedFile" id="fileInput" class="d-none" />
+                </div>
+
+                <div id="fileInfo" class="alert alert-light d-none mb-3 d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="file-name" id="selectedFileName"></span>
+                        <span class="text-muted ms-2" id="selectedFileSize"></span>
+                        <span class="badge rounded-pill ms-2" id="fileBadge"></span>
+                    </div>
+                    <button type="button" class="btn-close" id="clearFile" aria-label="Remove file"></button>
+                </div>
+
+                <div class="d-flex gap-3">
+                    <button type="submit" asp-page-handler="Encrypt" class="btn btn-encrypt flex-fill py-2">
+                        &#128272; Encrypt
+                    </button>
+                    <button type="submit" asp-page-handler="Decrypt" class="btn btn-decrypt flex-fill py-2">
+                        &#128275; Decrypt
+                    </button>
+                </div>
+            </form>
+
+            @if (!string.IsNullOrEmpty(Model.ResultMessage))
+            {
+                <div id="resultBlock" class="mt-4 card border-@(Model.IsSuccess ? "success" : "danger")">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center"
+                             style="width:48px; height:48px; min-width:48px; background:@(Model.IsSuccess ? "#d1e7dd" : "#f8d7da");">
+                            <span style="font-size:1.5rem;">@Html.Raw(Model.IsSuccess ? "&#10003;" : "&#10007;")</span>
+                        </div>
+                        <div>
+                            <p class="mb-1 fw-semibold">@Model.ResultMessage</p>
+                            @if (Model.IsSuccess && !string.IsNullOrEmpty(Model.ResultFilePath))
+                            {
+                                <a href="@Model.ResultFilePath" download
+                                   class="btn btn-sm btn-@(Model.ResultFilePath!.Contains("encrypted") ? "primary" : "success")">
+                                    Download result
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <small class="text-muted">
+            AES-256-CBC &middot; Random IV prepended to ciphertext &middot; Key from configuration
+        </small>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const selectedFileName = document.getElementById('selectedFileName');
+        const selectedFileSize = document.getElementById('selectedFileSize');
+
+        const clearFile = document.getElementById('clearFile');
+        const fileBadge = document.getElementById('fileBadge');
+        const resultBlock = document.getElementById('resultBlock');
+        const btnEncrypt = document.querySelector('[asp-page-handler="Encrypt"]')
+            || document.querySelectorAll('button[type="submit"]')[0];
+        const btnDecrypt = document.querySelector('[asp-page-handler="Decrypt"]')
+            || document.querySelectorAll('button[type="submit"]')[1];
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                showFileInfo(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                showFileInfo(fileInput.files[0]);
+            }
+        });
+
+        clearFile.addEventListener('click', () => {
+            fileInput.value = '';
+            fileInfo.classList.add('d-none');
+            updateButtons(null);
+        });
+
+        function showFileInfo(file) {
+            selectedFileName.textContent = file.name;
+            selectedFileSize.textContent = formatSize(file.size);
+            fileInfo.classList.remove('d-none');
+            if (resultBlock) resultBlock.classList.add('d-none');
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            const isEncrypted = ext === 'enc';
+
+            fileBadge.textContent = isEncrypted ? 'Encrypted' : ext.toUpperCase();
+            fileBadge.className = 'badge rounded-pill ms-2 ' + (isEncrypted ? 'bg-warning text-dark' : 'bg-secondary');
+
+            updateButtons(isEncrypted);
+        }
+
+        function updateButtons(isEncrypted) {
+            if (isEncrypted === null) {
+                btnEncrypt.disabled = false;
+                btnDecrypt.disabled = false;
+                btnEncrypt.title = '';
+                btnDecrypt.title = '';
+                return;
+            }
+            btnEncrypt.disabled = isEncrypted;
+            btnDecrypt.disabled = !isEncrypted;
+            btnEncrypt.title = isEncrypted ? 'This file is already encrypted' : '';
+            btnDecrypt.title = !isEncrypted ? 'Only .enc files can be decrypted' : '';
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+    </script>
+}
