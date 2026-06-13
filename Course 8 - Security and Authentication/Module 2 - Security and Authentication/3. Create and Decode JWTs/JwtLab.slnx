@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="JwtCore/JwtCore.csproj" />
+  <Project Path="JwtDemo/JwtDemo.csproj" />
+  <Project Path="JwtStudio/JwtStudio.csproj" />
+</Solution>

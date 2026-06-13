@@ -1,0 +1,279 @@
+@page "/"
+@rendermode InteractiveServer
+@using Microsoft.IdentityModel.Tokens
+@inject JwtCreator Creator
+@inject JwtDecoder Decoder
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>JWT Studio</PageTitle>
+
+<div class="studio">
+
+    <header class="studio-head">
+        <div class="brand">🔐 JWT <span class="accent">Studio</span></div>
+        <div class="crumb">Create &amp; Decode JWTs — HS256</div>
+    </header>
+
+    <div class="legend">
+        <span><i class="sw hdr"></i> Header</span>
+        <span><i class="sw pld"></i> Payload</span>
+        <span><i class="sw sig"></i> Signature</span>
+    </div>
+
+    <div class="grid">
+
+        <section class="panel">
+            <h2><i class="sw hdr"></i> Create</h2>
+
+            <div class="field">
+                <label>Subject (user id)</label>
+                <input @bind="sub" />
+            </div>
+            <div class="field">
+                <label>Name</label>
+                <input @bind="fullName" />
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label>Role</label>
+                    <select @bind="role">
+                        @foreach (var r in Roles)
+                        {
+                            <option value="@r">@r</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Valid for</label>
+                    <select @bind="ttlMinutes">
+                        <option value="1440">24 hours</option>
+                        <option value="720">12 hours</option>
+                        <option value="60">1 hour</option>
+                        <option value="1">1 minute</option>
+                    </select>
+                </div>
+            </div>
+            <div class="field">
+                <label>Signing key (secret)</label>
+                <div class="key-row">
+                    <input class="mono" @bind="signSecret" @bind:event="oninput" />
+                    <button class="ghost" @onclick="RandomizeSecret" title="Generate a random 256-bit key">🎲 Random</button>
+                </div>
+                <p class="hint @(signSecret.Length < 32 ? "warn" : "")">
+                    HS256 needs ≥ 32 chars — current: @signSecret.Length
+                </p>
+            </div>
+
+            <div class="actions">
+                <button class="primary" @onclick="Generate">⚙ Generate token</button>
+                <button class="ghost" @onclick="IssueExpiring">⏱ Issue 10-sec token</button>
+            </div>
+
+            @if (token is not null)
+            {
+                var segs = token!.Split('.');
+                <div class="token"><span class="t-h">@segs[0]</span><span class="t-dot">.</span><span class="t-p">@(segs.Length > 1 ? segs[1] : "")</span><span class="t-dot">.</span><span class="t-s">@(segs.Length > 2 ? segs[2] : "")</span></div>
+                <button class="copy" @onclick="Copy">⧉ Copy token</button>
+            }
+        </section>
+
+        <section class="panel">
+            <h2><i class="sw sig"></i> Decode &amp; Verify</h2>
+
+            <div class="field">
+                <label>Token</label>
+                <textarea rows="4" class="mono" @bind="decodeInput" placeholder="Paste any JWT here..."></textarea>
+            </div>
+            <div class="field">
+                <label>Verify with key</label>
+                <input class="mono" @bind="verifySecret" />
+            </div>
+            <div class="actions">
+                <button class="primary" @onclick="Inspect">🔎 Verify</button>
+                <button class="ghost" @onclick="ClearDecode">🧹 Clear</button>
+            </div>
+
+            @if (countdownActive)
+            {
+                <div class="countdown @(secondsLeft <= 0 ? "done" : "")">
+                    @(secondsLeft > 0 ? $"⏱ token expires in {secondsLeft}s" : "⏱ token has expired")
+                </div>
+            }
+
+            @if (result is not null)
+            {
+                <div class="status @result.Status">
+                    <span class="badge">@StatusLabel(result.Status)</span>
+                    <span class="msg">@result.Message</span>
+                </div>
+
+                @if (result.IsReadable && result.Parts is not null)
+                {
+                    <h4>Header</h4>
+                    <pre class="json hdr">@result.Parts.Header</pre>
+
+                    <h4>Payload <span class="tiny">— editable, then try the tamper button</span></h4>
+                    <textarea rows="8" class="json pld" @bind="editablePayload"></textarea>
+                    <button class="ghost danger" @onclick="Tamper">✏ Apply payload without re-signing → tamper</button>
+
+                    @if (result.Claims.Count > 0)
+                    {
+                        <h4>Claims</h4>
+                        <table class="claims">
+                            <thead><tr><th>Claim</th><th>Value</th></tr></thead>
+                            <tbody>
+                                @foreach (var c in result.Claims)
+                                {
+                                    <tr>
+                                        <td class="mono">@c.Type</td>
+                                        <td>@c.Value<span class="hint">@Humanize(c.Type, c.Value)</span></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                }
+            }
+        </section>
+    </div>
+
+    <footer class="studio-foot">
+        The same <code>JwtCreator</code> / <code>JwtDecoder</code> run here and in the <code>dotnet run</code> console — only the shell differs.
+    </footer>
+</div>
+
+@code {
+    private static readonly string[] Roles = { "user", "admin", "doctor" };
+
+    private string sub = "12345";
+    private string fullName = "Alice Doe";
+    private string role = "admin";
+    private int ttlMinutes = 1440;
+    private string signSecret = JwtConfig.DefaultSecret;
+    private string? token;
+
+    private string decodeInput = "";
+    private string verifySecret = JwtConfig.DefaultSecret;
+    private string editablePayload = "";
+    private InspectionResult? result;
+
+    private System.Timers.Timer? timer;
+    private DateTime expiresAt;
+    private int secondsLeft;
+    private bool countdownActive;
+
+    private void Generate()
+    {
+        StopTimer();
+        countdownActive = false;
+        token = Creator.Create(sub, fullName, role, TimeSpan.FromMinutes(ttlMinutes), Norm(signSecret));
+        verifySecret = signSecret;
+        decodeInput = "";
+        result = null;
+    }
+
+    private void IssueExpiring()
+    {
+        StopTimer();
+        token = Creator.Create(sub, fullName, role, TimeSpan.FromSeconds(10), Norm(signSecret));
+        decodeInput = token;
+        verifySecret = signSecret;
+        expiresAt = DateTime.UtcNow.AddSeconds(10);
+        secondsLeft = 10;
+        countdownActive = true;
+        timer = new System.Timers.Timer(1000) { AutoReset = true };
+        timer.Elapsed += OnTick;
+        timer.Start();
+        Inspect();
+    }
+
+    private async void OnTick(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        secondsLeft = Math.Max(0, (int)Math.Ceiling((expiresAt - DateTime.UtcNow).TotalSeconds));
+        if (secondsLeft <= 0) StopTimer();
+        await InvokeAsync(() =>
+        {
+            Inspect();
+            StateHasChanged();
+        });
+    }
+
+    private void Inspect()
+    {
+        if (string.IsNullOrWhiteSpace(decodeInput)) { result = null; return; }
+        result = Decoder.Inspect(decodeInput.Trim(), Norm(verifySecret));
+        editablePayload = result.Parts?.Payload ?? "";
+    }
+
+    private void ClearDecode()
+    {
+        StopTimer();
+        countdownActive = false;
+        decodeInput = "";
+        editablePayload = "";
+        result = null;
+    }
+
+    // Re-encode the edited payload but keep the original signature → verification must fail.
+    private void Tamper()
+    {
+        var segs = decodeInput.Split('.');
+        if (segs.Length < 3) return;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(editablePayload);
+            var compact = System.Text.Json.JsonSerializer.Serialize(doc.RootElement);
+            var repacked = Base64UrlEncoder.Encode(compact);
+            decodeInput = $"{segs[0]}.{repacked}.{segs[2]}";
+            Inspect();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            result = new InspectionResult { Status = "malformed", Message = "Edited payload is not valid JSON." };
+        }
+    }
+
+    private async Task Copy()
+    {
+        if (token is not null)
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", token);
+    }
+
+    private void RandomizeSecret()
+    {
+        signSecret = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        verifySecret = signSecret;
+    }
+
+    private void StopTimer()
+    {
+        if (timer is not null)
+        {
+            timer.Elapsed -= OnTick;
+            timer.Stop();
+            timer.Dispose();
+            timer = null;
+        }
+    }
+
+    private static string? Norm(string s) => string.IsNullOrEmpty(s) ? null : s;
+
+    private static string StatusLabel(string status) => status switch
+    {
+        "valid" => "✔ VALID",
+        "expired" => "✖ EXPIRED",
+        "bad-signature" => "✖ BAD SIGNATURE",
+        "malformed" => "✖ MALFORMED",
+        _ => "✖ INVALID"
+    };
+
+    private static string Humanize(string type, string value)
+    {
+        if ((type is "exp" or "nbf" or "iat") && long.TryParse(value, out var sec))
+            return $"  →  {DateTimeOffset.FromUnixTimeSeconds(sec).UtcDateTime:yyyy-MM-dd HH:mm:ss} UTC";
+        return "";
+    }
+
+    public void Dispose() => StopTimer();
+}

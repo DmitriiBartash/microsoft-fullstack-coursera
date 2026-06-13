@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create and Decode JWTs — Course 8 · Module 2</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 2 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Create and Decode JWTs</h1>
+    <p class="lead">
+      Build a small .NET console app that <strong>generates</strong> a signed JWT and then
+      <strong>decodes &amp; verifies</strong> it. The point of the lab is <em>modularization</em>:
+      token creation and decoding each live in their own single-responsibility class
+      (<code>JwtCreator</code>, <code>JwtDecoder</code>), and <code>Program.cs</code> just wires them together.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn how to create and decode JWTs in a .NET (ASP.NET Core) console application by
+      breaking the JWT functionality into <strong>separate classes</strong>, making each piece easier to
+      understand, test, and reuse.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A console project named <code class="inline">JwtDemo</code> made of three files:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>JwtCreator.cs</code></td><td>Generate (sign) a JWT</td></tr>
+        <tr><td><code>JwtDecoder.cs</code></td><td>Decode a JWT <strong>and validate its signature</strong></td></tr>
+        <tr><td><code>Program.cs</code></td><td>Orchestrate: create a token, then hand it to the decoder</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Program</span> <span class="ar">→</span>
+      <span class="c">JwtCreator.Create()</span> <span class="ar">→</span>
+      <span class="t">token</span> <span class="ar">→</span>
+      <span class="d">JwtDecoder.Decode(token)</span> <span class="ar">→</span>
+      <span class="ar">claims</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>NuGet package: <code class="inline">System.IdentityModel.Tokens.Jwt</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Scaffold the console app, move into it, and add the JWT package.</p>
+<pre class="code">dotnet new console -n JwtDemo
+cd JwtDemo
+dotnet add package System.IdentityModel.Tokens.Jwt</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and <strong>clear any existing content</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create a <code>JwtCreator</code> class</h3>
+    <p class="scenario">This class handles JWT <strong>generation</strong>.</p>
+    <ul class="plain">
+      <li>Create a new file named <code class="inline">JwtCreator.cs</code>.</li>
+      <li>Define a class with a method that <strong>generates a JWT</strong> — build the claims, sign them with
+        a secret key (<code class="inline">SigningCredentials</code>), and return the serialized token string.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Create a <code>JwtDecoder</code> class</h3>
+    <p class="scenario">This class handles JWT <strong>decoding</strong>.</p>
+    <ul class="plain">
+      <li>Create a new file named <code class="inline">JwtDecoder.cs</code>.</li>
+      <li>Define a class with a method that <strong>decodes a JWT and validates its signature</strong> —
+        configure <code class="inline">TokenValidationParameters</code>, validate the token, then read its claims.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Use the classes in <code>Main</code></h3>
+    <p class="scenario">In the <code class="inline">Main</code> method, use <code>JwtCreator</code> and
+      <code>JwtDecoder</code> together.</p>
+    <ul class="plain">
+      <li>Call the JWT <strong>creation</strong> method from <code>JwtCreator</code>.</li>
+      <li>Pass the generated token to <code>JwtDecoder</code> for <strong>decoding and validation</strong>.</li>
+      <li>Run the application:</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The app prints the <strong>generated token</strong>, then the <strong>decoded &amp; validated claims</strong>
+    (e.g. subject, role, expiry) — proving the signature checks out end-to-end.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">JwtDemo</code> console project created and <code class="inline">System.IdentityModel.Tokens.Jwt</code> added</li>
+      <li><code class="inline">JwtCreator.cs</code> generates a <strong>signed</strong> token</li>
+      <li><code class="inline">JwtDecoder.cs</code> <strong>validates the signature</strong> and reads the claims</li>
+      <li><code class="inline">Program.cs</code> wires creation → decoding in <code class="inline">Main</code></li>
+      <li><code class="inline">dotnet run</code> outputs a token and its decoded claims</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Separation of concerns</strong> — creation and decoding are independent classes, so each has a
+        single reason to change and can be tested in isolation.</li>
+      <li><strong>Symmetric signing (HS256)</strong> — the <em>same</em> secret key both signs and validates; keep it
+        out of source control (use configuration / environment variables, not a hard-coded literal).</li>
+      <li><strong>Validation ≠ decoding</strong> — anyone can Base64URL-decode the payload; only signature
+        <em>validation</em> proves the token is authentic and untampered.</li>
+      <li><strong><code class="inline">exp</code> matters</strong> — always validate the expiration claim
+        server-side and reject stale tokens.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
