@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Translating Algorithms into C# Code — Course 1 · Module 3</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 3 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Translating Algorithms into C# Code</h1>
+    <p class="lead">
+      Practice turning a plain-language <strong>algorithm</strong> into working <strong>C#</strong>.
+      You start from a problem statement, sketch the logic as <em>pseudocode</em>, then translate
+      that pseudocode line-by-line into idiomatic C#. Two worked problems — summing an array and
+      counting vowels in a string — show the full journey from idea to code.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn to move from a <strong>problem statement</strong> to
+      <strong>pseudocode</strong> to <strong>runnable C#</strong>, so that the control flow you
+      describe in plain language (loops, conditionals, accumulators) maps cleanly onto real
+      language constructs like <code class="inline">foreach</code>, <code class="inline">if</code>,
+      and compound-assignment operators.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">📦</span> What you'll produce</h2>
+  <div class="card">
+    <p>Two short C# programs, each derived from its own pseudocode:</p>
+    <table>
+      <thead><tr><th>Problem</th><th>Goal</th><th>Core technique</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1 — Sum of an array</strong></td><td>Add up every integer in <code>int[] numbers</code></td><td>Accumulator + <code>foreach</code> loop</td></tr>
+        <tr><td><strong>2 — Count the vowels</strong></td><td>Count <code>a, e, i, o, u</code> in a string of characters</td><td>Counter + <code>foreach</code> + membership test</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:0">Each one follows the same three-stage pattern:
+      <strong>Problem statement → Pseudocode → C#</strong>.</p>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🧩</span> Walkthrough</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Calculating the sum of an array</h3>
+    <p class="scenario"><strong>Problem statement:</strong> Write an algorithm that calculates the
+      sum of all numbers in a given array of integers.</p>
+
+    <h4>1. Pseudocode</h4>
+<pre class="code">Start
+  Create variable sum and set it to 0
+  For each number in the array
+    Add number to sum
+  End For
+  Display the value of variable sum to user
+End</pre>
+
+    <h4>2. Translate to C#</h4>
+<pre class="code"><span class="cmt">// Initialize an array of integers</span>
+int[] numbers = { 5, 8, 3, 4, 2 };
+
+<span class="cmt">// Initialize the sum variable</span>
+int sum = 0;
+
+<span class="cmt">// Loop through each number in the array</span>
+foreach (int number in numbers)
+{
+    sum += number;
+}
+
+<span class="cmt">// Output the sum of the array</span>
+Console.WriteLine("The sum of the array is: " + sum);</pre>
+    <p style="margin:12px 0 0">Each line of pseudocode has a direct C# counterpart:
+      <em>"Create variable sum and set it to 0"</em> becomes <code class="inline">int sum = 0;</code>,
+      <em>"For each number in the array"</em> becomes <code class="inline">foreach (int number in numbers)</code>,
+      and <em>"Add number to sum"</em> becomes <code class="inline">sum += number;</code>. With
+      <code class="inline">{ 5, 8, 3, 4, 2 }</code> this prints
+      <code class="inline">The sum of the array is: 22</code>.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Counting the number of vowels in a string</h3>
+    <p class="scenario"><strong>Problem statement:</strong> Write an algorithm to count the number
+      of vowels (<code>a, e, i, o, u</code>) in a given string.</p>
+
+    <h4>1. Pseudocode</h4>
+<pre class="code">Start
+  Create variable vowelCount and set to 0
+  For each character in the string
+    If character is a vowel
+      Add 1 to vowelCount
+  End For
+  Print vowelCount
+End</pre>
+
+    <h4>2. Translate to C#</h4>
+<pre class="code">int vowelCount1 = 0;
+char[] letters = ['h', 'e', 'l', 'l', 'o'];
+char[] vowels = ['a', 'e', 'i', 'o', 'u'];
+
+foreach (char letter in letters)
+{
+    if (vowels.Contains(char.ToLower(letter)))
+    {
+        vowelCount1 += 1;
+    }
+}
+
+Console.WriteLine(vowelCount1);</pre>
+    <p style="margin:12px 0 0">The <em>"If character is a vowel"</em> test is implemented with
+      <code class="inline">vowels.Contains(...)</code>. Calling
+      <code class="inline">char.ToLower(letter)</code> first makes the check
+      <strong>case-insensitive</strong>, so an uppercase <code class="inline">'E'</code> still counts.
+      For the characters <code class="inline">['h', 'e', 'l', 'l', 'o']</code> this prints
+      <code class="inline">1</code>.</p>
+    <div class="callout">
+      The collection-expression syntax <code class="inline">['a', 'e', ...]</code> requires
+      <strong>C# 12 / .NET 8</strong> or later. On an older target, use the classic form
+      <code class="inline">new char[] { 'a', 'e', 'i', 'o', 'u' }</code> instead.
+    </div>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">✍️</span> Your turn</h2>
+  <div class="card">
+    <p>Run both snippets and confirm the output, then extend the pattern:</p>
+    <ul class="plain">
+      <li>Change <code class="inline">numbers</code> to your own values and predict the sum
+        <strong>before</strong> running.</li>
+      <li>Swap <code class="inline">letters</code> for a longer word (try a mix of upper- and
+        lowercase) and verify the vowel count.</li>
+      <li>Write fresh pseudocode for a new problem — e.g. <em>find the largest number in an array</em>
+        — then translate it to C# using the same accumulator-and-loop shape.</li>
+    </ul>
+    <p>To run a snippet, drop it into a console app and execute it:</p>
+<pre class="code">dotnet new console -n AlgorithmsDemo
+cd AlgorithmsDemo
+<span class="cmt"># paste the snippet into Program.cs, then:</span>
+dotnet run</pre>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Problem 1 pseudocode translated to C# that sums <code class="inline">{ 5, 8, 3, 4, 2 }</code> and prints <code class="inline">22</code></li>
+      <li>Problem 2 pseudocode translated to C# that counts vowels in <code class="inline">['h', 'e', 'l', 'l', 'o']</code> and prints <code class="inline">1</code></li>
+      <li>Each pseudocode line maps to a clear C# statement (variable init, loop, conditional, output)</li>
+      <li>The vowel check is case-insensitive via <code class="inline">char.ToLower(...)</code></li>
+      <li>Both programs run with <code class="inline">dotnet run</code> and produce the expected output</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Pseudocode bridges idea and code</strong> — describe the <em>logic</em> in plain
+        language first, then each line translates almost one-to-one into a C# statement.</li>
+      <li><strong>The accumulator pattern</strong> — initialize a variable
+        (<code class="inline">sum = 0</code>, <code class="inline">vowelCount = 0</code>), update it
+        inside a loop, and read it after the loop; it underlies counting, summing, and many aggregations.</li>
+      <li><strong><code class="inline">foreach</code> for iteration</strong> — when you need every
+        element but not its index, <code class="inline">foreach</code> is the clearest way to express
+        <em>"for each X in the collection."</em></li>
+      <li><strong>Membership tests + normalization</strong> —
+        <code class="inline">vowels.Contains(char.ToLower(letter))</code> shows how a conditional
+        becomes a lookup, and why normalizing case first makes the comparison robust.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

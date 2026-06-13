@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Integrated Use of Control Structures and Loops — Course 1 · Module 4</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 4 · Lesson 4
+      <span class="pill">You Try It!</span></p>
+    <h1>Integrated Use of Control Structures and Loops</h1>
+    <p class="lead">
+      Build a small C# console app that <strong>combines decision-making with iteration</strong>.
+      Across four self-contained steps you'll pair <code>if-else</code> and <code>switch</code> with
+      <code>do-while</code>, <code>for</code>, and <code>foreach</code> loops — validating input,
+      grading scores, and routing order statuses — then wire every step together from
+      <code>Program.cs</code>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity, you will be able to combine <code class="inline">if-else</code>
+      and <code class="inline">switch</code> control structures with loops to solve practical coding problems —
+      writing simple programs that handle <strong>decision-making inside iteration</strong>.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single console project named <code class="inline">UseOfControlStructuresAndLoops</code> where each
+      exercise lives in its own class and is invoked from <code class="inline">Main</code>:</p>
+    <table>
+      <thead><tr><th>File</th><th>What it demonstrates</th></tr></thead>
+      <tbody>
+        <tr><td><code>Step1IfElseWithLoops.cs</code></td><td><code>do-while</code> loop + <code>if-else</code> to validate an even number between 1 and 10</td></tr>
+        <tr><td><code>Step2EvaluateGrades.cs</code></td><td><code>for</code> loop + <code>if-else</code> to mark each grade <strong>Pass</strong> / <strong>Fail</strong></td></tr>
+        <tr><td><code>Step3SwitchWithLoops.cs</code></td><td><code>foreach</code> loop + <code>switch</code> to print a message per order status</td></tr>
+        <tr><td><code>Step4GradesWithSwitch.cs</code></td><td><code>for</code> loop + <code>switch</code> to map a numeric score to a letter grade</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Orchestrates: calls each step's <code>Run()</code> method in order</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Program.Main</span> <span class="ar">→</span>
+      <span class="c">Step1.Run()</span> <span class="ar">→</span>
+      <span class="t">Step2.Run()</span> <span class="ar">→</span>
+      <span class="d">Step3.Run()</span> <span class="ar">→</span>
+      <span class="c">Step4.Run()</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code> (this code uses C# 12
+        collection expressions, so target <strong>.NET 8</strong> or newer)</li>
+      <li>A code editor such as Visual Studio Code</li>
+      <li>Comfort with basic C# syntax (variables, arrays, <code class="inline">Console.WriteLine</code>)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">0</span> Scaffold the project</h3>
+    <p class="scenario">Create the console app and open it.</p>
+<pre class="code">dotnet new console -n UseOfControlStructuresAndLoops
+cd UseOfControlStructuresAndLoops</pre>
+    <p style="margin:12px 0 0">Each step below is a separate <code class="inline">.cs</code> file in this project.
+      The namespace is shared so <code class="inline">Program.cs</code> can call every step.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Integrate <code>if-else</code> with a loop</h3>
+    <p class="scenario">Repeatedly ask the user for a number between 1 and 10 and ensure it is
+      <strong>even</strong>; loop until the input is valid.</p>
+    <ul class="plain">
+      <li>Use a <code class="inline">do-while</code> loop to continuously prompt for an even number between 1 and 10.</li>
+      <li>Inside the loop, use an <code class="inline">if-else</code> statement to validate whether the number is even and between 1 and 10.</li>
+      <li>If the input is valid, print the number and exit the loop using <code class="inline">break</code>. If it's invalid, display an error message and repeat the prompt.</li>
+    </ul>
+    <h4>Step1IfElseWithLoops.cs</h4>
+<pre class="code">namespace UseOfControlStructuresAndLoops
+{
+    public class Step1IfElseWithLoops
+    {
+        public static void Run()
+        {
+            do
+            {
+                Console.Write("Enter an even number between 1 and 10: ");
+                string input = Console.ReadLine() ?? string.Empty;
+                if (int.TryParse(input, out int number))
+                {
+                    if (number &gt;= 1 &amp;&amp; number &lt;= 10 &amp;&amp; number % 2 == 0)
+                    {
+                        Console.WriteLine("Valid input: " + number);
+                        break; <span class="cmt">// Exit loop if valid</span>
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid input. The number must be even and between 1 and 10.");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Invalid input. Please enter a numeric value.");
+                }
+            } while (true);
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Use <code>if-else</code> to evaluate grades</h3>
+    <p class="scenario">Iterate a list of student grades with a <code>for</code> loop and decide
+      <strong>Pass</strong> or <strong>Fail</strong> for each.</p>
+    <ul class="plain">
+      <li>Define an array named <code class="inline">grades</code> containing a list of student grades.</li>
+      <li>Use a <code class="inline">for</code> loop to iterate over each grade in the array.</li>
+      <li>Inside the loop, use an <code class="inline">if-else</code> statement to check if each grade is &ge; <code class="inline">65</code> (passing). Print <code class="inline">"Pass"</code> if passing and <code class="inline">"Fail"</code> if not.</li>
+    </ul>
+    <h4>Step2EvaluateGrades.cs</h4>
+<pre class="code">namespace UseOfControlStructuresAndLoops
+{
+    public class Step2EvaluateGrades
+    {
+        public static void Run()
+        {
+            int[] grades = [85, 42, 73, 64, 90, 58, 67];
+            for (int i = 0; i &lt; grades.Length; i++)
+            {
+                int grade = grades[i];
+                if (grade &gt;= 65)
+                {
+                    Console.WriteLine("Grade: " + grade + " - Pass");
+                }
+                else
+                {
+                    Console.WriteLine("Grade: " + grade + " - Fail");
+                }
+            }
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Integrate <code>switch</code> statements with loops</h3>
+    <p class="scenario">Process multiple orders by their status and print a message for each.</p>
+    <ul class="plain">
+      <li>Define an array named <code class="inline">orderStatuses</code> containing the different statuses.</li>
+      <li>Use a loop to iterate through the list of order statuses.</li>
+      <li>Inside the loop, use a <code class="inline">switch</code> statement to print a different message based on the order's status. Include a <code class="inline">default</code> case to handle any unexpected value.</li>
+    </ul>
+    <h4>Step3SwitchWithLoops.cs</h4>
+<pre class="code">namespace UseOfControlStructuresAndLoops
+{
+    public class Step3SwitchWithLoops
+    {
+        public static void Run()
+        {
+            string[] orderStatuses = ["Pending", "Shipped", "Delivered", "Cancelled", "Unknown"];
+            foreach (string status in orderStatuses)
+            {
+                switch (status)
+                {
+                    case "Pending":
+                        Console.WriteLine("Order is pending and will be processed soon.");
+                        break;
+                    case "Shipped":
+                        Console.WriteLine("Order has been shipped.");
+                        break;
+                    case "Delivered":
+                        Console.WriteLine("Order was delivered successfully.");
+                        break;
+                    case "Cancelled":
+                        Console.WriteLine("Order has been cancelled.");
+                        break;
+                    default:
+                        Console.WriteLine("Unknown order status: " + status);
+                        break;
+                }
+            }
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Evaluate student grades with <code>switch</code> and a loop</h3>
+    <p class="scenario">Iterate a list of scores with a <code>for</code> loop and assign each a
+      letter grade with a <code>switch</code>.</p>
+    <ul class="plain">
+      <li>Define an array of student scores.</li>
+      <li>Use a <code class="inline">for</code> loop to iterate through each score.</li>
+      <li>Inside the loop, use a <code class="inline">switch</code> statement to assign a letter grade (A, B, C, D, F) based on the score. Dividing the score by 10 collapses each 10-point band into a single <code class="inline">case</code>.</li>
+    </ul>
+    <h4>Step4GradesWithSwitch.cs</h4>
+<pre class="code">namespace UseOfControlStructuresAndLoops
+{
+    public class Step4GradesWithSwitch
+    {
+        public static void Run()
+        {
+            int[] scores = [95, 82, 76, 64, 58, 89, 70];
+            for (int i = 0; i &lt; scores.Length; i++)
+            {
+                int score = scores[i];
+                string letterGrade;
+                <span class="cmt">// Divide score by 10 to simplify switch logic</span>
+                switch (score / 10)
+                {
+                    case 10:
+                    case 9:
+                        letterGrade = "A";
+                        break;
+                    case 8:
+                        letterGrade = "B";
+                        break;
+                    case 7:
+                        letterGrade = "C";
+                        break;
+                    case 6:
+                        letterGrade = "D";
+                        break;
+                    default:
+                        letterGrade = "F";
+                        break;
+                }
+                Console.WriteLine($"Score: {score} - Grade: {letterGrade}");
+            }
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Wire everything together in <code>Program.cs</code></h3>
+    <p class="scenario">Replace the contents of <code class="inline">Program.cs</code> so <code>Main</code>
+      calls each step in order, then run the app.</p>
+    <h4>Program.cs</h4>
+<pre class="code">using UseOfControlStructuresAndLoops;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        <span class="cmt">// Call Step 1</span>
+        Step1IfElseWithLoops.Run();
+        <span class="cmt">// Call Step 2</span>
+        Step2EvaluateGrades.Run();
+        <span class="cmt">// Call Step 3</span>
+        Step3SwitchWithLoops.Run();
+        <span class="cmt">// Call Step 4</span>
+        Step4GradesWithSwitch.Run();
+    }
+}</pre>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Step 1 keeps prompting until you type a valid even number (e.g. <code class="inline">4</code>). The remaining
+    steps run on their fixed arrays and print Pass/Fail per grade, a message per order status, and a letter grade per score.
+  </div>
+  <div class="card">
+<pre class="code">Valid input: 4
+Grade: 85 - Pass
+Grade: 42 - Fail
+Grade: 73 - Pass
+Grade: 64 - Fail
+Grade: 90 - Pass
+Grade: 58 - Fail
+Grade: 67 - Pass
+Order is pending and will be processed soon.
+Order has been shipped.
+Order was delivered successfully.
+Order has been cancelled.
+Unknown order status: Unknown
+Score: 95 - Grade: A
+Score: 82 - Grade: B
+Score: 76 - Grade: C
+Score: 64 - Grade: D
+Score: 58 - Grade: F
+Score: 89 - Grade: B
+Score: 70 - Grade: C</pre>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">UseOfControlStructuresAndLoops</code> console project created (.NET 8+)</li>
+      <li><code class="inline">Step1IfElseWithLoops</code> loops with <code class="inline">do-while</code> and validates even input via <code class="inline">if-else</code> + <code class="inline">break</code></li>
+      <li><code class="inline">Step2EvaluateGrades</code> iterates <code class="inline">grades</code> with a <code class="inline">for</code> loop and prints Pass/Fail</li>
+      <li><code class="inline">Step3SwitchWithLoops</code> iterates <code class="inline">orderStatuses</code> with <code class="inline">foreach</code> and routes each via <code class="inline">switch</code></li>
+      <li><code class="inline">Step4GradesWithSwitch</code> maps each score to a letter grade with <code class="inline">switch (score / 10)</code></li>
+      <li><code class="inline">Program.cs</code> calls all four <code class="inline">Run()</code> methods and <code class="inline">dotnet run</code> produces the expected output</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Decision-making inside iteration</strong> — a loop supplies the values; the
+        <code class="inline">if-else</code> or <code class="inline">switch</code> inside it decides what to do with
+        each one. This pairing is the backbone of most input and data processing.</li>
+      <li><strong><code class="inline">do-while</code> for input validation</strong> — a <code class="inline">do-while</code>
+        runs the body at least once, so it's the natural fit for "keep asking until the input is valid," with
+        <code class="inline">break</code> to leave on success.</li>
+      <li><strong><code class="inline">if-else</code> vs. <code class="inline">switch</code></strong> — use
+        <code class="inline">if-else</code> for ranges and boolean conditions (<code class="inline">grade &gt;= 65</code>);
+        reach for <code class="inline">switch</code> when branching on a fixed set of discrete values (a status string,
+        a score band).</li>
+      <li><strong>Always handle the unexpected</strong> — <code class="inline">int.TryParse</code> guards against
+        non-numeric input, and a <code class="inline">switch</code> <code class="inline">default</code> (or
+        <code class="inline">else</code>) branch catches values you didn't plan for, keeping the program robust.</li>
+      <li><strong>Fall-through cases</strong> — stacking <code class="inline">case 10:</code> and
+        <code class="inline">case 9:</code> lets several labels share one body, a clean way to group equivalent inputs.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

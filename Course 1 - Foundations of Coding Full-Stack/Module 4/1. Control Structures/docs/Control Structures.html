@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Control Structures — Course 1 · Module 4</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 4 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Control Structures</h1>
+    <p class="lead">
+      Build a small C# console app for a travel company that makes decisions with
+      <strong>control structures</strong>: an <strong><code>if-else</code></strong> chain prices a ticket
+      by the passenger's age, and a <strong><code>switch</code></strong> statement books the chosen travel mode.
+      Each behaviour lives in its own method, and <code>Main</code> runs them in turn.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity, you will be able to apply <strong><code class="inline">if-else</code> statements</strong>
+      and <strong><code class="inline">switch</code> cases</strong> to simulate decisions in a program — here, booking tickets for
+      different travel modes and pricing them by passenger age.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single console project named <code class="inline">Control_Structures</code> whose <code>Program</code> class
+      exposes two decision routines, called from <code>Main</code>:</p>
+    <table>
+      <thead><tr><th>Method</th><th>Control structure</th><th>Decides</th></tr></thead>
+      <tbody>
+        <tr><td><code>TicketPricing()</code></td><td><code>if</code> / <code>else if</code> / <code>else</code></td><td>Ticket price band from the passenger's age</td></tr>
+        <tr><td><code>TravelModeSelection()</code></td><td><code>switch</code></td><td>Booking message for the chosen mode of transport</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Main</span> <span class="ar">→</span>
+      <span class="c">TicketPricing()</span> <span class="ar">→</span>
+      <span class="t">if-else on age</span> <span class="ar">→</span>
+      <span class="d">TravelModeSelection()</span> <span class="ar">→</span>
+      <span class="t">switch on mode</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>A code editor (Visual Studio or Visual Studio Code)</li>
+      <li>Basic familiarity with <code class="inline">Console.WriteLine</code> / <code class="inline">Console.ReadLine</code> for console I/O</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Scaffold the console project</h3>
+    <p class="scenario">Create the project and move into it.</p>
+<pre class="code">dotnet new console -n Control_Structures
+cd Control_Structures</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and clear any existing content — you will replace it with the code below.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> If-else statement for ticket pricing</h3>
+    <p class="scenario">Determine the ticket price based on the passenger's age. Children and seniors get a discount.</p>
+    <table>
+      <thead><tr><th>Passenger group</th><th>Age range</th><th>Price</th></tr></thead>
+      <tbody>
+        <tr><td>Children</td><td>under 12</td><td>Half price</td></tr>
+        <tr><td>Adults</td><td>12 to 65</td><td>Full price</td></tr>
+        <tr><td>Seniors</td><td>over 65</td><td>20% discount</td></tr>
+      </tbody>
+    </table>
+    <ul class="plain">
+      <li>Prompt the user and read input with <code class="inline">Console.ReadLine()</code>.</li>
+      <li>Convert to an <code class="inline">int age</code> using <code class="inline">int.TryParse</code> so bad input is handled, not crashed.</li>
+      <li>Use an <code class="inline">if</code> / <code class="inline">else if</code> / <code class="inline">else</code> chain:
+        <code class="inline">age &lt; 12</code> → <code class="inline">"Half price ticket"</code>;
+        12–65 → <code class="inline">"Full price ticket"</code>;
+        otherwise → <code class="inline">"Senior discount ticket"</code>.</li>
+    </ul>
+<pre class="code">static void TicketPricing()
+{
+    Console.Write("Please enter your age: ");
+    string? input = Console.ReadLine();
+
+    if (!int.TryParse(input, out int age))
+    {
+        Console.WriteLine("Invalid input. Please enter a valid number.");
+        return;
+    }
+
+    if (age &lt; 0)
+    {
+        Console.WriteLine("Age cannot be negative.");
+        return;
+    }
+
+    if (age &lt; 12)
+    {
+        Console.WriteLine("Half price ticket");
+    }
+    else if (age &lt; 65)
+    {
+        Console.WriteLine("Full price ticket");
+    }
+    else
+    {
+        Console.WriteLine("Senior discount ticket");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Switch statement for travel mode selection</h3>
+    <p class="scenario">The company offers <code>Bus</code>, <code>Train</code>, and <code>Flight</code>, each with its own booking message. Use a <code>switch</code> to decide which.</p>
+    <ul class="plain">
+      <li>Read a <code class="inline">string mode</code> with <code class="inline">Console.ReadLine()</code>.</li>
+      <li>Normalise with <code class="inline">Trim().ToLower()</code> so casing and stray spaces do not matter.</li>
+      <li>Switch on the mode: <code class="inline">"Bus"</code> → <code class="inline">"Booking a bus ticket"</code>;
+        <code class="inline">"Train"</code> → <code class="inline">"Booking a train ticket"</code>;
+        <code class="inline">"Flight"</code> → <code class="inline">"Booking a flight ticket"</code>.</li>
+      <li>Include a <code class="inline">default</code> case for invalid input:
+        <code class="inline">"Invalid selection. Please choose Bus, Train, or Flight."</code></li>
+    </ul>
+<pre class="code">static void TravelModeSelection()
+{
+    Console.Write("Choose travel mode (Bus, Train, Flight): ");
+    string? mode = Console.ReadLine();
+
+    if (string.IsNullOrWhiteSpace(mode))
+    {
+        Console.WriteLine("Input cannot be empty. Please enter a valid travel mode.");
+        return;
+    }
+
+    switch (mode.Trim().ToLower())
+    {
+        case "bus":
+            Console.WriteLine("Booking a bus ticket");
+            break;
+        case "train":
+            Console.WriteLine("Booking a train ticket");
+            break;
+        case "flight":
+            Console.WriteLine("Booking a flight ticket");
+            break;
+        default:
+            Console.WriteLine("Invalid selection. Please choose Bus, Train, or Flight.");
+            break;
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Wire it together in <code>Main</code></h3>
+    <p class="scenario">Call both routines from <code class="inline">Main</code> — pricing first, then the travel-mode booking. The complete <code class="inline">Program.cs</code>:</p>
+<pre class="code">namespace Control_Structures
+{
+    class Program
+    {
+        static void Main()
+        {
+            <span class="cmt">// Step 1: If-else statement for ticket pricing</span>
+            Console.WriteLine("=== Ticket Pricing Program ===");
+            TicketPricing();
+
+            <span class="cmt">// Step 2: Switch statement for travel mode selection</span>
+            Console.WriteLine("\n=== Second Program ===");
+            TravelModeSelection();
+        }
+
+        static void TicketPricing()
+        {
+            Console.Write("Please enter your age: ");
+            string? input = Console.ReadLine();
+
+            if (!int.TryParse(input, out int age))
+            {
+                Console.WriteLine("Invalid input. Please enter a valid number.");
+                return;
+            }
+
+            if (age &lt; 0)
+            {
+                Console.WriteLine("Age cannot be negative.");
+                return;
+            }
+
+            if (age &lt; 12)
+            {
+                Console.WriteLine("Half price ticket");
+            }
+            else if (age &lt; 65)
+            {
+                Console.WriteLine("Full price ticket");
+            }
+            else
+            {
+                Console.WriteLine("Senior discount ticket");
+            }
+        }
+
+        static void TravelModeSelection()
+        {
+            Console.Write("Choose travel mode (Bus, Train, Flight): ");
+            string? mode = Console.ReadLine();
+
+            if (string.IsNullOrWhiteSpace(mode))
+            {
+                Console.WriteLine("Input cannot be empty. Please enter a valid travel mode.");
+                return;
+            }
+
+            switch (mode.Trim().ToLower())
+            {
+                case "bus":
+                    Console.WriteLine("Booking a bus ticket");
+                    break;
+                case "train":
+                    Console.WriteLine("Booking a train ticket");
+                    break;
+                case "flight":
+                    Console.WriteLine("Booking a flight ticket");
+                    break;
+                default:
+                    Console.WriteLine("Invalid selection. Please choose Bus, Train, or Flight.");
+                    break;
+            }
+        }
+    }
+}</pre>
+    <ul class="plain">
+      <li>Run it:</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The program runs both decisions in sequence — enter an age to get the price band, then a mode to get the booking message.
+  </div>
+  <div class="card">
+<pre class="code">=== Ticket Pricing Program ===
+Please enter your age: 70
+Senior discount ticket
+
+=== Second Program ===
+Choose travel mode (Bus, Train, Flight): Train
+Booking a train ticket</pre>
+    <ul class="plain">
+      <li>Enter <code class="inline">8</code> → <code class="inline">Half price ticket</code>; <code class="inline">30</code> → <code class="inline">Full price ticket</code>; <code class="inline">70</code> → <code class="inline">Senior discount ticket</code>.</li>
+      <li>Enter <code class="inline">Bus</code> / <code class="inline">Train</code> / <code class="inline">Flight</code> → the matching booking message; anything else → the <code class="inline">default</code> message.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">Control_Structures</code> console project created and <code class="inline">Program.cs</code> replaced</li>
+      <li><code class="inline">TicketPricing()</code> uses an <code class="inline">if</code> / <code class="inline">else if</code> / <code class="inline">else</code> chain over <code class="inline">age</code></li>
+      <li><code class="inline">TravelModeSelection()</code> uses a <code class="inline">switch</code> with <code class="inline">Bus</code> / <code class="inline">Train</code> / <code class="inline">Flight</code> cases <strong>and</strong> a <code class="inline">default</code></li>
+      <li><code class="inline">Main</code> calls both routines in order</li>
+      <li><code class="inline">dotnet run</code> prints the correct price band and booking message for the inputs given</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong><code class="inline">if</code> / <code class="inline">else if</code> / <code class="inline">else</code> for ranges</strong> — chained conditions test mutually exclusive
+        age bands; order matters, so the first matching branch wins and the rest are skipped.</li>
+      <li><strong><code class="inline">switch</code> for discrete choices</strong> — when you compare one value against a fixed set of
+        options (the travel modes), a <code class="inline">switch</code> is clearer than a long <code class="inline">if-else</code> chain.</li>
+      <li><strong>Always provide a <code class="inline">default</code></strong> — the fall-through case guards against invalid or
+        unexpected input instead of silently doing nothing.</li>
+      <li><strong>Validate and normalise input</strong> — <code class="inline">int.TryParse</code> avoids a crash on non-numeric age,
+        and <code class="inline">Trim().ToLower()</code> makes the <code class="inline">switch</code> tolerant of casing and stray spaces.</li>
+      <li><strong>One responsibility per method</strong> — splitting pricing and booking into <code class="inline">TicketPricing()</code>
+        and <code class="inline">TravelModeSelection()</code> keeps <code class="inline">Main</code> readable and each decision testable on its own.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

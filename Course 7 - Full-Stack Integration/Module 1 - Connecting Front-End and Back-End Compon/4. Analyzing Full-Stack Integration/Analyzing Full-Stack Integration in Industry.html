@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Analyzing Full-Stack Integration in Industry — Course 7 · Module 1</title>
+<style>
+  :root {
+    --hdr: #db2777 ;      /* header / create  */
+    --pld: #9333ea ;      /* payload / decode */
+    --sig: #ec4899 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 1 · Lesson 4
+      <span class="pill">You Try It!</span></p>
+    <h1>Analyzing Full-Stack Integration in Industry</h1>
+    <p class="lead">
+      Analyze how front-end and back-end components cooperate in real applications built with
+      <strong>Blazor</strong>, <strong>.NET Minimal APIs</strong>, and <strong>SQL Server</strong>.
+      Walk through a worked e-commerce case study, then independently map the integration and
+      data flow for a social media platform.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Understand and analyze how front-end and back-end components work together in
+      real-world applications using technologies like <strong>Blazor</strong>, <strong>.NET Minimal APIs</strong>,
+      and <strong>SQL Server</strong>. This activity reinforces your knowledge by examining practical use
+      cases and then creating a similar scenario to analyze independently.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">📦</span> What you will produce</h2>
+  <div class="card">
+    <p>A written <strong>integration analysis</strong> that, for each feature of an application, captures
+      three things:</p>
+    <table>
+      <thead><tr><th>Artifact</th><th>What it answers</th></tr></thead>
+      <tbody>
+        <tr><td>Component interaction</td><td>Which layer (Blazor / Minimal API / SQL Server) does what</td></tr>
+        <tr><td>Data flow</td><td>The ordered path a request takes, front-end → API → database → back</td></tr>
+        <tr><td>Result</td><td>The observable outcome the user experiences</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="d">Blazor (HttpClient)</span> <span class="ar">→</span>
+      <span class="c">Minimal API endpoint</span> <span class="ar">→</span>
+      <span class="ar">SQL Server</span> <span class="ar">→</span>
+      <span class="t">JSON response</span> <span class="ar">→</span>
+      <span class="d">Blazor render</span>
+    </div>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🧭</span> Walkthrough — Case Study: E-Commerce System Integration</h2>
+  <div class="card">
+    <p>You are tasked with analyzing the integration of an e-commerce platform's features — product
+      search, user login, and order placement. Here is how each component works together.</p>
+
+    <h3><span class="step-badge">1</span> Product Search Integration</h3>
+    <ul class="plain">
+      <li><strong>Front-End:</strong> The user searches for a product through an input field created in
+        Blazor. The search request triggers an API call using <code class="inline">HttpClient</code>.</li>
+      <li><strong>Back-End:</strong> The Minimal API processes the request and queries the SQL Server
+        database to find matching products. The results are formatted as JSON and sent back to the front-end.</li>
+    </ul>
+    <h4>Data flow</h4>
+<pre class="code">Search query (front-end) → Minimal API (back-end)
+SQL query execution → JSON response → Results rendered on the front-end</pre>
+
+    <h3 style="margin-top:24px"><span class="step-badge">2</span> User Login Integration</h3>
+    <ul class="plain">
+      <li><strong>Front-End:</strong> A Blazor form collects login credentials and sends them via an API
+        request to the server.</li>
+      <li><strong>Back-End:</strong> The Minimal API verifies the credentials using SQL Server. If
+        successful, a session token is returned to the client for future authentication.</li>
+    </ul>
+    <h4>Data flow</h4>
+<pre class="code">Credentials input → API → Validation in SQL Server
+Token generation → Front-end receives token for secure session management</pre>
+
+    <h3 style="margin-top:24px"><span class="step-badge">3</span> Order Placement Integration</h3>
+    <ul class="plain">
+      <li><strong>Front-End:</strong> The user adds products to the cart and clicks <strong>"Place Order."</strong>
+        The cart details are sent to the back-end.</li>
+      <li><strong>Back-End:</strong> The Minimal API updates the SQL Server database, creating an order
+        entry and adjusting inventory. A confirmation is sent back.</li>
+    </ul>
+    <h4>Data flow</h4>
+<pre class="code">Cart data → API → Database update
+Confirmation → Front-end displays order summary</pre>
+
+    <h4>Why it works — the three roles</h4>
+    <table>
+      <thead><tr><th>Concern</th><th>How the stack handles it</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Front-end tools (Blazor)</strong></td><td>Blazor builds interactive UIs in C#; its <code class="inline">HttpClient</code> consumes APIs and integrates with the back-end</td></tr>
+        <tr><td><strong>Back-end tools (Minimal APIs)</strong></td><td>.NET Minimal APIs handle server-side logic and define endpoints; routing is simple and SQL Server integrates easily</td></tr>
+        <tr><td><strong>Data flow</strong></td><td>Data moves from front-end (via <code class="inline">HttpClient</code>) to back-end (via APIs), is processed in SQL Server, and returns as JSON for rendering</td></tr>
+        <tr><td><strong>API testing &amp; debugging</strong></td><td>Tools like <strong>Postman</strong> or <strong>Swagger</strong> test endpoints and confirm the data exchange works as expected</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">🚀</span> Your turn — Analyze Integration for a Social Media Platform</h2>
+  <div class="card">
+    <p><strong>Scenario:</strong> You are analyzing a social media platform where users:</p>
+    <ul class="plain">
+      <li>Log in to their accounts.</li>
+      <li>Post a new status update.</li>
+      <li>View a feed of status updates.</li>
+    </ul>
+    <h4>Instructions</h4>
+    <ul class="plain">
+      <li>Map out how the front-end (Blazor) and back-end (Minimal API with SQL Server) interact for each
+        functionality.</li>
+      <li>Identify the data flow for each interaction.</li>
+      <li>Reflect on how the components work together to deliver the functionality.</li>
+    </ul>
+    <div class="callout">
+      <strong>Stack to assume:</strong> Blazor WebAssembly (front-end), .NET Minimal APIs (back-end),
+      SQL Server (database).
+    </div>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">✅</span> What good looks like — Integration Analysis: Social Media Platform</h2>
+  <div class="card">
+    <p><strong>Technologies:</strong> Blazor WebAssembly (front-end), .NET Minimal APIs (back-end),
+      SQL Server (database).</p>
+    <p>The platform supports three core features: secure authentication, posting status updates, and
+      viewing a personalized feed. The architecture ensures seamless communication, state management,
+      and efficient UI rendering.</p>
+
+    <h3><span class="step-badge">1</span> User Login</h3>
+    <p class="scenario"><strong>Purpose:</strong> Grant users authorized access to the system's interactive features.</p>
+    <h4>Component interaction</h4>
+    <table>
+      <thead><tr><th>Layer</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td>Blazor (UI)</td><td>Displays login form, collects credentials, initiates API request</td></tr>
+        <tr><td>Minimal API</td><td>Validates user credentials in SQL Server, generates authentication token (e.g., JWT)</td></tr>
+        <tr><td>SQL Server</td><td>Stores user records and password hashes</td></tr>
+      </tbody>
+    </table>
+    <h4>Data flow</h4>
+    <ul class="plain">
+      <li>The login form sends a <code class="inline">POST</code> request to <code class="inline">/api/auth/login</code> via <code class="inline">HttpClient</code>.</li>
+      <li>The API queries SQL Server to verify credentials.</li>
+      <li>If valid, the API returns a JSON response containing a token.</li>
+      <li>The token is saved on the client side (local storage or session storage).</li>
+    </ul>
+    <div class="callout ok"><strong>Result:</strong> The user gains access to protected endpoints such as posting and feed retrieval.</div>
+
+    <h3 style="margin-top:24px"><span class="step-badge">2</span> Posting a Status Update</h3>
+    <p class="scenario"><strong>Purpose:</strong> Allow an authenticated user to publish a new status message.</p>
+    <h4>Component interaction</h4>
+    <table>
+      <thead><tr><th>Layer</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td>Blazor</td><td>Captures post content, sends it along with the token in headers</td></tr>
+        <tr><td>Minimal API</td><td>Authenticates the token, inserts the post into SQL Server</td></tr>
+        <tr><td>SQL Server</td><td>Stores post content and metadata (<code class="inline">UserId</code>, timestamp)</td></tr>
+      </tbody>
+    </table>
+    <h4>Data flow</h4>
+    <ul class="plain">
+      <li><code class="inline">POST /api/posts</code> with status data and an <code class="inline">Authorization</code> header.</li>
+      <li>API inserts a new record into the <code class="inline">Posts</code> table.</li>
+      <li>Confirmation returned: post ID and timestamp.</li>
+      <li>Blazor re-renders the UI to show the new post immediately.</li>
+    </ul>
+    <div class="callout ok"><strong>Result:</strong> The user sees their newly created post in the feed.</div>
+
+    <h3 style="margin-top:24px"><span class="step-badge">3</span> Viewing the Feed</h3>
+    <p class="scenario"><strong>Purpose:</strong> Display the latest content posted by the user and their connections.</p>
+    <h4>Component interaction</h4>
+    <table>
+      <thead><tr><th>Layer</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td>Blazor</td><td>Requests feed data, binds JSON to UI components</td></tr>
+        <tr><td>Minimal API</td><td>Authenticates the request, retrieves filtered posts</td></tr>
+        <tr><td>SQL Server</td><td>Executes <code class="inline">SELECT</code> statements with <code class="inline">JOIN</code>s (posts, users, friends)</td></tr>
+      </tbody>
+    </table>
+    <h4>Data flow</h4>
+    <ul class="plain">
+      <li><code class="inline">GET /api/feed</code> with a valid token.</li>
+      <li>API identifies the user and fetches personalized feed data.</li>
+      <li>SQL Server returns a post list including author info and timestamps.</li>
+      <li>JSON response is returned to Blazor.</li>
+      <li>Blazor renders the feed, using pagination or virtualization for performance.</li>
+    </ul>
+    <div class="callout ok"><strong>Result:</strong> The user receives an updated, personalized content stream.</div>
+
+    <h4>Key integration considerations</h4>
+    <table>
+      <thead><tr><th>Concern</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Authentication &amp; Authorization</td><td>Token validated for each protected endpoint</td></tr>
+        <tr><td>Serialization</td><td>JSON provides a lightweight data exchange format</td></tr>
+        <tr><td>State Management</td><td>Token stored and reused for authenticated API requests</td></tr>
+        <tr><td>Performance</td><td>Pagination, caching, and efficient SQL queries</td></tr>
+        <tr><td>Testing Tools</td><td>Swagger and Postman ensure endpoint correctness and debugging</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:14px"><strong>Final reflection:</strong> The presentation, service, and data
+      layers function cohesively. Blazor delivers rich UI interactivity and triggers secure API requests;
+      .NET Minimal APIs manage business logic, routing, and security efficiently; SQL Server ensures
+      reliable data persistence and relational data modeling. This coordinated architecture enables core
+      social networking features: secure login, content creation, and real-time feed rendering.</p>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Walked through all three e-commerce flows (search, login, order) and named the role of each layer</li>
+      <li>Mapped Blazor ↔ Minimal API ↔ SQL Server interaction for <strong>login</strong>, <strong>posting</strong>, and <strong>feed</strong></li>
+      <li>Wrote an ordered data flow for each social-media feature, including endpoint and token handling</li>
+      <li>Listed cross-cutting concerns (auth, serialization, state, performance, testing)</li>
+      <li>Closed with a reflection on how the three layers cooperate to deliver the features</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Three-layer separation</strong> — Blazor (presentation) consumes APIs via
+        <code class="inline">HttpClient</code>, Minimal APIs (service/business logic) own routing and
+        security, and SQL Server (data) persists state; each layer has one clear responsibility.</li>
+      <li><strong>Request/response data flow</strong> — every feature follows the same shape: front-end
+        request → API endpoint → SQL query → JSON response → UI render, which makes integrations
+        predictable to reason about.</li>
+      <li><strong>Token-based state management</strong> — a token issued at login is stored client-side
+        and replayed in the <code class="inline">Authorization</code> header so the stateless API can
+        authorize each protected request.</li>
+      <li><strong>JSON as the contract</strong> — JSON is the lightweight serialization format that lets
+        the front-end and back-end exchange data independently of their internal implementations.</li>
+      <li><strong>Verify the seams</strong> — Swagger and Postman test the endpoints in isolation,
+        confirming the contract between front-end and back-end holds before the UI consumes it.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

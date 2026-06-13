@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Debugging and Creating Asynchronous Programs — Course 2 · Module 4</title>
+<style>
+  :root {
+    --hdr: #7c3aed ;      /* header / create  */
+    --pld: #c026d3 ;      /* payload / decode */
+    --sig: #6366f1 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 2 — Introduction to Programming With C# · Module 4 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Debugging and Creating Asynchronous Programs</h1>
+    <p class="lead">
+      Build a small C# console app that runs an <strong>asynchronous</strong> method. You'll use
+      <code>async</code>/<code>await</code> with <code>Task.Delay</code> to simulate a long operation,
+      call it from <code>Main</code> so the program <strong>waits for completion</strong>, trace the flow
+      with <code>Console.WriteLine</code> "breakpoints," and wrap the work in a <code>try</code>/<code>catch</code>
+      for robustness.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Understand the <code class="inline">async</code> and <code class="inline">await</code>
+      keywords and how they keep programs responsive by letting tasks run asynchronously. You'll extend the
+      Visual Studio Code console application you created at the start of the course so it runs an asynchronous
+      method, observe its execution flow, and add error handling.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A single-file console program built entirely inside <code class="inline">Program.cs</code>
+      (clear out any existing code first):</p>
+    <table>
+      <thead><tr><th>Piece</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>PerformLongOperationAsync()</code></td><td>Simulate a time-consuming operation with <code>await Task.Delay(3000)</code></td></tr>
+        <tr><td><code>Console.WriteLine</code> statements</td><td>Act as "breakpoints" to trace the program's flow</td></tr>
+        <tr><td><code>try</code> / <code>catch</code> block</td><td>Catch and report any exception raised during the operation</td></tr>
+        <tr><td><code>Main(string[] args)</code></td><td>Start the async method with <code>Task.Run</code> and wait for it to finish</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Main</span> <span class="ar">→</span>
+      <span class="c">Task.Run(PerformLongOperationAsync)</span> <span class="ar">→</span>
+      <span class="t">await Task.Delay(3000)</span> <span class="ar">→</span>
+      <span class="d">"completed"</span> <span class="ar">→</span>
+      <span class="ar">Main continues</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>The console application you created at the start of the course (open its folder in VS Code)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Introduction to async and await</h3>
+    <p class="scenario">The <code class="inline">async</code> keyword marks a method as asynchronous, and
+      <code class="inline">await</code> suspends that method until an awaited <code class="inline">Task</code>
+      completes — <strong>without blocking</strong> the calling thread. This is what keeps an application
+      responsive while long-running work is in progress.</p>
+    <ul class="plain">
+      <li>Open the <code class="inline">Program.cs</code> file of your existing console application.</li>
+      <li><strong>Remove any existing code</strong> — you'll build every step below in this one file.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Implement an asynchronous method</h3>
+    <p class="scenario">Create a simple asynchronous method that simulates a time-consuming operation using
+      <code class="inline">Task.Delay</code>.</p>
+    <ul class="plain">
+      <li>In <code class="inline">Program.cs</code>, create a class called <code class="inline">Program</code>.</li>
+      <li>Inside it, create a method called <code class="inline">PerformLongOperationAsync</code>.</li>
+      <li>Use <code class="inline">await Task.Delay</code> to simulate a delay within the method.</li>
+    </ul>
+<pre class="code">class Program
+{
+    <span class="cmt">// Step 2: Asynchronous method simulating a long operation</span>
+    static async Task PerformLongOperationAsync()
+    {
+        Console.WriteLine("Operation started...");
+        await Task.Delay(3000); <span class="cmt">// Simulate delay (3 seconds)</span>
+        Console.WriteLine("Operation completed after delay.");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Call the async method in <code>Main</code></h3>
+    <p class="scenario">Call the asynchronous method from <code class="inline">Main</code>, ensuring the program
+      waits for its completion before exiting.</p>
+    <ul class="plain">
+      <li>Below <code class="inline">PerformLongOperationAsync</code>, create a <code class="inline">Main</code> method.</li>
+      <li>In <code class="inline">Main</code>, call <code class="inline">PerformLongOperationAsync</code> using <code class="inline">Task.Run</code>.</li>
+      <li>Ensure the program waits for the async method to complete with <code class="inline">task.Wait()</code>.</li>
+    </ul>
+<pre class="code">    <span class="cmt">// Step 3: Main method - starting point of the app</span>
+    static void Main(string[] args)
+    {
+        <span class="cmt">// Run the async method and wait for it to complete</span>
+        Task task = Task.Run(() =&gt; PerformLongOperationAsync());
+        task.Wait(); <span class="cmt">// Ensures the Main thread waits</span>
+        Console.WriteLine("Main method completed.");
+    }</pre>
+    <div class="callout">
+      <strong>Check your answer:</strong> run the console application. If you receive an error, go to the
+      reading on the next page to compare your code to the correct answer.
+    </div>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Simulate debugging with console statements</h3>
+    <p class="scenario">Use <code class="inline">Console.WriteLine</code> statements to simulate breakpoints and
+      observe the flow of the program.</p>
+    <ul class="plain">
+      <li>Add a <code class="inline">Console.WriteLine</code> statement <strong>after the <code>await</code></strong>
+        in <code class="inline">PerformLongOperationAsync</code> (the <code class="inline">"Operation completed after delay."</code>
+        line above already does this).</li>
+      <li>Use these statements to understand the program's flow — each line prints in the exact order execution
+        reaches it, so you can see when control resumes after the <code class="inline">await</code>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Handle potential errors</h3>
+    <p class="scenario">Add error handling to the async method to make the code more robust.</p>
+    <ul class="plain">
+      <li>Modify <code class="inline">PerformLongOperationAsync</code> to include a <code class="inline">try</code>/<code class="inline">catch</code> block.</li>
+      <li>Catch any exceptions that might occur during execution and print an error message.</li>
+    </ul>
+<pre class="code">class Program
+{
+    <span class="cmt">// Step 2: Asynchronous method simulating a long operation</span>
+    static async Task PerformLongOperationAsync()
+    {
+        try
+        {
+            Console.WriteLine("Operation started...");
+            await Task.Delay(3000); <span class="cmt">// Simulate delay (3 seconds)</span>
+            Console.WriteLine("Operation completed after delay.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+        }
+    }
+
+    <span class="cmt">// Step 3: Main method - starting point of the app</span>
+    static void Main(string[] args)
+    {
+        <span class="cmt">// Run the async method and wait for it to complete</span>
+        Task task = Task.Run(() =&gt; PerformLongOperationAsync());
+        task.Wait(); <span class="cmt">// Ensures the Main thread waits</span>
+        Console.WriteLine("Main method completed.");
+    }
+}</pre>
+    <div class="callout">
+      <strong>Check your answer:</strong> run the console application. If you receive an error, go to the
+      reading on the next page to compare your code to the correct answer.
+    </div>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Running the app prints the operation's progress in flow order, then confirms <code class="inline">Main</code>
+    finished after waiting:
+<pre class="code">Operation started...
+Operation completed after delay.
+Main method completed.</pre>
+    The ~3-second gap between the first two lines is <code class="inline">await Task.Delay(3000)</code> at work,
+    and the final line proves <code class="inline">task.Wait()</code> held <code class="inline">Main</code> until
+    the async method completed.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>All existing code removed from <code class="inline">Program.cs</code>; the new code lives in that one file</li>
+      <li><code class="inline">PerformLongOperationAsync</code> is declared <code class="inline">async</code> and uses <code class="inline">await Task.Delay(3000)</code></li>
+      <li><code class="inline">Main</code> starts the method with <code class="inline">Task.Run</code> and waits via <code class="inline">task.Wait()</code></li>
+      <li><code class="inline">Console.WriteLine</code> statements trace the flow before and after the <code class="inline">await</code></li>
+      <li>A <code class="inline">try</code>/<code class="inline">catch</code> block reports any exception via <code class="inline">ex.Message</code></li>
+      <li><code class="inline">dotnet run</code> prints the started / completed / <code class="inline">Main method completed.</code> lines</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong><code class="inline">async</code> + <code class="inline">await</code></strong> — <code class="inline">async</code>
+        marks a method as asynchronous and <code class="inline">await</code> suspends it until the awaited
+        <code class="inline">Task</code> finishes, freeing the calling thread to stay responsive.</li>
+      <li><strong><code class="inline">Task.Delay</code> vs <code class="inline">Thread.Sleep</code></strong> —
+        <code class="inline">await Task.Delay(3000)</code> simulates work <em>without</em> blocking a thread, unlike
+        <code class="inline">Thread.Sleep</code>, which freezes it.</li>
+      <li><strong>Bridging sync and async</strong> — a synchronous <code class="inline">Main</code> can launch async
+        work with <code class="inline">Task.Run(...)</code> and block on it with <code class="inline">task.Wait()</code>
+        so the program doesn't exit early.</li>
+      <li><strong>Console statements as breakpoints</strong> — ordered <code class="inline">Console.WriteLine</code>
+        output makes the asynchronous flow visible, showing exactly when execution resumes after an <code class="inline">await</code>.</li>
+      <li><strong>Robust async code</strong> — wrapping awaited work in <code class="inline">try</code>/<code class="inline">catch</code>
+        lets you handle and report exceptions instead of crashing the program.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

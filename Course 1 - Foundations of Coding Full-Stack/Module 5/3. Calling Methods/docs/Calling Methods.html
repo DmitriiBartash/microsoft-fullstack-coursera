@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calling Methods — Course 1 · Module 5</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 5 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Calling Methods</h1>
+    <p class="lead">
+      Build one small C# console program that exercises every part of <strong>calling methods</strong>:
+      defining a method, calling it, passing <strong>parameters</strong>, and using <strong>return values</strong>
+      to drive the program. <code>Main</code> reads input from the console and hands it off to five small,
+      single-purpose methods.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity, you will be able to <strong>call methods in C#</strong> within a
+      complete program. You will gain hands-on experience defining methods, calling methods with
+      <strong>parameters</strong>, and using method <strong>return values</strong> to solve practical problems.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single console program in a class named <code class="inline">CallingMethods</code>, whose
+      <code class="inline">Main</code> method calls five helper methods in turn:</p>
+    <table>
+      <thead><tr><th>Method</th><th>Parameters</th><th>Returns</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>DisplayWelcomeMessage()</code></td><td>none</td><td><code>void</code></td><td>Print a fixed welcome message</td></tr>
+        <tr><td><code>DisplayWelcomeMessageWithName(string name)</code></td><td><code>name</code></td><td><code>void</code></td><td>Greet the user by name</td></tr>
+        <tr><td><code>CalculateSum(int x, int y)</code></td><td><code>x</code>, <code>y</code></td><td><code>int</code></td><td>Add two numbers and return the result</td></tr>
+        <tr><td><code>IsPositive(int number)</code></td><td><code>number</code></td><td><code>bool</code></td><td>Report whether a number is <code>&gt;= 0</code></td></tr>
+        <tr><td><code>IsOldEnoughToDrive(int age)</code></td><td><code>age</code></td><td><code>bool</code></td><td>Report whether an age is <code>&gt;= 18</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Main</span> <span class="ar">→</span>
+      <span class="t">reads input</span> <span class="ar">→</span>
+      <span class="c">calls method</span> <span class="ar">→</span>
+      <span class="d">uses return value</span> <span class="ar">→</span>
+      <span class="ar">prints result</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>A code editor such as Visual Studio Code</li>
+      <li>Basic C# familiarity: <code class="inline">Console.WriteLine</code>, variables, and <code class="inline">if</code>/<code class="inline">else</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Scaffold the project</h3>
+    <p class="scenario">Create a console app, move into it, and open it in your editor.</p>
+<pre class="code">dotnet new console -n CallingMethods
+cd CallingMethods</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and <strong>clear any existing content</strong> so you can build it up step by step.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Define and call a simple method</h3>
+    <p class="scenario">Define <code class="inline">DisplayWelcomeMessage</code> to print a fixed message, then call it from
+      <code class="inline">Main</code>. A <code class="inline">void</code> method does work but returns no value.</p>
+<pre class="code">static void DisplayWelcomeMessage()
+{
+    Console.WriteLine("Welcome to our Program!");
+}</pre>
+    <p>Call it as the first line of <code class="inline">Main</code>:</p>
+<pre class="code">DisplayWelcomeMessage();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Pass a parameter</h3>
+    <p class="scenario">Read the user's name, then pass it to a method that greets them — a <strong>parameter</strong>
+      flows a value <em>into</em> a method.</p>
+<pre class="code">Console.Write("Input your name: ");
+string? input = Console.ReadLine();
+if (string.IsNullOrWhiteSpace(input))
+{
+    Console.WriteLine("Input cannot be empty. Please try again.");
+    return;
+}
+DisplayWelcomeMessageWithName(input);</pre>
+<pre class="code">static void DisplayWelcomeMessageWithName(string name)
+{
+    Console.WriteLine("Hello " + name + "!");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Use a return value</h3>
+    <p class="scenario">Read two numbers, call <code class="inline">CalculateSum</code>, and capture the
+      <strong>value it returns</strong> so the caller can print it.</p>
+<pre class="code">Console.WriteLine("Let's calculate the sum of two values.");
+Console.Write("Input a: ");
+input = Console.ReadLine();
+if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int a))
+{
+    Console.WriteLine("Invalid input for 'a'. Please enter a valid number.");
+    return;
+}
+Console.Write("Input b: ");
+input = Console.ReadLine();
+if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int b))
+{
+    Console.WriteLine("Invalid input for 'b'. Please enter a valid number.");
+    return;
+}
+int result = CalculateSum(a, b);
+Console.WriteLine($"The sum of {a} and {b} is {result}.");</pre>
+<pre class="code">static int CalculateSum(int x, int y)
+{
+    return x + y;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Branch on a <code>bool</code> return value</h3>
+    <p class="scenario">Read a number, call <code class="inline">IsPositive</code>, and use the returned
+      <code class="inline">bool</code> to choose what to print.</p>
+<pre class="code">Console.WriteLine("Let's check if a number is positive.");
+Console.Write("Input a number: ");
+input = Console.ReadLine();
+if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int number))
+{
+    Console.WriteLine("Invalid input. Please enter a valid number.");
+    return;
+}
+bool isPositive = IsPositive(number);
+if (isPositive)
+{
+    Console.WriteLine("The number is positive.");
+}
+else
+{
+    Console.WriteLine("The number is negative.");
+}</pre>
+<pre class="code">static bool IsPositive(int number)
+{
+    return number >= 0;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Reuse the pattern: another <code>bool</code> method</h3>
+    <p class="scenario">Apply the same call-and-branch pattern to an age check with
+      <code class="inline">IsOldEnoughToDrive</code>.</p>
+<pre class="code">Console.WriteLine("Let's check if you're old enough to drive.");
+Console.Write("Input your age: ");
+input = Console.ReadLine();
+if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int age))
+{
+    Console.WriteLine("Invalid age input. Please enter a valid number.");
+    return;
+}
+bool canDrive = IsOldEnoughToDrive(age);
+if (canDrive)
+{
+    Console.WriteLine("You are old enough to drive.");
+}
+else
+{
+    Console.WriteLine("Sorry, you are not old enough to drive.");
+}</pre>
+<pre class="code">static bool IsOldEnoughToDrive(int age)
+{
+    return age >= 18;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Full program</h3>
+    <p class="scenario">Put it all together — the complete <code class="inline">CallingMethods</code> class.</p>
+<pre class="code">class CallingMethods
+{
+    static void Main()
+    {
+        <span class="cmt">// Step 1</span>
+        DisplayWelcomeMessage();
+
+        <span class="cmt">// Step 2</span>
+        Console.Write("Input your name: ");
+        string? input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            Console.WriteLine("Input cannot be empty. Please try again.");
+            return;
+        }
+        DisplayWelcomeMessageWithName(input);
+
+        <span class="cmt">// Step 3</span>
+        Console.WriteLine("Let's calculate the sum of two values.");
+        Console.Write("Input a: ");
+        input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int a))
+        {
+            Console.WriteLine("Invalid input for 'a'. Please enter a valid number.");
+            return;
+        }
+        Console.Write("Input b: ");
+        input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int b))
+        {
+            Console.WriteLine("Invalid input for 'b'. Please enter a valid number.");
+            return;
+        }
+        int result = CalculateSum(a, b);
+        Console.WriteLine($"The sum of {a} and {b} is {result}.");
+
+        <span class="cmt">// Step 4</span>
+        Console.WriteLine("Let's check if a number is positive.");
+        Console.Write("Input a number: ");
+        input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int number))
+        {
+            Console.WriteLine("Invalid input. Please enter a valid number.");
+            return;
+        }
+        bool isPositive = IsPositive(number);
+        if (isPositive)
+        {
+            Console.WriteLine("The number is positive.");
+        }
+        else
+        {
+            Console.WriteLine("The number is negative.");
+        }
+
+        <span class="cmt">// Step 5</span>
+        Console.WriteLine("Let's check if you're old enough to drive.");
+        Console.Write("Input your age: ");
+        input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int age))
+        {
+            Console.WriteLine("Invalid age input. Please enter a valid number.");
+            return;
+        }
+        bool canDrive = IsOldEnoughToDrive(age);
+        if (canDrive)
+        {
+            Console.WriteLine("You are old enough to drive.");
+        }
+        else
+        {
+            Console.WriteLine("Sorry, you are not old enough to drive.");
+        }
+    }
+
+    static void DisplayWelcomeMessage()
+    {
+        Console.WriteLine("Welcome to our Program!");
+    }
+
+    static void DisplayWelcomeMessageWithName(string name)
+    {
+        Console.WriteLine("Hello " + name + "!");
+    }
+
+    static int CalculateSum(int x, int y)
+    {
+        return x + y;
+    }
+
+    static bool IsPositive(int number)
+    {
+        return number >= 0;
+    }
+
+    static bool IsOldEnoughToDrive(int age)
+    {
+        return age >= 18;
+    }
+}</pre>
+    <p>Run it:</p>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The program greets you, then walks through each check using your console input — a sample run:
+<pre class="code">Welcome to our Program!
+Input your name: Ada
+Hello Ada!
+Let's calculate the sum of two values.
+Input a: 7
+Input b: 5
+The sum of 7 and 5 is 12.
+Let's check if a number is positive.
+Input a number: -3
+The number is negative.
+Let's check if you're old enough to drive.
+Input your age: 20
+You are old enough to drive.</pre>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">CallingMethods</code> console project created and <code class="inline">Program.cs</code> cleared</li>
+      <li><code class="inline">DisplayWelcomeMessage()</code> defined and called from <code class="inline">Main</code></li>
+      <li><code class="inline">DisplayWelcomeMessageWithName(name)</code> greets the user using a <strong>parameter</strong></li>
+      <li><code class="inline">CalculateSum(x, y)</code> returns an <code class="inline">int</code> that the caller captures and prints</li>
+      <li><code class="inline">IsPositive(number)</code> and <code class="inline">IsOldEnoughToDrive(age)</code> each return a <code class="inline">bool</code> used in an <code class="inline">if</code>/<code class="inline">else</code></li>
+      <li>Invalid or empty input is handled with a clear message and an early <code class="inline">return</code></li>
+      <li><code class="inline">dotnet run</code> walks through all five checks end-to-end</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Defining vs. calling</strong> — a method is declared once (its body) but can be <em>called</em> many
+        times by name; <code class="inline">Main</code> is itself a method the runtime calls for you.</li>
+      <li><strong>Parameters pass data in</strong> — <code class="inline">DisplayWelcomeMessageWithName(name)</code> and
+        <code class="inline">CalculateSum(x, y)</code> receive caller values through their parameter list (arguments matched by position).</li>
+      <li><strong>Return values pass data out</strong> — <code class="inline">CalculateSum</code> returns an
+        <code class="inline">int</code> and <code class="inline">IsPositive</code>/<code class="inline">IsOldEnoughToDrive</code>
+        return a <code class="inline">bool</code>; the caller stores the result and acts on it.</li>
+      <li><strong><code class="inline">void</code> vs. value-returning</strong> — <code class="inline">void</code> methods
+        do work for their side effect (printing); value-returning methods compute an answer the caller consumes.</li>
+      <li><strong>Validate before you call</strong> — <code class="inline">int.TryParse</code> and
+        <code class="inline">string.IsNullOrWhiteSpace</code> guard against bad input, returning early so methods only
+        run on valid data (fail fast).</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

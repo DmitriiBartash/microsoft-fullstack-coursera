@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JWT Structure Analysis — Course 8 · Module 2</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header  */
+    --pld: #7b3fe4;      /* payload */
+    --sig: #0a91d8;      /* signature */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 28px 0 12px; font-size: 1.2rem; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+
+  /* Colored JWT display */
+  .jwt {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: .9rem; background: #11161f; color: #e7ebf2;
+    border-radius: 10px; padding: 16px 18px; margin: 10px 0 4px;
+    word-break: break-all; line-height: 1.7;
+  }
+  .jwt .h { color: #ff5c93; }
+  .jwt .p { color: #b78bff; }
+  .jwt .s { color: #43c4f5; }
+  .jwt .dot { color: #6b7280; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: .8rem; margin: 6px 0 0; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0;
+  }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.warn::before { content: "⚠️ "; }
+  .callout strong { color: #9a6700; }
+
+  .tag {
+    display: inline-block; font-size: .72rem; font-weight: 700;
+    padding: 2px 9px; border-radius: 20px; margin-left: 8px; vertical-align: middle;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .tag.hdr { background: rgba(251,1,91,.12); color: var(--hdr); }
+  .tag.pld { background: rgba(123,63,228,.12); color: var(--pld); }
+  .tag.sig { background: rgba(10,145,216,.12); color: var(--sig); }
+
+  ul.takeaways { padding-left: 0; list-style: none; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 2</p>
+    <h1>JWT Structure Analysis</h1>
+    <p class="lead">
+      A JSON Web Token has three Base64URL-encoded parts separated by dots:
+      <code>header.payload.signature</code>. The header and payload are just Base64URL → JSON
+      (anyone can read them); the signature is a cryptographic MAC — it cannot be “read”, only <em>verified</em>.
+    </p>
+  </header>
+
+  <!-- ===================== ASSIGNMENT ===================== -->
+  <h2 class="section"><span class="em">📋</span> Assignment</h2>
+
+  <div class="card">
+    <h3>Task 1 — JWT for an E-Commerce System</h3>
+    <p class="scenario">A token issued to an e-commerce user. It carries the user's ID, role, and an
+      expiration that should limit the token's validity to <strong>24 hours</strong>.</p>
+    <div class="jwt">
+      <span class="h">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span><span class="dot">.</span><span class="p">eyJzdWIiOiI1Njc4OTAiLCJyb2xlIjoidXNlciIsImV4cCI6MTY5MjIzMDAwfQ</span><span class="dot">.</span><span class="s">Hx73oTzVZj5lfZlyyRcAJo3hH9M3VBB9-LD9ACBRUjk</span>
+    </div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#ff5c93"></i> Header</span>
+      <span><i class="swatch" style="background:#b78bff"></i> Payload</span>
+      <span><i class="swatch" style="background:#43c4f5"></i> Signature</span>
+    </div>
+    <p class="scenario" style="margin-top:14px">Identify the signing algorithm (Header); extract the
+      user's ID, role and expiration (Payload); explain how the Signature protects the token; summarize in a table.</p>
+  </div>
+
+  <div class="card">
+    <h3>Task 2 — JWT for a Healthcare Application</h3>
+    <p class="scenario">A token issued to a doctor. It carries the user's ID, role, and an expiration
+      that should limit the token's validity to <strong>12 hours</strong>.</p>
+    <div class="jwt">
+      <span class="h">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</span><span class="dot">.</span><span class="p">eyJzdWIiOiIxMjM0NTUwIiwicm9sZSI6ImRvY3RvciIsImV4cCI6MTY4MjQ2NjAwMH0</span><span class="dot">.</span><span class="s">dsg5KlRsdpQZn1uvKjMf2M3Kw8E3ljUlShVlxVc43F4</span>
+    </div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#ff5c93"></i> Header</span>
+      <span><i class="swatch" style="background:#b78bff"></i> Payload</span>
+      <span><i class="swatch" style="background:#43c4f5"></i> Signature</span>
+    </div>
+    <p class="scenario" style="margin-top:14px">Identify the algorithm (Header); extract the user's ID,
+      role and expiration (Payload); explain how the Signature secures the token; summarize in a table.</p>
+  </div>
+
+  <!-- ===================== SOLUTION ===================== -->
+  <h2 class="section"><span class="em">✅</span> Solution</h2>
+
+  <!-- Task 1 -->
+  <div class="card">
+    <h3>Task 1 — E-Commerce</h3>
+
+    <h4>1. Header <span class="tag hdr">HS256</span></h4>
+    <pre class="code">{ "alg": "HS256", "typ": "JWT" }</pre>
+    <ul>
+      <li><code class="inline">alg = HS256</code> → signed with <strong>HMAC-SHA256</strong> (symmetric: one shared secret signs <em>and</em> verifies).</li>
+      <li><code class="inline">typ = JWT</code> → declares the token type so the server knows how to process it.</li>
+    </ul>
+
+    <h4>2. Payload</h4>
+    <pre class="code">{ "sub": "567890", "role": "user", "exp": 169223000 }</pre>
+    <table>
+      <thead><tr><th>Claim</th><th>Value</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>sub</code></td><td><code>567890</code></td><td>Subject — the user's unique ID</td></tr>
+        <tr><td><code>role</code></td><td><code>user</code></td><td>Authorization role (standard customer)</td></tr>
+        <tr><td><code>exp</code></td><td><code>169223000</code></td><td>Expiration time, in Unix epoch seconds</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warn">
+      <strong>Data note (reported as decoded).</strong> <code class="inline">169223000</code> is only
+      <strong>9 digits</strong>, which decodes to <strong>1975-05-13 14:23:20 UTC</strong> — a date in the past.
+      A present-day Unix timestamp has <strong>10 digits</strong> (~1.7 billion). The value looks truncated by one
+      digit; the intended value was almost certainly <code class="inline">1692230000</code> →
+      <strong>2023-08-16 23:53:20 UTC</strong> (~24 h after a 2023-08-16 issuance, matching the scenario).
+      As written, a conforming server would treat this token as <strong>already expired</strong>.
+    </div>
+
+    <h4>3. Signature</h4>
+    <pre class="code">Hx73oTzVZj5lfZlyyRcAJo3hH9M3VBB9-LD9ACBRUjk</pre>
+    <ul>
+      <li>Computed as <code class="inline">HMAC-SHA256( base64url(header) + "." + base64url(payload), secret )</code>.</li>
+      <li>43 Base64URL characters = <strong>32 bytes = a 256-bit MAC</strong> → consistent with the <code class="inline">HS256</code> header.</li>
+      <li>Not decodable into readable text. The server recomputes the HMAC with its own secret and compares;
+          change the header or payload by even one bit (e.g. <code class="inline">role → admin</code>) and the
+          signature no longer matches, so the token is <strong>rejected</strong>.</li>
+    </ul>
+
+    <h4>Summary</h4>
+    <table>
+      <thead><tr><th>Component</th><th>Decoded content</th><th>Explanation</th></tr></thead>
+      <tbody>
+        <tr><td>Header</td><td><code>{"alg":"HS256","typ":"JWT"}</code></td><td>Signed with HMAC-SHA256; token type JWT.</td></tr>
+        <tr><td>Payload</td><td><code>{"sub":"567890","role":"user","exp":169223000}</code></td><td>User ID <code>567890</code>, role <code>user</code>, expiry (value truncated — see note).</td></tr>
+        <tr><td>Signature</td><td><code>Hx73oTzVZj5lfZlyyRcAJo3hH9M3VBB9-LD9ACBRUjk</code></td><td>256-bit HMAC; guarantees integrity — any tampering invalidates it.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Task 2 -->
+  <div class="card">
+    <h3>Task 2 — Healthcare</h3>
+
+    <h4>1. Header <span class="tag hdr">HS256</span></h4>
+    <pre class="code">{ "alg": "HS256", "typ": "JWT" }</pre>
+    <ul>
+      <li>Identical to Task 1: signed with <strong>HMAC-SHA256</strong>, type <code class="inline">JWT</code>.</li>
+    </ul>
+
+    <h4>2. Payload</h4>
+    <pre class="code">{ "sub": "1234550", "role": "doctor", "exp": 1682466000 }</pre>
+    <table>
+      <thead><tr><th>Claim</th><th>Value</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>sub</code></td><td><code>1234550</code></td><td>Subject — the doctor's unique ID</td></tr>
+        <tr><td><code>role</code></td><td><code>doctor</code></td><td>Authorization role (grants clinical / PHI access)</td></tr>
+        <tr><td><code>exp</code></td><td><code>1682466000</code></td><td><strong>2023-04-25 23:40:00 UTC</strong> (valid 10-digit timestamp)</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      The <code class="inline">exp</code> claim caps how long the token is accepted. After this instant the server
+      rejects it, forcing re-authentication — this limits exposure if a token is stolen. In healthcare a short
+      window (here 12 h) matters because the <code class="inline">doctor</code> role can reach protected health information.
+    </div>
+
+    <h4>3. Signature</h4>
+    <pre class="code">dsg5KlRsdpQZn1uvKjMf2M3Kw8E3ljUlShVlxVc43F4</pre>
+    <ul>
+      <li>Same construction: <code class="inline">HMAC-SHA256( base64url(header) + "." + base64url(payload), secret )</code>.</li>
+      <li>43 Base64URL characters = <strong>32 bytes = 256-bit</strong> MAC → consistent with <code class="inline">HS256</code>.</li>
+      <li>Protects integrity and authenticity: only a party holding the secret can produce a matching signature,
+          so an attacker cannot silently change <code class="inline">role</code> or <code class="inline">exp</code> and still pass verification.</li>
+    </ul>
+
+    <h4>Summary</h4>
+    <table>
+      <thead><tr><th>Component</th><th>Decoded content</th><th>Explanation</th></tr></thead>
+      <tbody>
+        <tr><td>Header</td><td><code>{"alg":"HS256","typ":"JWT"}</code></td><td>Signed with HMAC-SHA256; token type JWT.</td></tr>
+        <tr><td>Payload</td><td><code>{"sub":"1234550","role":"doctor","exp":1682466000}</code></td><td>Doctor ID <code>1234550</code>, role <code>doctor</code>, expires 2023-04-25 23:40 UTC.</td></tr>
+        <tr><td>Signature</td><td><code>dsg5KlRsdpQZn1uvKjMf2M3Kw8E3ljUlShVlxVc43F4</code></td><td>256-bit HMAC; ensures the token has not been tampered with.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===================== TAKEAWAYS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key takeaways</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Structure:</strong> <code class="inline">header.payload.signature</code> — three dot-separated, Base64URL-encoded parts.</li>
+      <li><strong>Encoded ≠ encrypted:</strong> header and payload are readable by anyone, so <strong>never put secrets in a JWT</strong>.</li>
+      <li><strong>Signature = integrity + authenticity, not confidentiality:</strong> it proves the token wasn't altered and was issued by the secret holder — it does not hide the contents.</li>
+      <li><strong>HS256 is symmetric:</strong> the same secret signs and verifies. If that secret leaks, anyone can forge valid tokens — protect it like a password.</li>
+      <li><strong>Always validate <code class="inline">exp</code> server-side:</strong> reject expired (and implausibly dated) tokens, as Task 1 shows.</li>
+    </ul>
+  </div>
+
+  <footer class="note">
+    Decoding method: each part is Base64URL-decoded (<code class="inline">-</code>→<code class="inline">+</code>,
+    <code class="inline">_</code>→<code class="inline">/</code>, re-padded) to UTF-8 JSON; <code class="inline">exp</code>
+    is read as Unix epoch seconds. Verified with the <code class="inline">base64</code> and <code class="inline">date</code>
+    utilities. The signature is an opaque HMAC-SHA256 value and is shown encoded, as it is meant to be verified, not decoded.
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manipulating the DOM — Course 3 · Module 3</title>
+<style>
+  :root {
+    --hdr: #ea580c ;     /* header / create  */
+    --pld: #f59e0b ;     /* payload / decode */
+    --sig: #f43f5e ;     /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 3 — Introduction to Web Development · Module 3 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Manipulating the DOM</h1>
+    <p class="lead">
+      Build a <strong>Quote of the Day</strong> feature with vanilla JavaScript. Each time the user
+      clicks a button, you <strong>select</strong> the right elements, pick a random quote, and
+      <strong>update the page live</strong> — no reload. The whole point is the DOM trio:
+      <em>select → respond to events → change content</em>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Use JavaScript to manipulate the DOM by <strong>selecting</strong> HTML elements,
+      <strong>updating content dynamically</strong>, and <strong>responding to user events</strong> — so that
+      clicking a button swaps the text of a <code class="inline">&lt;p&gt;</code> element to a new quote
+      without refreshing the page.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A tiny two-file web page: a static HTML document plus a script that brings it to life.</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>index.html</code></td><td>Markup: a heading, a <code>&lt;p id="quoteDisplay"&gt;</code>, and a <code>&lt;button&gt;</code></td></tr>
+        <tr><td><code>script.js</code></td><td>Behaviour: select elements, hold the quotes, handle the click event</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">click button</span> <span class="ar">→</span>
+      <span class="d">addEventListener fires</span> <span class="ar">→</span>
+      <span class="t">Math.random() picks a quote</span> <span class="ar">→</span>
+      <span class="ar">quoteDisplay.textContent updated</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>A code editor (Visual Studio Code)</li>
+      <li>A modern web browser (Chrome, Edge, or Firefox) to open the page</li>
+      <li>Recommended: the VS Code <strong>Live Server</strong> extension for instant reload (optional — you can also double-click the file)</li>
+      <li>Basic familiarity with HTML elements and the <code class="inline">id</code> attribute</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Set up your environment</h3>
+    <p class="scenario">Create a fresh folder for this activity and open it in Visual Studio Code. You will
+      add two files side by side, <code class="inline">index.html</code> and <code class="inline">script.js</code>.</p>
+    <div class="callout">
+      The two files must live in the <strong>same folder</strong> so that
+      <code class="inline">&lt;script src="script.js"&gt;</code> resolves correctly.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> HTML setup</h3>
+    <p class="scenario">Create <code class="inline">index.html</code> with a simple structure: a heading, a
+      paragraph to hold the quote, and a button to request a new one. Give the paragraph and the button
+      <strong><code class="inline">id</code> attributes</strong> so the script can find them, and load the
+      script at the end of <code class="inline">&lt;body&gt;</code>.</p>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;Quote of the Day&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1 id="quoteHeader"&gt;Quote of the Day&lt;/h1&gt;
+    &lt;p id="quoteDisplay"&gt;Click the button to see today's quote!&lt;/p&gt;
+    &lt;button id="newQuoteButton"&gt;Get New Quote&lt;/button&gt;
+    &lt;script src="script.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> JavaScript setup</h3>
+    <p class="scenario">Create <code class="inline">script.js</code> and complete three tasks:</p>
+    <ul class="plain">
+      <li><strong>Select HTML elements</strong> — use <code class="inline">getElementById</code> to grab the paragraph and the button.</li>
+      <li><strong>Create an array of quotes</strong> — define at least three quotes.</li>
+      <li><strong>Add an event listener</strong> — on each button click, pick a random quote and write it into the paragraph with <code class="inline">textContent</code>.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Select HTML Elements</span>
+const quoteDisplay = document.getElementById("quoteDisplay");
+const newQuoteButton = document.getElementById("newQuoteButton");
+
+<span class="cmt">// Create an Array of Quotes</span>
+const quotes = [
+  "The only limit to our realization of tomorrow is our doubts of today. – Franklin D. Roosevelt",
+  "In the middle of every difficulty lies opportunity. – Albert Einstein",
+  "Success usually comes to those who are too busy to be looking for it. – Henry David Thoreau"
+];
+
+<span class="cmt">// Add an Event Listener</span>
+newQuoteButton.addEventListener("click", () =&gt; {
+  const randomIndex = Math.floor(Math.random() * quotes.length);
+  quoteDisplay.textContent = quotes[randomIndex];
+});</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Run it</h3>
+    <p class="scenario">Open <code class="inline">index.html</code> in your browser (double-click it, or
+      right-click in VS Code and choose <strong>Open with Live Server</strong>). Click
+      <strong>Get New Quote</strong> a few times.</p>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The page loads showing <strong>"Click the button to see today's quote!"</strong>. Each click on
+    <strong>Get New Quote</strong> replaces the paragraph text with a randomly chosen quote from the array —
+    the content updates instantly, with no page reload.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">index.html</code> and <code class="inline">script.js</code> exist in the <strong>same folder</strong></li>
+      <li>The paragraph has <code class="inline">id="quoteDisplay"</code> and the button has <code class="inline">id="newQuoteButton"</code></li>
+      <li><code class="inline">script.js</code> selects both elements with <code class="inline">getElementById</code></li>
+      <li>An array holds <strong>at least three</strong> quotes</li>
+      <li>A <code class="inline">click</code> event listener updates <code class="inline">quoteDisplay.textContent</code> with a random quote</li>
+      <li>Clicking the button in the browser shows a new quote each time, without reloading</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Selecting elements</strong> — <code class="inline">document.getElementById("...")</code> returns a
+        live reference to a DOM node, the entry point for reading or changing it from JavaScript.</li>
+      <li><strong>Event-driven UI</strong> — <code class="inline">addEventListener("click", handler)</code> runs your
+        callback every time the user clicks, decoupling <em>what happens</em> from <em>when it happens</em>.</li>
+      <li><strong>Updating content with <code class="inline">textContent</code></strong> — assigning to
+        <code class="inline">textContent</code> safely replaces the text of an element (it does not parse HTML),
+        which is exactly what you want for plain quotes.</li>
+      <li><strong>Randomized selection</strong> — <code class="inline">Math.floor(Math.random() * quotes.length)</code>
+        yields a valid index from <code class="inline">0</code> to <code class="inline">length − 1</code>, picking any
+        quote in the array uniformly.</li>
+      <li><strong>Script placement</strong> — loading <code class="inline">&lt;script&gt;</code> at the end of
+        <code class="inline">&lt;body&gt;</code> guarantees the elements exist before the script queries them, so
+        <code class="inline">getElementById</code> never returns <code class="inline">null</code>.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

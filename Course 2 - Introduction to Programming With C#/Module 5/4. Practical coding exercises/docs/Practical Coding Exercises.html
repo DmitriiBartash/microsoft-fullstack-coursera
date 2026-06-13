@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Practical Coding Exercises — Course 2 · Module 5</title>
+<style>
+  :root {
+    --hdr: #7c3aed;      /* header / create  */
+    --pld: #c026d3;      /* payload / decode */
+    --sig: #6366f1;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 2 — Introduction to Programming With C# · Module 5 · Lesson 4
+      <span class="pill">Exercise</span></p>
+    <h1>Practical Coding Exercises</h1>
+    <p class="lead">
+      Use Microsoft Copilot to <strong>extend the Library Management System</strong> with three new
+      features: <strong>search</strong> for a book by title, a <strong>borrowing limit</strong>
+      (max 3 at a time), and <strong>check-in</strong> of borrowed books. Start from the code you
+      optimized in the previous <em>"You Try It!"</em> activity — this is the code you'll submit as
+      your <code>final project</code>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">You will use <strong>Microsoft Copilot</strong> to extend the Library Management
+      System by solving new challenges — searching for a book and limiting how many books a user can
+      borrow. Build on the console app you already optimized in the previous activity, and save the
+      finished program as the <strong>final project</strong> for this course.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single C# console app, <code class="inline">LibraryManager</code>, that grows three new menu
+      commands on top of the existing <strong>add / remove / display</strong> workflow.</p>
+    <table>
+      <thead><tr><th>Feature</th><th>Command</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr><td>Search</td><td><code>search</code></td><td>Prompt for a title; report whether the book is in the collection</td></tr>
+        <tr><td>Borrow</td><td><code>borrow</code></td><td>Mark a book borrowed; refuse once the limit of <strong>3</strong> is reached</td></tr>
+        <tr><td>Check-in</td><td><code>checkin</code></td><td>Clear the borrowed flag so the book can be borrowed again</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Menu</span> <span class="ar">→</span>
+      <span class="d">ParseCommand(input)</span> <span class="ar">→</span>
+      <span class="c">Add / Remove / Search / Borrow / CheckIn / Exit</span> <span class="ar">→</span>
+      <span class="t">DisplayBooks</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (with the Microsoft Copilot / C# extensions)</li>
+      <li>The Library Management System console app from the previous <strong>"You Try It!"</strong> activity</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Add a search feature</h3>
+    <p class="scenario">Let the user look up a book by title.</p>
+    <ul class="plain">
+      <li>Prompt the user to input a book title to search for.</li>
+      <li>If the book is found, display a message indicating it is available.</li>
+      <li>If the book is not found, display a message that it's not in the collection.</li>
+    </ul>
+<pre class="code">private static void SearchBook()
+{
+    string? title = GetValidatedInput("Enter the book title to search: ");
+    if (title == null) return;
+
+    var book = books.FirstOrDefault(b =&gt;
+        b != null &amp;&amp; b.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+
+    if (book != null)
+        Console.WriteLine($"Book found: {book}");
+    else
+        Console.WriteLine("Book not found in the library.");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Limit borrowing</h3>
+    <p class="scenario">Track how many books are checked out and cap it.</p>
+    <ul class="plain">
+      <li>Add a feature that tracks how many books a user has borrowed.</li>
+      <li>Limit the number of books to <strong>3</strong> at a time.</li>
+    </ul>
+<pre class="code">private const int BorrowLimit = 3;
+private static int BorrowedCount = 0;
+
+private static void BorrowBook()
+{
+    if (BorrowedCount &gt;= BorrowLimit)
+    {
+        Console.WriteLine($"You cannot borrow more than {BorrowLimit} books at a time.");
+        return;
+    }
+
+    string? title = GetValidatedInput("Enter the book title to borrow: ");
+    if (title == null) return;
+
+    var book = books.FirstOrDefault(b =&gt;
+        b != null &amp;&amp; b.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+
+    if (book == null)
+        Console.WriteLine("Book not found.");
+    else if (book.IsBorrowed)
+        Console.WriteLine("That book is already borrowed.");
+    else
+    {
+        book.IsBorrowed = true;
+        BorrowedCount++;
+        Console.WriteLine($"You have borrowed \"{book.Title}\".");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Check in a borrowed book</h3>
+    <p class="scenario">Let the user return a book that's currently checked out.</p>
+    <ul class="plain">
+      <li>Add a feature that enables the user to check in a book that's been checked out.</li>
+      <li>Check if the book is checked out. If it is, remove the checked-out flag to check the book in. If it isn't, inform the user.</li>
+    </ul>
+<pre class="code">private static void CheckInBook()
+{
+    string? title = GetValidatedInput("Enter the book title to check in: ");
+    if (title == null) return;
+
+    var book = books.FirstOrDefault(b =&gt;
+        b != null &amp;&amp; b.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+
+    if (book == null)
+        Console.WriteLine("Book not found.");
+    else if (!book.IsBorrowed)
+        Console.WriteLine("That book is not currently borrowed.");
+    else
+    {
+        book.IsBorrowed = false;
+        BorrowedCount--;
+        Console.WriteLine($"You have checked in \"{book.Title}\".");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Wire the commands into the menu</h3>
+    <p class="scenario">Extend the <code class="inline">Command</code> enum, the parser, and the main
+      <code class="inline">switch</code> so the new actions are reachable.</p>
+<pre class="code">enum Command { Add, Remove, Search, Borrow, CheckIn, Exit, Invalid }
+
+private static Command ParseCommand(string? input) =&gt; input switch
+{
+    "add"     =&gt; Command.Add,
+    "remove"  =&gt; Command.Remove,
+    "search"  =&gt; Command.Search,
+    "borrow"  =&gt; Command.Borrow,
+    "checkin" =&gt; Command.CheckIn,
+    "exit"    =&gt; Command.Exit,
+    _         =&gt; Command.Invalid
+};
+
+<span class="cmt">// inside Main's loop:</span>
+switch (ParseCommand(actionInput))
+{
+    case Command.Add:     AddBook();     break;
+    case Command.Remove:  RemoveBook();  break;
+    case Command.Search:  SearchBook();  break;
+    case Command.Borrow:  BorrowBook();  break;
+    case Command.CheckIn: CheckInBook(); break;
+    case Command.Exit:
+        Console.WriteLine("Exiting Library Manager...");
+        return;
+    default:
+        Console.WriteLine("Invalid input. Please enter a valid command.");
+        break;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Test the new features</h3>
+    <p class="scenario">Run the program and exercise every new path.</p>
+    <ul class="plain">
+      <li>Run the program and test the search and borrowing-limit functionalities with different inputs.</li>
+      <li>When completed, <strong>save your code</strong> — you will use it to complete the final project in this course.</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== FULL REFERENCE SOLUTION ===================== -->
+  <h2 class="section"><span class="em">📄</span> Full reference solution</h2>
+  <div class="card">
+    <p>The complete program (the optimized base plus the three new features) for reference:</p>
+<pre class="code">using System.Globalization;
+
+class Book(string title)
+{
+    public string Title { get; } = title;
+    public bool IsBorrowed { get; set; } = false;
+    public override string ToString() =&gt; $"{Title}" + (IsBorrowed ? " [Borrowed]" : "");
+}
+
+enum Command
+{
+    Add,
+    Remove,
+    Search,
+    Borrow,
+    CheckIn,
+    Exit,
+    Invalid
+}
+
+class LibraryManager
+{
+    private static int MaxBooks;
+    private const int BorrowLimit = 3;
+    private static int BorrowedCount = 0;
+    private static List&lt;Book?&gt; books = default!;
+
+    static void Main()
+    {
+        MaxBooks = GetLibrarySize();
+        books = [.. new Book?[MaxBooks]];
+        while (true)
+        {
+            PrintMenu();
+            string? actionInput = Console.ReadLine()?.Trim().ToLowerInvariant();
+            switch (ParseCommand(actionInput))
+            {
+                case Command.Add:
+                    AddBook();
+                    break;
+                case Command.Remove:
+                    RemoveBook();
+                    break;
+                case Command.Search:
+                    SearchBook();
+                    break;
+                case Command.Borrow:
+                    BorrowBook();
+                    break;
+                case Command.CheckIn:
+                    CheckInBook();
+                    break;
+                case Command.Exit:
+                    Console.WriteLine("Exiting Library Manager...");
+                    return;
+                default:
+                    Console.WriteLine("Invalid input. Please enter a valid command.");
+                    break;
+            }
+            DisplayBooks();
+        }
+    }
+
+    private static int GetLibrarySize()
+    {
+        Console.Write("Enter the maximum number of books in the library: ");
+        if (int.TryParse(Console.ReadLine(), out int size) &amp;&amp; size &gt; 0)
+            return size;
+        Console.WriteLine("Invalid number. Defaulting to 5.");
+        return 5;
+    }
+
+    private static Command ParseCommand(string? input) =&gt; input switch
+    {
+        "add" =&gt; Command.Add,
+        "remove" =&gt; Command.Remove,
+        "search" =&gt; Command.Search,
+        "borrow" =&gt; Command.Borrow,
+        "checkin" =&gt; Command.CheckIn,
+        "exit" =&gt; Command.Exit,
+        _ =&gt; Command.Invalid
+    };
+
+    private static void PrintMenu()
+    {
+        Console.WriteLine("\nLibrary Manager");
+        Console.WriteLine($"Books stored: {books.Count(b =&gt; b != null)} / {MaxBooks}");
+        Console.WriteLine($"Books borrowed: {BorrowedCount} / {BorrowLimit}");
+        Console.Write("Choose an action (add / remove / search / borrow / checkin / exit): ");
+    }
+
+    private static void AddBook()
+    {
+        if (!books.Any(b =&gt; b == null))
+        {
+            Console.WriteLine("The library is full. Cannot add more books.");
+            return;
+        }
+        string? title = GetValidatedInput("Enter the book title to add: ");
+        if (title == null) return;
+        if (BookExists(title))
+        {
+            Console.WriteLine("This book already exists in the library.");
+            return;
+        }
+        int index = books.FindIndex(b =&gt; b == null);
+        books[index] = new Book(title);
+        Console.WriteLine($"Book \"{title}\" added to the library.");
+    }
+
+    private static void RemoveBook()
+    {
+        if (books.All(b =&gt; b == null))
+        {
+            Console.WriteLine("The library is empty. No books to remove.");
+            return;
+        }
+        string? title = GetValidatedInput("Enter the book title to remove: ");
+        if (title == null) return;
+        int index = books.FindIndex(b =&gt; b != null &amp;&amp; b!.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+        if (index &gt;= 0)
+        {
+            if (books[index]!.IsBorrowed)
+            {
+                Console.WriteLine("Cannot remove a book that is currently borrowed.");
+                return;
+            }
+            books[index] = null;
+            Console.WriteLine($"Book \"{title}\" removed from the library.");
+        }
+        else
+        {
+            Console.WriteLine("Book not found.");
+        }
+    }
+
+    private static void SearchBook()
+    {
+        string? title = GetValidatedInput("Enter the book title to search: ");
+        if (title == null) return;
+        var book = books.FirstOrDefault(b =&gt; b != null &amp;&amp; b.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+        if (book != null)
+        {
+            Console.WriteLine($"Book found: {book}");
+        }
+        else
+        {
+            Console.WriteLine("Book not found in the library.");
+        }
+    }
+
+    private static void BorrowBook()
+    {
+        if (BorrowedCount &gt;= BorrowLimit)
+        {
+            Console.WriteLine($"You cannot borrow more than {BorrowLimit} books at a time.");
+            return;
+        }
+        string? title = GetValidatedInput("Enter the book title to borrow: ");
+        if (title == null) return;
+        var book = books.FirstOrDefault(b =&gt; b != null &amp;&amp; b.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+        if (book == null)
+        {
+            Console.WriteLine("Book not found.");
+        }
+        else if (book.IsBorrowed)
+        {
+            Console.WriteLine("That book is already borrowed.");
+        }
+        else
+        {
+            book.IsBorrowed = true;
+            BorrowedCount++;
+            Console.WriteLine($"You have borrowed \"{book.Title}\".");
+        }
+    }
+
+    private static void CheckInBook()
+    {
+        string? title = GetValidatedInput("Enter the book title to check in: ");
+        if (title == null) return;
+        var book = books.FirstOrDefault(b =&gt; b != null &amp;&amp; b.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+        if (book == null)
+        {
+            Console.WriteLine("Book not found.");
+        }
+        else if (!book.IsBorrowed)
+        {
+            Console.WriteLine("That book is not currently borrowed.");
+        }
+        else
+        {
+            book.IsBorrowed = false;
+            BorrowedCount--;
+            Console.WriteLine($"You have checked in \"{book.Title}\".");
+        }
+    }
+
+    private static void DisplayBooks()
+    {
+        Console.WriteLine("\nCurrent books in the library:");
+        var nonEmptyBooks = books.Where(b =&gt; b != null).Select(b =&gt; b!.ToString()).ToList();
+        if (nonEmptyBooks.Count == 0)
+        {
+            Console.WriteLine("No books available.");
+        }
+        else
+        {
+            Console.WriteLine(string.Join("\n", nonEmptyBooks.Select(b =&gt; "- " + b)));
+        }
+    }
+
+    private static string? GetValidatedInput(string prompt)
+    {
+        Console.Write(prompt);
+        string? input = Console.ReadLine()?.Trim();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            Console.WriteLine("Book title cannot be empty.");
+            return null;
+        }
+        return NormalizeTitle(input);
+    }
+
+    private static string NormalizeTitle(string title)
+    {
+        return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title.ToLowerInvariant());
+    }
+
+    private static bool BookExists(string title)
+    {
+        return books.Any(b =&gt; b != null &amp;&amp; b.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+    }
+}</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The menu now offers <code class="inline">search</code>, <code class="inline">borrow</code>, and
+    <code class="inline">checkin</code>. Searching reports whether a title is in the collection;
+    borrowing succeeds up to <strong>3</strong> books and is refused on the fourth; checking in clears
+    the borrowed flag and frees a borrow slot. The running <code class="inline">Books borrowed: N / 3</code>
+    counter in the menu stays accurate as you borrow and return.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">SearchBook()</code> finds a title (case-insensitive) and reports found / not found</li>
+      <li><code class="inline">BorrowBook()</code> marks a book borrowed and <strong>rejects a 4th</strong> borrow with the limit message</li>
+      <li><code class="inline">CheckInBook()</code> clears <code class="inline">IsBorrowed</code>, decrements the count, and warns if the book wasn't borrowed</li>
+      <li><code class="inline">Command</code> enum, <code class="inline">ParseCommand</code>, and the <code class="inline">Main</code> <code class="inline">switch</code> route <code class="inline">search</code> / <code class="inline">borrow</code> / <code class="inline">checkin</code></li>
+      <li><code class="inline">dotnet run</code> builds and the new features work across different inputs</li>
+      <li>Code is <strong>saved</strong> for use as the course final project</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Extend, don't restart</strong> — new behavior is added as small, single-purpose methods
+        (<code class="inline">SearchBook</code>, <code class="inline">BorrowBook</code>,
+        <code class="inline">CheckInBook</code>) on the existing app, reusing its
+        <code class="inline">Book</code> model and validation helpers.</li>
+      <li><strong>Copilot as a pair programmer</strong> — describe each challenge in plain language and let
+        Copilot draft the method, then review and adapt the suggestion to fit the existing structure.</li>
+      <li><strong>Enum-driven dispatch</strong> — modeling actions as a <code class="inline">Command</code>
+        enum keeps the <code class="inline">Main</code> loop a clean <code class="inline">switch</code>, so
+        adding a feature means one enum value plus one method.</li>
+      <li><strong>Stateful rules</strong> — the borrow limit relies on a shared
+        <code class="inline">BorrowedCount</code> that <code class="inline">Borrow</code> and
+        <code class="inline">CheckIn</code> keep in sync, demonstrating how a guard
+        (<code class="inline">&gt;= BorrowLimit</code>) enforces a business rule.</li>
+      <li><strong>Case-insensitive lookups</strong> — <code class="inline">StringComparison.OrdinalIgnoreCase</code>
+        makes search, borrow, and check-in forgiving of how the user types a title.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

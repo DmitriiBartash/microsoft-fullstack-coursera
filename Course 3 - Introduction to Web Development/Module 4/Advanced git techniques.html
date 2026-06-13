@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Advanced git techniques — Course 3 · Module 4</title>
+<style>
+  :root {
+    --hdr: #ea580c ;      /* header / create  */
+    --pld: #f59e0b ;      /* payload / decode */
+    --sig: #f43f5e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 3 — Introduction to Web Development · Module 4
+      <span class="pill">You Try It!</span></p>
+    <h1>Advanced Git Techniques</h1>
+    <p class="lead">
+      Practice the everyday-but-advanced Git moves on a single throwaway repo: spin up a
+      <code>feature-new-feature</code> branch, <strong>merge it and resolve a conflict</strong>,
+      <strong>tag</strong> a release, <strong>stash</strong> work-in-progress, and
+      <strong>rewrite history with an interactive rebase</strong> — then force-push the cleaned-up branch.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Gain hands-on confidence with five advanced Git workflows —
+      <strong>branching</strong>, <strong>merge conflict resolution</strong>, <strong>tagging</strong>,
+      <strong>stashing</strong>, and <strong>interactive rebase</strong> — by running each one
+      end-to-end against a small local repository you create from scratch.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A disposable repo named <code class="inline">lab-advanced-git</code> that you walk through five techniques:</p>
+    <table>
+      <thead><tr><th>Step</th><th>Technique</th><th>Key commands</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Create &amp; manage branches</td><td><code>git checkout -b</code>, <code>git add</code>, <code>git commit</code></td></tr>
+        <tr><td>2</td><td>Merge &amp; resolve conflicts</td><td><code>git merge</code>, manual edit, <code>git add</code>, <code>git commit</code></td></tr>
+        <tr><td>3</td><td>Tag important commits</td><td><code>git tag -a v1.0</code>, <code>git push origin v1.0</code></td></tr>
+        <tr><td>4</td><td>Stash changes</td><td><code>git stash</code>, <code>git stash list</code>, <code>git stash apply</code></td></tr>
+        <tr><td>5</td><td>Interactive rebase</td><td><code>git rebase -i HEAD~4</code>, <code>pick</code>/<code>squash</code>/<code>edit</code>, <code>--force</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">branch</span> <span class="ar">→</span>
+      <span class="t">merge + resolve</span> <span class="ar">→</span>
+      <span class="d">tag</span> <span class="ar">→</span>
+      <span class="t">stash</span> <span class="ar">→</span>
+      <span class="d">rebase -i</span> <span class="ar">→</span>
+      <span class="c">force-push</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>Git installed — check with <code class="inline">git --version</code></li>
+      <li>A terminal (bash, PowerShell, or Git Bash)</li>
+      <li>A text editor to resolve conflicts (VS Code, nano, vim — anything)</li>
+      <li>Basic familiarity with <code class="inline">git add</code> / <code class="inline">git commit</code></li>
+      <li><em>(Optional)</em> A remote repository if you want to push tags and force-push the branch</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <p class="scenario">The commands below build one continuous session. Run them in order — every step
+    assumes the previous step's state.</p>
+
+  <div class="card">
+    <h3><span class="step-badge">0</span> Initialize the lab repository</h3>
+    <p class="scenario">Create the project, make an initial commit so there is history to work with.</p>
+<pre class="code"><span class="cmt"># === Lab: Advanced Git Techniques ===</span>
+<span class="cmt"># Initialize project</span>
+mkdir lab-advanced-git
+cd lab-advanced-git
+git init
+
+<span class="cmt"># Create initial file and first commit</span>
+echo "# Advanced Git Lab" &gt; README.md
+git add README.md
+git commit -m "Initial commit with README"</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Create and manage branches</h3>
+    <p class="scenario">Create and switch to a new branch, change a file, then stage and commit with a
+      meaningful message.</p>
+<pre class="code">git checkout -b feature-new-feature
+echo "Feature: Add login form" &gt;&gt; README.md
+git add README.md
+git commit -m "Add login form section in README"</pre>
+    <ul class="plain">
+      <li><code class="inline">git checkout -b feature-new-feature</code> creates the branch <strong>and</strong> switches to it in one shot.</li>
+      <li>The commit message states <em>what</em> changed, not just "update".</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Merge branches and resolve conflicts</h3>
+    <p class="scenario">Edit the <strong>same</strong> file on both <code>main</code> and the feature branch
+      so the merge collides, then fix it by hand.</p>
+<pre class="code"><span class="cmt"># Diverge main from the feature branch</span>
+git checkout main
+echo "Main: Add welcome message" &gt;&gt; README.md
+git add README.md
+git commit -m "Add welcome message section in README"
+
+<span class="cmt"># Add one more change on the feature branch</span>
+git checkout feature-new-feature
+echo "Feature: Add logout info" &gt;&gt; README.md
+git add README.md
+git commit -m "Add logout info to README"
+
+<span class="cmt"># Merge feature into main — this will conflict</span>
+git checkout main
+git merge feature-new-feature || echo "Merge conflict occurred"</pre>
+    <p>When Git reports a conflict, open <code class="inline">README.md</code>. You will see conflict markers:</p>
+<pre class="code">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+Main: Add welcome message
+=======
+Feature: Add logout info
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature-new-feature</pre>
+    <p>Decide which content to keep (or combine both), delete the <code class="inline">&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>,
+      <code class="inline">=======</code>, and <code class="inline">&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> markers, then stage and
+      commit to complete the merge.</p>
+<pre class="code"><span class="cmt"># Simulate manual conflict resolution</span>
+echo "Final version: login, welcome, logout" &gt; README.md
+git add README.md
+git commit -m "Resolve merge conflict between feature and main"</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Use tags to mark important commits</h3>
+    <p class="scenario">Create an <strong>annotated</strong> tag to mark the current state as a release,
+      then push it to the remote.</p>
+<pre class="code">git tag -a v1.0 -m "Release version 1.0"
+
+<span class="cmt"># Push the tag to the remote (requires an 'origin' remote)</span>
+git push origin v1.0</pre>
+    <ul class="plain">
+      <li>Annotated tags (<code class="inline">-a</code>) store a tagger, date, and message — use them for releases.</li>
+      <li><code class="inline">git push origin v1.0</code> publishes the tag; tags are <strong>not</strong> pushed by <code class="inline">git push</code> alone.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Stash changes temporarily</h3>
+    <p class="scenario">Make uncommitted changes, stash them away, switch branches, inspect the stash,
+      then bring the work back.</p>
+<pre class="code">git checkout feature-new-feature
+echo "Uncommitted test notes" &gt;&gt; README.md
+
+git stash               <span class="cmt"># save the dirty working tree, return to a clean state</span>
+git checkout main
+git stash list          <span class="cmt"># show saved stashes</span>
+git stash apply         <span class="cmt"># re-apply the most recent stash onto the working tree</span></pre>
+    <ul class="plain">
+      <li><code class="inline">git stash</code> shelves uncommitted changes so you can switch context with a clean tree.</li>
+      <li><code class="inline">git stash apply</code> keeps the stash in the list; use <code class="inline">git stash pop</code> if you want to apply <strong>and</strong> drop it in one move.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Perform an interactive rebase</h3>
+    <p class="scenario">Create four throwaway commits, then rewrite them — squash some together and reword others.</p>
+<pre class="code">git checkout feature-new-feature
+git commit --allow-empty -m "Temp commit 1"
+git commit --allow-empty -m "Temp commit 2"
+git commit --allow-empty -m "Temp commit 3"
+git commit --allow-empty -m "Temp commit 4"
+
+<span class="cmt"># Start an interactive rebase over the last 4 commits</span>
+git rebase -i HEAD~4</pre>
+    <p>The rebase editor lists the four commits. Change the verb at the start of each line:</p>
+    <table>
+      <thead><tr><th>Action</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td><code>pick</code></td><td>Keep the commit as-is</td></tr>
+        <tr><td><code>squash</code></td><td>Merge this commit into the previous one</td></tr>
+        <tr><td><code>edit</code></td><td>Stop here so you can amend the commit</td></tr>
+      </tbody>
+    </table>
+<pre class="code">pick   &lt;hash&gt; Temp commit 1
+squash &lt;hash&gt; Temp commit 2
+edit   &lt;hash&gt; Temp commit 3
+pick   &lt;hash&gt; Temp commit 4</pre>
+    <p>Save and close the editor to continue. If you marked a commit <code class="inline">edit</code>,
+      amend it and resume:</p>
+<pre class="code"><span class="cmt"># If "edit" is used:</span>
+git commit --amend
+git rebase --continue</pre>
+    <p>If the rewrite collides with later changes, resolve the conflict the same way as in Step 2,
+      stage the file, and continue:</p>
+<pre class="code"><span class="cmt"># Simulate conflict resolution during rebase</span>
+echo "Rebase conflict resolved" &gt; README.md
+git add README.md
+git rebase --continue</pre>
+    <p>Because rebasing <strong>rewrites history</strong>, the remote branch must be overwritten with a force-push:</p>
+<pre class="code"><span class="cmt"># Final step: force push (if remote exists)</span>
+git push origin feature-new-feature --force</pre>
+    <div class="callout">
+      <strong>⚠️ Caution:</strong> force-pushing rewrites the remote branch. Only do it on branches
+      <strong>you</strong> own. Prefer <code class="inline">--force-with-lease</code> over
+      <code class="inline">--force</code> so you don't clobber someone else's pushed work.
+    </div>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    By the end you have a single repo where <code class="inline">git branch</code> lists both
+    <code class="inline">main</code> and <code class="inline">feature-new-feature</code>;
+    <code class="inline">git log --oneline</code> on <code class="inline">main</code> shows the merge-conflict
+    resolution commit; <code class="inline">git tag</code> lists <strong>v1.0</strong> (also on the remote);
+    <code class="inline">git stash list</code> is empty after the apply; and the four
+    <code class="inline">Temp commit</code> entries have been <strong>collapsed/reworded</strong> by the rebase,
+    with the remote <code class="inline">feature-new-feature</code> reflecting the rewritten history.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">lab-advanced-git</code> repo initialized with an initial README commit</li>
+      <li><code class="inline">feature-new-feature</code> branch created, changed, and committed (Step 1)</li>
+      <li>A real merge conflict was produced <strong>and</strong> resolved with a follow-up commit (Step 2)</li>
+      <li>Annotated tag <code class="inline">v1.0</code> created and pushed to the remote (Step 3)</li>
+      <li>Changes stashed, listed, and re-applied across branches (Step 4)</li>
+      <li><code class="inline">git rebase -i HEAD~4</code> completed using <code class="inline">pick</code> / <code class="inline">squash</code> / <code class="inline">edit</code>, then force-pushed (Step 5)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Branches are cheap, isolated lines of work</strong> — <code class="inline">git checkout -b</code>
+        lets you develop a feature without touching <code class="inline">main</code> until you choose to integrate it.</li>
+      <li><strong>A conflict is a question, not an error</strong> — Git pauses at the conflict markers and asks
+        <em>you</em> which version wins; resolving is just editing the file, then <code class="inline">add</code> + <code class="inline">commit</code>.</li>
+      <li><strong>Annotated tags are release markers</strong> — unlike lightweight tags they carry a message and
+        tagger, and they must be pushed explicitly with <code class="inline">git push origin &lt;tag&gt;</code>.</li>
+      <li><strong>Stashing buys a clean tree on demand</strong> — shelve unfinished work to switch context, then
+        <code class="inline">apply</code> (keep) or <code class="inline">pop</code> (apply + drop) it back later.</li>
+      <li><strong>Interactive rebase rewrites history</strong> — <code class="inline">pick</code>/<code class="inline">squash</code>/<code class="inline">edit</code>
+        let you curate commits before sharing, but the new hashes mean any pushed branch needs a (careful) force-push.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

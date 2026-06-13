@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Managing Roles and Claims in an ASP.NET Application — Course 8 · Module 1</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 1 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Managing Roles and Claims in an ASP.NET Application</h1>
+    <p class="lead">
+      Build a small ASP.NET Core <strong>Web API</strong> that authorizes requests two ways: by
+      <strong>role</strong> (<code>Admin</code>) and by <strong>claim</strong> (<code>Department: IT</code>).
+      You'll wire up ASP.NET Identity over an in-memory database, define <strong>authorization policies</strong>,
+      and expose two endpoints that grant or deny access based on a manually-injected identity — then probe them in Postman.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this lab you will be able to implement <strong>role-based</strong> and
+      <strong>claims-based</strong> authorization in an ASP.NET Core Web API using ASP.NET Identity. You'll create a
+      simple API where user information is returned only when the caller carries the right role or claim.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A Web API project named <code class="inline">RoleClaimsApp</code> built from these pieces:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Data/ApplicationDbContext.cs</code></td><td>Identity store — inherits <code>IdentityDbContext</code>, backed by an in-memory DB</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Register Identity, the DbContext, and the role/claims authorization policies</td></tr>
+        <tr><td><code>Controllers/UsersController.cs</code></td><td>Two endpoints: one gated by the <strong><code>Admin</code></strong> role, one by the <strong><code>Department: IT</code></strong> claim</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Request</span> <span class="ar">→</span>
+      <span class="c">UsersController</span> <span class="ar">→</span>
+      <span class="d">ClaimsPrincipal (role / claim check)</span> <span class="ar">→</span>
+      <span class="t">200 OK</span> <span class="ar">or</span> <span class="t">403 Forbidden</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li><a href="https://www.postman.com/">Postman</a> for exercising the endpoints</li>
+      <li>NuGet packages: <code class="inline">Microsoft.AspNetCore.Identity.EntityFrameworkCore</code> and <code class="inline">Microsoft.EntityFrameworkCore.InMemory</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Create a new ASP.NET Core Web API project, move into it, and add the ASP.NET Identity packages.
+      The app will let users retrieve user information based on either <strong>role-based</strong> or <strong>claims-based</strong> authorization.</p>
+<pre class="code">dotnet new webapi -n RoleClaimsApp
+cd RoleClaimsApp
+dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
+dotnet add package Microsoft.EntityFrameworkCore.InMemory</pre>
+    <ul class="plain">
+      <li>Remove any scaffolded sample files (e.g. the weather-forecast example) so that only
+        <code class="inline">Program.cs</code> and <code class="inline">appsettings.json</code> remain to start from.</li>
+      <li>Open <code class="inline">Program.cs</code> — you'll prepare it to register role-based and claims-based authorization in Step 3.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create the application <code>DbContext</code></h3>
+    <p class="scenario">Configure ASP.NET Identity with an in-memory database by registering an
+      <code class="inline">ApplicationDbContext</code> that manages user and role data.</p>
+    <ul class="plain">
+      <li>Create a <code class="inline">Data</code> folder and add a new file <code class="inline">Data/ApplicationDbContext.cs</code>.</li>
+      <li>Define an <code class="inline">ApplicationDbContext</code> class that inherits from <code class="inline">IdentityDbContext</code>.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Data/ApplicationDbContext.cs</span>
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
+namespace RoleClaimsApp.Data;
+
+<span class="cmt">// Identity store wired to an in-memory provider for the lab</span>
+public class ApplicationDbContext : IdentityDbContext&lt;IdentityUser&gt;
+{
+    public ApplicationDbContext(DbContextOptions&lt;ApplicationDbContext&gt; options)
+        : base(options)
+    {
+    }
+}</pre>
+    <p style="margin:12px 0 0">You'll register this context for Identity storage in <code class="inline">Program.cs</code> next.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Configure ASP.NET Identity and authorization policies</h3>
+    <p class="scenario">Open <code class="inline">Program.cs</code> and register services, Identity, and the policies.</p>
+    <ul class="plain">
+      <li>Register ASP.NET Core services, including <strong>controllers</strong>.</li>
+      <li>Configure ASP.NET Identity with the <strong>in-memory</strong> database.</li>
+      <li>Add <strong>role-based</strong> and <strong>claims-based</strong> authorization policies.</li>
+      <li>Ensure the app can perform role and claim checks <strong>without requiring authentication</strong>
+        (we inject the identity manually so endpoints stay reachable from Postman).</li>
+    </ul>
+<pre class="code"><span class="cmt">// Program.cs</span>
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using RoleClaimsApp.Data;
+
+var builder = WebApplication.CreateBuilder(args);
+
+<span class="cmt">// MVC controllers + Swagger</span>
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+<span class="cmt">// ASP.NET Identity backed by an in-memory database</span>
+builder.Services.AddDbContext&lt;ApplicationDbContext&gt;(options =&gt;
+    options.UseInMemoryDatabase("RoleClaimsDb"));
+
+builder.Services
+    .AddIdentity&lt;IdentityUser, IdentityRole&gt;()
+    .AddEntityFrameworkStores&lt;ApplicationDbContext&gt;()
+    .AddDefaultTokenProviders();
+
+<span class="cmt">// Authorization policies: one for the Admin role, one for the Department=IT claim</span>
+builder.Services.AddAuthorization(options =&gt;
+{
+    options.AddPolicy("RequireAdminRole", policy =&gt;
+        policy.RequireRole("Admin"));
+
+    options.AddPolicy("RequireITDepartment", policy =&gt;
+        policy.RequireClaim("Department", "IT"));
+});
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();</pre>
+    <div class="callout">
+      <strong>Note:</strong> because we authorize manually inside the controller, we deliberately
+      <strong>do not</strong> call <code class="inline">app.UseAuthentication()</code> — the endpoints remain anonymous
+      so you can hit them directly from Postman, while the role/claim logic still decides what each one returns.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Implement role-based authorization</h3>
+    <p class="scenario">Add an endpoint that returns a user <strong>only if</strong> the caller has the
+      <code class="inline">Admin</code> role. The controller builds (injects) a <code class="inline">ClaimsPrincipal</code>
+      manually to simulate an authenticated admin, then checks the role.</p>
+    <ul class="plain">
+      <li>Create <code class="inline">Controllers/UsersController.cs</code>.</li>
+      <li>Implement a <code class="inline">GET</code> endpoint that succeeds for an <code class="inline">Admin</code>
+        and returns <strong>403 Forbidden</strong> otherwise.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Controllers/UsersController.cs</span>
+using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
+
+namespace RoleClaimsApp.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController : ControllerBase
+{
+    <span class="cmt">// GET api/users/admin</span>
+    <span class="cmt">// Returns the user only when the (manually injected) identity has the Admin role.</span>
+    [HttpGet("admin")]
+    public IActionResult GetAdminUser()
+    {
+        <span class="cmt">// Simulate an authenticated user that carries the Admin role</span>
+        var identity = new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.Name, "alice"),
+            new Claim(ClaimTypes.Role, "Admin")
+        }, authenticationType: "Manual");
+
+        var user = new ClaimsPrincipal(identity);
+
+        if (!user.IsInRole("Admin"))
+        {
+            return Forbid();
+        }
+
+        return Ok(new
+        {
+            Message = "Access granted: user has the Admin role.",
+            User = user.Identity?.Name
+        });
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Implement claims-based authorization</h3>
+    <p class="scenario">Add a second endpoint that returns a user <strong>only if</strong> they carry a
+      <code class="inline">Department: IT</code> claim. Inject the identity manually to simulate an authenticated user
+      with a <code class="inline">Department</code> claim, then verify the claim.</p>
+<pre class="code">    <span class="cmt">// GET api/users/it</span>
+    <span class="cmt">// Returns the user only when the (manually injected) identity has Department=IT.</span>
+    [HttpGet("it")]
+    public IActionResult GetItUser()
+    {
+        <span class="cmt">// Simulate an authenticated user that carries a Department claim</span>
+        var identity = new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.Name, "bob"),
+            new Claim("Department", "IT")
+        }, authenticationType: "Manual");
+
+        var user = new ClaimsPrincipal(identity);
+
+        var hasItClaim = user.HasClaim("Department", "IT");
+        if (!hasItClaim)
+        {
+            return Forbid();
+        }
+
+        return Ok(new
+        {
+            Message = "Access granted: user has the Department=IT claim.",
+            User = user.Identity?.Name
+        });
+    }</pre>
+    <div class="callout">
+      <strong>Note:</strong> add this method <strong>inside</strong> the <code class="inline">UsersController</code>
+      class from Step 4 (just below <code class="inline">GetAdminUser</code>). Flip the role or claim values to watch the
+      endpoints fall through to <code class="inline">Forbid()</code> and return <strong>403</strong>.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Test the endpoints with Postman</h3>
+    <p class="scenario">Start the application and exercise both endpoints — no authentication headers required.</p>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Open <strong>Postman</strong>.</li>
+      <li>Send a <code class="inline">GET</code> to the <strong>role-based</strong> endpoint:
+        <code class="inline">http://localhost:5000/api/users/admin</code> and observe the response.</li>
+      <li>Send a <code class="inline">GET</code> to the <strong>claims-based</strong> endpoint:
+        <code class="inline">http://localhost:5000/api/users/it</code> and observe the response.</li>
+      <li>Confirm access is <strong>granted</strong> (200) or <strong>denied</strong> (403) according to the role and claim.</li>
+    </ul>
+    <div class="callout">
+      <strong>Tip:</strong> use the port shown in your console output (often
+      <code class="inline">http://localhost:5000</code> or an <code class="inline">https://localhost:7xxx</code> URL).
+      Swagger is also available at <code class="inline">/swagger</code> in Development.
+    </div>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Both endpoints return <strong>200 OK</strong> with a success message, because the injected identities satisfy
+    their checks: <code class="inline">/api/users/admin</code> confirms the <strong>Admin role</strong> and
+    <code class="inline">/api/users/it</code> confirms the <strong><code>Department: IT</code></strong> claim. Remove the
+    matching role or claim from the injected identity and the same endpoint responds with <strong>403 Forbidden</strong>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">RoleClaimsApp</code> Web API project created with the Identity + EF Core InMemory packages added</li>
+      <li><code class="inline">Data/ApplicationDbContext.cs</code> inherits <code class="inline">IdentityDbContext</code> and is registered with the in-memory database</li>
+      <li><code class="inline">Program.cs</code> registers controllers, Identity, and the <code class="inline">RequireAdminRole</code> / <code class="inline">RequireITDepartment</code> policies</li>
+      <li><code class="inline">UsersController</code> exposes a <strong>role-gated</strong> endpoint (<code class="inline">/api/users/admin</code>) and a <strong>claim-gated</strong> endpoint (<code class="inline">/api/users/it</code>)</li>
+      <li>Each endpoint returns success for a matching identity and <strong>403 Forbidden</strong> otherwise</li>
+      <li><code class="inline">dotnet run</code> serves the app and both endpoints respond correctly in Postman</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Roles vs. claims</strong> — a <em>role</em> is a coarse group label (<code class="inline">Admin</code>);
+        a <em>claim</em> is a granular key/value statement about the user (<code class="inline">Department: IT</code>).
+        Roles are really just a special claim, but modeling fine-grained access with claims scales better than multiplying roles.</li>
+      <li><strong>Policy-based authorization</strong> — <code class="inline">AddAuthorization</code> lets you name reusable
+        rules (<code class="inline">RequireRole</code>, <code class="inline">RequireClaim</code>) once and apply them anywhere,
+        instead of scattering literal role/claim checks across controllers.</li>
+      <li><strong><code class="inline">ClaimsPrincipal</code> is the identity</strong> — every authorization decision reads from
+        the principal's claims; <code class="inline">IsInRole(...)</code> and <code class="inline">HasClaim(...)</code> are simply
+        queries over that claim set.</li>
+      <li><strong>ASP.NET Identity over EF Core</strong> — <code class="inline">IdentityDbContext</code> provides the user/role
+        schema, and the in-memory provider gives a zero-setup store that's ideal for labs (swap it for SQL Server in production).</li>
+      <li><strong>Manual identity injection is a teaching shortcut</strong> — real apps authenticate first
+        (<code class="inline">UseAuthentication</code>) so <code class="inline">HttpContext.User</code> is populated from a token or
+        cookie; here we fabricate the principal to isolate the <em>authorization</em> logic.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

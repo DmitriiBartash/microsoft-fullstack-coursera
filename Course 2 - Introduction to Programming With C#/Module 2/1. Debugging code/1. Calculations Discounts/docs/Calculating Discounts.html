@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calculating Discounts — Course 2 · Module 2</title>
+<style>
+  :root {
+    --hdr: #7c3aed ;      /* header / create  */
+    --pld: #c026d3 ;      /* payload / decode */
+    --sig: #6366f1 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 2 — Introduction to Programming With C# · Module 2 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Calculating Discounts</h1>
+    <p class="lead">
+      Debug a small C# method that should apply a percentage discount to a product price but
+      instead returns the wrong number. The bug is <strong>logical</strong>, not a crash: the code
+      compiles and runs, yet the math is wrong. You'll diagnose <em>why</em>, then fix it.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Practice basic debugging techniques — setting a breakpoint, inspecting variable
+      values, and stepping through code — to find and fix a <strong>logical error</strong> in an
+      <code class="inline">ApplyDiscount</code> method, and harden it with input validation so it
+      fails fast on bad data.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">🧾</span> What you'll produce</h2>
+  <div class="card">
+    <p>A corrected <code class="inline">Program.cs</code> in your console application whose
+      <code class="inline">ApplyDiscount</code> method:</p>
+    <table>
+      <thead><tr><th>Concern</th><th>Behaviour</th></tr></thead>
+      <tbody>
+        <tr><td>Discount math</td><td>Treats <code>discountPercentage</code> as a <strong>percentage</strong>, not a flat amount</td></tr>
+        <tr><td>Result for <code>(1000, 15)</code></td><td>Prints <code>The final price is: 850</code></td></tr>
+        <tr><td>Bad input</td><td>Throws <code>ArgumentException</code> for a negative price or a percentage outside 0–100</td></tr>
+        <tr><td>Failure mode</td><td>Wrapped in <code>try/catch</code> so the program reports the error instead of crashing</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>The Visual Studio Code <strong>console application</strong> you created at the start of the course</li>
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Clear any existing code out of <code class="inline">Program.cs</code> before pasting in the snippets below</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🔍</span> Walkthrough</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Read the broken code</h3>
+    <p class="scenario">The method below is <em>meant</em> to calculate the final price after applying a
+      discount, but it produces the wrong output:</p>
+<pre class="code">public class Program
+{
+    <span class="cmt">// Method to calculate the final price after a discount</span>
+    public static double ApplyDiscount(double price, double discountPercentage)
+    {
+        return price - discountPercentage;
+    }
+
+    public static void Main()
+    {
+        double finalPrice = ApplyDiscount(1000, 15);
+        Console.WriteLine("The final price is: " + finalPrice);
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Reproduce the symptom</h3>
+    <p class="scenario">Run it. For <code class="inline">ApplyDiscount(1000, 15)</code> you expect a 15 %
+      discount → <code class="inline">850</code>, but the program prints:</p>
+<pre class="code">The final price is: 985</pre>
+    <p style="margin:0">The code <strong>compiles and runs</strong> — there's no exception. That tells you this
+      is a <em>logical</em> error (wrong result), not a <em>syntax</em> or <em>runtime</em> error.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Inspect with the debugger</h3>
+    <p class="scenario">Set a breakpoint on the <code class="inline">return</code> line, then run with
+      debugging (F5) and <strong>step through</strong>:</p>
+    <ul class="plain">
+      <li>Hover over <code class="inline">price</code> → <code class="inline">1000</code></li>
+      <li>Hover over <code class="inline">discountPercentage</code> → <code class="inline">15</code></li>
+      <li>The expression evaluated is <code class="inline">1000 - 15</code>, which is <code class="inline">985</code></li>
+    </ul>
+    <p style="margin:0">Inspecting the values makes the mistake obvious: <code class="inline">15</code> is being
+      subtracted as if it were <strong>15 currency units</strong>, when it actually means <strong>15 percent</strong>.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Fix the logic</h3>
+    <p class="scenario">A percentage discount has to be converted into an <em>amount</em> before it is
+      subtracted:</p>
+<pre class="code">double discountAmount = price * (discountPercentage / 100);
+return price - discountAmount;</pre>
+    <p style="margin:0">Now <code class="inline">1000 * (15 / 100)</code> = <code class="inline">150</code>, and
+      <code class="inline">1000 - 150</code> = <strong><code class="inline">850</code></strong> — the expected result.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Harden and confirm</h3>
+    <p class="scenario">While you're here, guard against nonsensical input so the method <em>fails fast</em>.
+      Here is the complete corrected program:</p>
+<pre class="code">public class Program
+{
+    <span class="cmt">// Method to calculate the final price after applying a percentage discount</span>
+    public static double ApplyDiscount(double price, double discountPercentage)
+    {
+        <span class="cmt">// Error checks</span>
+        if (price &lt; 0)
+        {
+            throw new ArgumentException("Price cannot be negative.");
+        }
+        if (discountPercentage &lt; 0 || discountPercentage &gt; 100)
+        {
+            throw new ArgumentException("Discount percentage must be between 0 and 100.");
+        }
+
+        <span class="cmt">// Calculate the discount</span>
+        double discountAmount = price * (discountPercentage / 100);
+        return price - discountAmount;
+    }
+
+    public static void Main()
+    {
+        try
+        {
+            double finalPrice = ApplyDiscount(1000, 15); <span class="cmt">// Valid input</span>
+            Console.WriteLine("The final price is: " + finalPrice);
+
+            <span class="cmt">// Uncomment to test error handling:</span>
+            <span class="cmt">// double invalid = ApplyDiscount(-200, 10);   // Negative price</span>
+            <span class="cmt">// double invalid = ApplyDiscount(500, 150);   // Invalid discount percentage</span>
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine("Error: " + ex.Message);
+        }
+    }
+}</pre>
+    <p>Run it again:</p>
+<pre class="code">dotnet run</pre>
+    <p style="margin:0">You should now see <code class="inline">The final price is: 850</code>. Uncomment either
+      invalid call to watch the <code class="inline">try/catch</code> report the problem cleanly instead of
+      letting the program misbehave.</p>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">🧪</span> Your turn</h2>
+  <div class="card">
+    <p>Make sure you can explain the bug, not just patch it:</p>
+    <ul class="plain">
+      <li><strong>Classify it.</strong> Was this a syntax, runtime, or logical error? Why does that category fit?</li>
+      <li><strong>Predict before you run.</strong> What does <code class="inline">ApplyDiscount(500, 150)</code> do
+        with the error checks in place — and what <em>would</em> it have returned without them?</li>
+      <li><strong>Step it through.</strong> Set a breakpoint and confirm <code class="inline">discountAmount</code>
+        is <code class="inline">150</code> for the <code class="inline">(1000, 15)</code> call before the method returns.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">🌟</span> What good looks like</h2>
+  <div class="callout ok">
+    The program prints <strong>The final price is: 850</strong> for <code class="inline">ApplyDiscount(1000, 15)</code>,
+    you can point to the exact line that was wrong (<code class="inline">return price - discountPercentage;</code>) and
+    state the fix, and invalid input raises a clear <code class="inline">ArgumentException</code> that the
+    <code class="inline">try/catch</code> turns into a friendly <code class="inline">Error: …</code> message rather than a crash.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Old code removed from <code class="inline">Program.cs</code> and the corrected version pasted in</li>
+      <li>The discount is computed as <code class="inline">price * (discountPercentage / 100)</code>, not a flat subtraction</li>
+      <li><code class="inline">ApplyDiscount(1000, 15)</code> outputs <code class="inline">850</code></li>
+      <li>Negative price and out-of-range percentage both throw <code class="inline">ArgumentException</code></li>
+      <li><code class="inline">dotnet run</code> completes without an unhandled exception on valid input</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Logical errors are silent</strong> — the code runs to completion and still produces the wrong
+        answer, so the compiler can't catch them; you find them by checking results against expectations.</li>
+      <li><strong>Breakpoints + variable inspection</strong> — pausing on the suspect line and reading the live
+        values (<code class="inline">price</code>, <code class="inline">discountPercentage</code>,
+        <code class="inline">discountAmount</code>) turns a mystery into an obvious off-by-meaning mistake.</li>
+      <li><strong>Units must match the math</strong> — a percentage has to be converted to an amount
+        (<code class="inline">× percentage / 100</code>) before it can be subtracted from a price.</li>
+      <li><strong>Fail fast with validation</strong> — rejecting a negative price or an out-of-range percentage up
+        front, via <code class="inline">ArgumentException</code>, stops bad data from silently producing nonsense.</li>
+      <li><strong><code class="inline">try/catch</code> for graceful failure</strong> — wrapping the call lets the
+        program <em>report</em> an error instead of terminating abruptly, which is far easier to debug and to use.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

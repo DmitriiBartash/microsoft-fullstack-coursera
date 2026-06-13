@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Writing Simple Programs in C# — Course 2 · Module 2</title>
+<style>
+  :root {
+    --hdr: #7c3aed ;      /* header / create  */
+    --pld: #c026d3 ;      /* payload / decode */
+    --sig: #6366f1 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 2 — Introduction to Programming With C# · Module 2 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Writing Simple Programs in C#</h1>
+    <p class="lead">
+      Write four small C# console programs that practise the building blocks of the language:
+      a <code>Calculator</code> class with an <code>Add</code> method, a <code>Main</code> method
+      that runs it, a <code>for</code> loop that prints numbers, and a routine that reads and
+      greets the user. Then combine them into one menu-driven console app you can run end-to-end.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Practise the fundamentals of C# — <strong>classes</strong>, <strong>methods</strong>,
+      <strong>variables</strong>, <strong>loops</strong>, and <strong>console input/output</strong> — by writing
+      four short programs and then assembling them into a single runnable application.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A console project named <code class="inline">SimplePrograms</code> that grows across four exercises:</p>
+    <table>
+      <thead><tr><th>Class</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Calculator</code></td><td>Add two integers and return the result (<code>Add</code>)</td></tr>
+        <tr><td><code>NumberDisplay</code></td><td>Print the numbers 1 to 10 with a <code>for</code> loop (<code>DisplayNumbers</code>)</td></tr>
+        <tr><td><code>UserInput</code></td><td>Prompt for a name and print a greeting (<code>GreetUser</code>)</td></tr>
+        <tr><td><code>SimplePrograms</code></td><td><code>Main</code> — wire everything together behind a simple menu</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Main</span> <span class="ar">→</span>
+      <span class="c">GreetUser()</span> <span class="ar">→</span>
+      <span class="t">menu</span> <span class="ar">→</span>
+      <span class="d">Add() / DisplayNumbers()</span> <span class="ar">→</span>
+      <span class="ar">Console output</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>The console application you created at the start of the course (you will paste each
+        snippet into its <code class="inline">Program.cs</code>)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Creating a simple calculator</h3>
+    <p class="scenario">Create a simple calculator that performs basic arithmetic. Define a class called
+      <code class="inline">Calculator</code> and write a method called <code class="inline">Add</code> that
+      takes two numbers and returns their sum.</p>
+<pre class="code">class Calculator
+{
+    <span class="cmt">// Adds two integers and returns the result</span>
+    public static int Add(int a, int b)
+    {
+        return a + b;
+    }
+}</pre>
+    <ul class="plain">
+      <li>The <code class="inline">Add</code> method is <code class="inline">static</code>, so you can call it as
+        <code class="inline">Calculator.Add(...)</code> without creating an instance.</li>
+      <li>It takes two <code class="inline">int</code> parameters and returns an <code class="inline">int</code>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Executing the calculator program</h3>
+    <p class="scenario">Write a <code class="inline">Main</code> method to run the calculator. Assign values to two
+      numbers, call <code class="inline">Add</code>, and print the result with <code class="inline">Console.WriteLine</code>.</p>
+<pre class="code">class Calculator
+{
+    public static int Add(int a, int b)
+    {
+        return a + b;
+    }
+
+    static void Main()
+    {
+        int number1 = 8;
+        int number2 = 5;
+
+        int result = Add(number1, number2);
+        Console.WriteLine("The sum is: " + result);
+    }
+}</pre>
+    <div class="callout">
+      To check your answer, use the Visual Studio Code console application you created at the start of the course.
+      Paste your code into the <code class="inline">Program.cs</code> file in that application (be sure to delete
+      any existing code first). If you receive an error when you run the code, go to the reading on the next page
+      to compare your code to the correct answer.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Creating a loop to display numbers</h3>
+    <p class="scenario">Write a program that uses a loop to display the numbers from 1 to 10. Define a class called
+      <code class="inline">NumberDisplay</code> with a method <code class="inline">DisplayNumbers</code> that uses a
+      <code class="inline">for</code> loop, and call it from <code class="inline">Main</code>.</p>
+<pre class="code">class NumberDisplay
+{
+    <span class="cmt">// Prints the numbers 1 through 10</span>
+    public static void DisplayNumbers()
+    {
+        Console.WriteLine("Numbers from 1 to 10:");
+        for (int i = 1; i &lt;= 10; i++)
+        {
+            Console.WriteLine(i);
+        }
+    }
+
+    static void Main()
+    {
+        DisplayNumbers();
+    }
+}</pre>
+    <ul class="plain">
+      <li><code class="inline">i</code> starts at <code class="inline">1</code>, the loop continues while
+        <code class="inline">i &lt;= 10</code>, and <code class="inline">i++</code> increases it by one each pass —
+        so the body runs exactly ten times.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Handling user input</h3>
+    <p class="scenario">Write a program that interacts with the user: prompt for their name and greet them. Define a
+      class called <code class="inline">UserInput</code> with a method <code class="inline">GreetUser</code> that reads
+      input with <code class="inline">Console.ReadLine</code> and prints a greeting.</p>
+<pre class="code">class UserInput
+{
+    <span class="cmt">// Asks for the user's name and greets them</span>
+    public static void GreetUser()
+    {
+        Console.Write("Enter your name: ");
+        string? name = Console.ReadLine();
+        Console.WriteLine("Hello, " + name + "!");
+    }
+
+    static void Main()
+    {
+        GreetUser();
+    }
+}</pre>
+    <ul class="plain">
+      <li><code class="inline">Console.Write</code> keeps the cursor on the same line so the user types next to the prompt.</li>
+      <li><code class="inline">Console.ReadLine</code> returns the text the user typed (declared
+        <code class="inline">string?</code> because it can be <code class="inline">null</code> if the input stream ends).</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Putting it all together</h3>
+    <p class="scenario">Combine the three classes into one program with a small menu. The full listing brings the
+      calculator, the number loop, and the greeting together, and adds an <code class="inline">InputHelper</code> class
+      to read integers safely and pause between actions.</p>
+<pre class="code">namespace SimplePrograms
+{
+    class Calculator
+    {
+        public static int Add(int a, int b)
+        {
+            return a + b;
+        }
+    }
+
+    class InputHelper
+    {
+        public static bool TryReadInteger(string prompt, out int number)
+        {
+            Console.Write(prompt);
+            string? input = Console.ReadLine();
+            return int.TryParse(input, out number);
+        }
+
+        public static void WaitForKey()
+        {
+            Console.WriteLine("Press Enter to continue...");
+            Console.ReadLine();
+        }
+    }
+
+    class NumberDisplay
+    {
+        public static void DisplayNumbers()
+        {
+            Console.WriteLine("Numbers from 1 to 10:");
+            for (int i = 1; i &lt;= 10; i++)
+            {
+                Console.WriteLine(i);
+            }
+        }
+    }
+
+    class UserInput
+    {
+        public static void GreetUser()
+        {
+            Console.Write("Enter your name: ");
+            string? name = Console.ReadLine();
+            Console.WriteLine("Hello, " + name + "!");
+        }
+    }
+
+    class SimplePrograms
+    {
+        static void Main()
+        {
+            Console.WriteLine("--- Welcome to Simple Programs ---");
+            UserInput.GreetUser();
+            while (true)
+            {
+                Console.WriteLine("\n--- Main Menu ---");
+                Console.WriteLine("1. Add two numbers");
+                Console.WriteLine("2. Display numbers from 1 to 10");
+                Console.WriteLine("3. Exit");
+                Console.Write("Choose an option: ");
+                string? choice = Console.ReadLine();
+                if (choice == "1")
+                {
+                    if (!InputHelper.TryReadInteger("Enter the first number: ", out int number1))
+                    {
+                        Console.WriteLine("Invalid input.");
+                        continue;
+                    }
+                    if (!InputHelper.TryReadInteger("Enter the second number: ", out int number2))
+                    {
+                        Console.WriteLine("Invalid input.");
+                        continue;
+                    }
+                    int result = Calculator.Add(number1, number2);
+                    Console.WriteLine("The sum is: " + result);
+                    InputHelper.WaitForKey();
+                }
+                else if (choice == "2")
+                {
+                    NumberDisplay.DisplayNumbers();
+                    InputHelper.WaitForKey();
+                }
+                else if (choice == "3")
+                {
+                    Console.WriteLine("Goodbye!");
+                    break;
+                }
+                else
+                {
+                    Console.WriteLine("Invalid option. Please choose 1, 2 or 3.");
+                }
+            }
+        }
+    }
+}</pre>
+    <ul class="plain">
+      <li>Paste this into <code class="inline">Program.cs</code> (clearing any existing code first) and run it with
+        <code class="inline">dotnet run</code>.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The program greets you by name, then shows a menu. Choosing <strong>1</strong> adds two numbers you type,
+    <strong>2</strong> prints the numbers 1 to 10, and <strong>3</strong> exits.
+  </div>
+<pre class="code">--- Welcome to Simple Programs ---
+Enter your name: Ada
+Hello, Ada!
+
+--- Main Menu ---
+1. Add two numbers
+2. Display numbers from 1 to 10
+3. Exit
+Choose an option: 1
+Enter the first number: 8
+Enter the second number: 5
+The sum is: 13
+Press Enter to continue...</pre>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">Calculator.Add</code> returns the sum of its two <code class="inline">int</code> arguments</li>
+      <li>A <code class="inline">Main</code> method assigns two numbers, calls <code class="inline">Add</code>, and prints the result</li>
+      <li><code class="inline">NumberDisplay.DisplayNumbers</code> uses a <code class="inline">for</code> loop to print 1 through 10</li>
+      <li><code class="inline">UserInput.GreetUser</code> reads a name with <code class="inline">Console.ReadLine</code> and prints a greeting</li>
+      <li>The combined <code class="inline">SimplePrograms</code> app runs a menu loop and <code class="inline">dotnet run</code> produces the output above</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Classes and methods</strong> — group related behaviour into a class (<code class="inline">Calculator</code>,
+        <code class="inline">NumberDisplay</code>, <code class="inline">UserInput</code>) and expose it through named methods
+        that take parameters and return values.</li>
+      <li><strong><code class="inline">static</code> members</strong> — <code class="inline">static</code> methods belong to
+        the class itself, so they can be called as <code class="inline">ClassName.Method()</code> without first creating an object.</li>
+      <li><strong>The <code class="inline">for</code> loop</strong> — a counter (<code class="inline">int i = 1</code>), a condition
+        (<code class="inline">i &lt;= 10</code>), and a step (<code class="inline">i++</code>) control exactly how many times the loop body runs.</li>
+      <li><strong>Console I/O</strong> — <code class="inline">Console.Write</code>/<code class="inline">WriteLine</code> send output,
+        <code class="inline">Console.ReadLine</code> reads a line of input; string concatenation with <code class="inline">+</code> builds the messages you display.</li>
+      <li><strong>Validating input</strong> — <code class="inline">int.TryParse</code> safely turns user text into a number and tells you
+        whether it succeeded, so a bad entry never crashes the program.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Activity Practise Deductive Reasoning With Pseudocode — Course 1 · Module 2</title>
+<style>
+  :root {
+    --hdr: #0d9488;      /* header / create  */
+    --pld: #0ea5e9;      /* payload / decode */
+    --sig: #22c55e;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 2 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Practise Deductive Reasoning With Pseudocode</h1>
+    <p class="lead">
+      Turn plain-language problems into algorithms using <strong>deductive reasoning</strong>:
+      state the logical rules (premises), analyse how they relate, draw the control flow that
+      follows, test it against sample inputs, then write the <strong>pseudocode</strong>. You'll
+      walk through two worked problems — classifying a number and checking a senior discount —
+      and then try one of your own.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Practise translating a problem statement into correct algorithm logic by
+      reasoning <em>deductively</em> — moving from a set of stated premises to a guaranteed
+      conclusion — and expressing that conclusion as language-agnostic <strong>pseudocode</strong>
+      built from <code class="inline">If</code> / <code class="inline">Else if</code> /
+      <code class="inline">Else</code> decisions.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">🧩</span> What you'll produce</h2>
+  <div class="card">
+    <p>For each problem, a short written analysis plus a block of pseudocode, following the same
+      five-step reasoning structure:</p>
+    <table>
+      <thead><tr><th>Step</th><th>What you do</th><th>Output</th></tr></thead>
+      <tbody>
+        <tr><td>1. Identify the premises</td><td>List the logical rules the problem gives you</td><td>A set of <code>If … then …</code> rules</td></tr>
+        <tr><td>2. Analyse the premises</td><td>Check how the rules relate (mutually exclusive? exhaustive?)</td><td>A chosen control structure</td></tr>
+        <tr><td>3. Draw a conclusion</td><td>Order the checks into a logical flow</td><td>Branch order</td></tr>
+        <tr><td>4. Test the conclusion</td><td>Trace sample inputs through the flow</td><td>Input → Output pairs</td></tr>
+        <tr><td>5. Write the pseudocode</td><td>Express the flow as readable steps</td><td>Final pseudocode</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">Premises</span> <span class="ar">→</span>
+      <span class="d">Analysis</span> <span class="ar">→</span>
+      <span class="t">Logical flow</span> <span class="ar">→</span>
+      <span class="d">Test cases</span> <span class="ar">→</span>
+      <span class="c">Pseudocode</span>
+    </div>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🚶</span> Walkthrough</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Integers (positive / negative / zero)</h3>
+    <p class="scenario">Write pseudocode for a program that determines whether a number is positive,
+      negative, or zero. Use deductive reasoning to establish the logical flow.</p>
+
+    <h4>1. Identify the premises (logical rules)</h4>
+    <ul class="plain">
+      <li>If a number is greater than <code class="inline">0</code>, it is <strong>positive</strong>.</li>
+      <li>If a number is less than <code class="inline">0</code>, it is <strong>negative</strong>.</li>
+      <li>If a number is equal to <code class="inline">0</code>, it is <strong>zero</strong>.</li>
+    </ul>
+
+    <h4>2. Analyse the premises</h4>
+    <p>These conditions are <strong>mutually exclusive</strong> — a number can only fall into one of
+      the three categories. They are also <strong>exhaustive</strong> — every number is covered. That
+      lets us check them with a single <code class="inline">If</code> /
+      <code class="inline">Else if</code> / <code class="inline">Else</code> chain.</p>
+
+    <h4>3. Draw a conclusion (logical flow)</h4>
+    <ul class="plain">
+      <li>First, check if the number is greater than <code class="inline">0</code> → print <code class="inline">"Positive"</code>.</li>
+      <li>Then check if it is less than <code class="inline">0</code> → print <code class="inline">"Negative"</code>.</li>
+      <li>If neither, it must be <code class="inline">0</code> → print <code class="inline">"Zero"</code>.</li>
+    </ul>
+
+    <h4>4. Test the conclusion</h4>
+    <table>
+      <thead><tr><th>Input</th><th>Output</th></tr></thead>
+      <tbody>
+        <tr><td><code>10</code></td><td><code>Positive</code></td></tr>
+        <tr><td><code>-7</code></td><td><code>Negative</code></td></tr>
+        <tr><td><code>0</code></td><td><code>Zero</code></td></tr>
+      </tbody>
+    </table>
+
+    <h4>5. Pseudocode</h4>
+<pre class="code">Start
+    Prompt user to enter a number
+    Read number
+    If number > 0 then
+        Display "Positive"
+    Else if number < 0 then
+        Display "Negative"
+    Else
+        Display "Zero"
+    End If
+End</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Senior discount</h3>
+    <p class="scenario">Write pseudocode for a program that checks whether a person is eligible for a
+      senior citizen discount. The program takes the person's age as input. If the age is
+      <code class="inline">65</code> or older, print <code class="inline">"Eligible for senior discount"</code>;
+      otherwise, print <code class="inline">"Not eligible for senior discount"</code>.</p>
+
+    <h4>1. Identify the premises (logical rules)</h4>
+    <ul class="plain">
+      <li>If a person's age is <code class="inline">65</code> or older, they are <strong>eligible</strong> for a senior discount.</li>
+      <li>If the age is less than <code class="inline">65</code>, they are <strong>not eligible</strong>.</li>
+    </ul>
+
+    <h4>2. Analyse the premises</h4>
+    <p>There are only <strong>two</strong> mutually exclusive outcomes based on age —
+      <code class="inline">65</code> and above → eligible; below <code class="inline">65</code> → not
+      eligible. A single <code class="inline">If</code> / <code class="inline">Else</code> is enough; no
+      <code class="inline">Else if</code> is needed. Note the boundary: <code class="inline">65</code>
+      itself is <strong>eligible</strong> because the rule uses <code class="inline">&gt;=</code>.</p>
+
+    <h4>3. Draw a conclusion (logical flow)</h4>
+    <ul class="plain">
+      <li>If <code class="inline">age &gt;= 65</code> → print <code class="inline">"Eligible for senior discount"</code>.</li>
+      <li>Else → print <code class="inline">"Not eligible for senior discount"</code>.</li>
+    </ul>
+
+    <h4>4. Test the conclusion</h4>
+    <table>
+      <thead><tr><th>Input</th><th>Output</th></tr></thead>
+      <tbody>
+        <tr><td><code>70</code></td><td><code>Eligible</code></td></tr>
+        <tr><td><code>50</code></td><td><code>Not eligible</code></td></tr>
+        <tr><td><code>65</code></td><td><code>Eligible</code></td></tr>
+      </tbody>
+    </table>
+
+    <h4>5. Pseudocode</h4>
+<pre class="code">Start
+    Prompt user to enter age
+    Read age
+    If age >= 65 then
+        Display "Eligible for senior discount"
+    Else
+        Display "Not eligible for senior discount"
+    End If
+End</pre>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">✍️</span> Your turn</h2>
+  <div class="card">
+    <p>Pick a new problem and run the <strong>same five steps</strong> end to end. A good candidate:</p>
+    <div class="callout">
+      <strong>Grade classifier</strong> — read a test score from <code class="inline">0</code> to
+      <code class="inline">100</code> and print the letter grade:
+      <code class="inline">90+ → "A"</code>, <code class="inline">80–89 → "B"</code>,
+      <code class="inline">70–79 → "C"</code>, <code class="inline">60–69 → "D"</code>,
+      below <code class="inline">60 → "F"</code>.
+    </div>
+    <p>As you work it:</p>
+    <ul class="plain">
+      <li>Write the premises as explicit <code class="inline">If … then …</code> rules, one per grade band.</li>
+      <li>Confirm the bands are mutually exclusive and exhaustive, then order your
+        <code class="inline">Else if</code> checks from highest to lowest so each branch only handles its own range.</li>
+      <li>Choose <strong>boundary</strong> test inputs on purpose — e.g. <code class="inline">90</code>,
+        <code class="inline">89</code>, <code class="inline">60</code>, <code class="inline">59</code> — not just values in the middle of a band.</li>
+      <li>Finish with pseudocode in the same <code class="inline">Start … End</code> /
+        <code class="inline">If / Else if / Else</code> style.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">🟢</span> What good looks like</h2>
+  <div class="callout ok">
+    Every premise from the problem statement appears as an explicit rule before any code; the chosen
+    control structure matches the analysis (<code class="inline">If / Else if / Else</code> for three or
+    more cases, plain <code class="inline">If / Else</code> for exactly two); branch <strong>order</strong>
+    is deliberate and boundary values (like <code class="inline">0</code> or <code class="inline">65</code>)
+    land in the intended branch; test cases cover each outcome <strong>and</strong> the boundaries as
+    input → output pairs; and the final pseudocode is language-agnostic and readable, with clear
+    <code class="inline">Start</code> / <code class="inline">End</code> and a closed <code class="inline">End If</code>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Premises listed as explicit <code class="inline">If … then …</code> rules for each problem</li>
+      <li>Premises analysed as mutually exclusive / exhaustive, and a control structure chosen</li>
+      <li>Logical flow drawn with a deliberate branch order</li>
+      <li>Conclusion tested with sample inputs, including boundary values, as input → output pairs</li>
+      <li>Final pseudocode written in <code class="inline">Start … End</code> form with
+        <code class="inline">If</code> / <code class="inline">Else if</code> / <code class="inline">Else</code> and <code class="inline">End If</code></li>
+      <li>"Your turn" grade-classifier problem worked through the same five steps</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Deductive reasoning</strong> — start from stated premises (the rules) and follow them
+        to a conclusion that <em>must</em> be true; this is exactly how branch logic is derived.</li>
+      <li><strong>Mutually exclusive vs. exhaustive</strong> — recognising that cases can't overlap and
+        that they cover every input tells you whether you need <code class="inline">Else if</code> chains
+        and a final <code class="inline">Else</code>.</li>
+      <li><strong>Branch order matters</strong> — with <code class="inline">If</code> /
+        <code class="inline">Else if</code> / <code class="inline">Else</code>, only the first matching
+        condition runs, so ordering (and the final catch-all <code class="inline">Else</code>) determines correctness.</li>
+      <li><strong>Boundary conditions</strong> — the comparison operator decides the edge case:
+        <code class="inline">&gt;= 65</code> includes <code class="inline">65</code>, while
+        <code class="inline">&gt; 65</code> would exclude it; always test the boundary.</li>
+      <li><strong>Pseudocode is language-agnostic</strong> — it captures the <em>logic</em> (prompt, read,
+        decide, display) independent of syntax, so it translates cleanly into any programming language.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

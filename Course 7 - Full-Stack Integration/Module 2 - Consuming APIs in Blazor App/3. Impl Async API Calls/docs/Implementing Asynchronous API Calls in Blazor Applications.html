@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing Asynchronous API Calls in Blazor Applications — Course 7 · Module 2</title>
+<style>
+  :root {
+    --hdr: #db2777;      /* header / create  */
+    --pld: #9333ea;      /* payload / decode */
+    --sig: #ec4899;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 2 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Asynchronous API Calls in Blazor Applications</h1>
+    <p class="lead">
+      Build a Blazor app that <strong>fetches users from a public REST API</strong> without blocking
+      the UI. You'll wire up <code>HttpClient</code>, model the JSON, call the API with
+      <code>async</code>/<code>await</code>, show a <strong>loading indicator</strong> while data is in
+      flight, <strong>handle errors</strong> gracefully, and render the results in a live-updating table.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity, you will be able to manage <strong>asynchronous API
+      calls</strong> in a Blazor application — fetch data with <code class="inline">Task</code>/<code class="inline">await</code>,
+      display <strong>loading states</strong>, <strong>handle errors</strong> gracefully, and render the
+      fetched data in a table that updates on demand.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A Blazor project named <code class="inline">AsyncApi</code> that calls the public
+      <a href="https://jsonplaceholder.typicode.com/users">JSONPlaceholder</a> API:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Program.cs</code></td><td>Register <code class="inline">HttpClient</code> in DI so components can request it</td></tr>
+        <tr><td><code>Models/User.cs</code></td><td>Strongly-typed shape of the JSON returned by the API</td></tr>
+        <tr><td><code>Pages/FetchUsers.razor</code></td><td>The page: button, loading indicator, error message, results table</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Click</span> <span class="ar">→</span>
+      <span class="c">FetchUsers()</span> <span class="ar">→</span>
+      <span class="d">HttpClient.GetFromJsonAsync</span> <span class="ar">→</span>
+      <span class="t">List&lt;User&gt;</span> <span class="ar">→</span>
+      <span class="ar">table re-renders</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>Internet access (the lab calls a public API at <code class="inline">https://jsonplaceholder.typicode.com</code>)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Configure a Blazor application in VS Code</h3>
+    <p class="scenario">Set up the Blazor application as the foundation for this activity.</p>
+    <ul class="plain">
+      <li>Open Visual Studio Code and navigate to the folder where you keep your projects.</li>
+      <li>Open the terminal in VS Code with <code class="inline">Ctrl + ~</code>.</li>
+      <li>Create the front-end project:</li>
+    </ul>
+<pre class="code">dotnet new blazor -n AsyncApi</pre>
+    <p>This creates a Blazor project in a folder named <code class="inline">AsyncApi</code>.</p>
+    <ul class="plain">
+      <li>Open the project in VS Code:</li>
+    </ul>
+<pre class="code">code AsyncApi</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and <strong>register <code class="inline">HttpClient</code></strong> so components can inject it:</li>
+    </ul>
+<pre class="code">builder.Services.AddHttpClient();</pre>
+    <ul class="plain">
+      <li>Confirm the app runs:</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+    <p>This serves the app and opens it in a browser — verify the default Blazor app loads.</p>
+    <ul class="plain">
+      <li>Create a new Razor component named <code class="inline">FetchUsers.razor</code> in the
+        <code class="inline">Pages</code> folder (you'll fill it in over the next steps).</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Define the <code>User</code> class</h3>
+    <p class="scenario">Create a class that defines the structure of the user data fetched from the API.
+      The JSONPlaceholder payload uses lower-case JSON names and a nested <code class="inline">address</code>
+      object, so map those with <code class="inline">[JsonPropertyName]</code>.</p>
+    <ul class="plain">
+      <li>Add a folder named <code class="inline">Models</code> in the root of the project.</li>
+      <li>Create a file named <code class="inline">User.cs</code> inside it:</li>
+    </ul>
+<pre class="code"><span class="cmt">// Models/User.cs</span>
+using System.Text.Json.Serialization;
+
+namespace AsyncApi.Models;
+
+public class User
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("address")]
+    public Address? Address { get; set; }
+}
+
+public class Address
+{
+    [JsonPropertyName("street")]
+    public string Street { get; set; } = string.Empty;
+
+    [JsonPropertyName("city")]
+    public string City { get; set; } = string.Empty;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement asynchronous API calls</h3>
+    <p class="scenario">Fetch user data using asynchronous methods. In <code class="inline">FetchUsers.razor</code>,
+      inject the <code class="inline">HttpClient</code> service and create a method that retrieves data from
+      <code class="inline">https://jsonplaceholder.typicode.com/users</code> with <code class="inline">Task</code>
+      and <code class="inline">await</code>, storing the result in a <code class="inline">List&lt;User&gt;</code>.</p>
+<pre class="code">@page "/fetchusers"
+@using AsyncApi.Models
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+&lt;h3&gt;Users&lt;/h3&gt;
+
+@code {
+    private List&lt;User&gt;? users;
+
+    private async Task FetchUsersAsync()
+    {
+        users = await Http.GetFromJsonAsync&lt;List&lt;User&gt;&gt;(
+            "https://jsonplaceholder.typicode.com/users");
+    }
+}</pre>
+    <div class="callout">
+      <code class="inline">GetFromJsonAsync&lt;T&gt;</code> issues the GET request, awaits the response, and
+      deserializes the JSON body straight into your <code class="inline">List&lt;User&gt;</code> — all without
+      blocking the UI thread.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Add loading and error states</h3>
+    <p class="scenario">Handle the loading state and errors gracefully during the API call. Add a
+      <code class="inline">bool</code> to track loading and a <code class="inline">string?</code> to hold any
+      error message, then wrap the call in <code class="inline">try/catch/finally</code>.</p>
+<pre class="code">@code {
+    private List&lt;User&gt;? users;
+    private bool isLoading = false;
+    private string? errorMessage;
+
+    private async Task FetchUsersAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            users = await Http.GetFromJsonAsync&lt;List&lt;User&gt;&gt;(
+                "https://jsonplaceholder.typicode.com/users");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load users: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}</pre>
+    <ul class="plain">
+      <li>Setting <code class="inline">isLoading = true</code> before the <code class="inline">await</code> lets the markup show a spinner/message.</li>
+      <li><code class="inline">catch</code> captures any network or deserialization failure into <code class="inline">errorMessage</code>.</li>
+      <li><code class="inline">finally</code> guarantees the loading flag is cleared whether the call succeeds or fails.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Display retrieved data in a table</h3>
+    <p class="scenario">Add a button labeled <strong>Fetch New Users</strong> to trigger the call, then render
+      the data in a table that updates dynamically. Conditionally show the loading indicator, the error
+      message, or the results.</p>
+<pre class="code">@page "/fetchusers"
+@using AsyncApi.Models
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+&lt;h3&gt;Users&lt;/h3&gt;
+
+&lt;button class="btn btn-primary" @onclick="FetchUsersAsync" disabled="@isLoading"&gt;
+    Fetch New Users
+&lt;/button&gt;
+
+@if (isLoading)
+{
+    &lt;p&gt;&lt;em&gt;Loading users…&lt;/em&gt;&lt;/p&gt;
+}
+else if (errorMessage is not null)
+{
+    &lt;p class="text-danger"&gt;@errorMessage&lt;/p&gt;
+}
+else if (users is not null)
+{
+    &lt;table class="table"&gt;
+        &lt;thead&gt;
+            &lt;tr&gt;
+                &lt;th&gt;Id&lt;/th&gt;
+                &lt;th&gt;Name&lt;/th&gt;
+                &lt;th&gt;Email&lt;/th&gt;
+                &lt;th&gt;City&lt;/th&gt;
+            &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+            @foreach (var user in users)
+            {
+                &lt;tr&gt;
+                    &lt;td&gt;@user.Id&lt;/td&gt;
+                    &lt;td&gt;@user.Name&lt;/td&gt;
+                    &lt;td&gt;@user.Email&lt;/td&gt;
+                    &lt;td&gt;@user.Address?.City&lt;/td&gt;
+                &lt;/tr&gt;
+            }
+        &lt;/tbody&gt;
+    &lt;/table&gt;
+}
+
+@code {
+    private List&lt;User&gt;? users;
+    private bool isLoading = false;
+    private string? errorMessage;
+
+    private async Task FetchUsersAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            users = await Http.GetFromJsonAsync&lt;List&lt;User&gt;&gt;(
+                "https://jsonplaceholder.typicode.com/users");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load users: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}</pre>
+    <div class="callout">
+      Because Blazor re-renders after each <code class="inline">await</code> completes inside an event handler,
+      the table refreshes automatically every time you click the button — no manual
+      <code class="inline">StateHasChanged()</code> needed here.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Test your application</h3>
+    <p class="scenario">Verify the application works as expected for all scenarios.</p>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Navigate to <code class="inline">http://localhost:5000/fetchusers</code> in your browser.</li>
+      <li>Click the <strong>Fetch New Users</strong> button:
+        <ul class="plain">
+          <li>While fetching, a <strong>loading message</strong> is displayed.</li>
+          <li>On success, a <strong>table</strong> of user data is displayed.</li>
+          <li>If an error occurs, an <strong>error message</strong> is displayed.</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Clicking <strong>Fetch New Users</strong> briefly shows "Loading users…", then renders a table of users
+    (Id, Name, Email, City) pulled live from JSONPlaceholder. If the network is unavailable, a red
+    <strong>error message</strong> appears instead — and the button is never permanently stuck disabled.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">AsyncApi</code> Blazor project created and <code class="inline">HttpClient</code> registered in <code class="inline">Program.cs</code></li>
+      <li><code class="inline">Models/User.cs</code> maps the API JSON (<code class="inline">Id</code>, <code class="inline">Name</code>, <code class="inline">Email</code>, <code class="inline">Address</code>)</li>
+      <li><code class="inline">FetchUsers.razor</code> fetches data with <code class="inline">async</code>/<code class="inline">await</code> via <code class="inline">GetFromJsonAsync</code></li>
+      <li>A <code class="inline">bool</code> loading flag and a <code class="inline">string?</code> error message drive the UI</li>
+      <li>A <strong>Fetch New Users</strong> button triggers the call and the table updates dynamically</li>
+      <li>Loading, success (table), and error states all render correctly at <code class="inline">/fetchusers</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Async over blocking</strong> — <code class="inline">Task</code> + <code class="inline">await</code>
+        keep the UI responsive while the HTTP request is in flight; the thread is never blocked waiting on the network.</li>
+      <li><strong>Typed deserialization</strong> — <code class="inline">GetFromJsonAsync&lt;List&lt;User&gt;&gt;</code>
+        maps JSON straight onto C# models, and <code class="inline">[JsonPropertyName]</code> bridges the API's
+        lower-case names to your properties.</li>
+      <li><strong>DI for <code class="inline">HttpClient</code></strong> — registering it once in
+        <code class="inline">Program.cs</code> and injecting it keeps components free of manual lifetime management.</li>
+      <li><strong>Loading &amp; error UX</strong> — a loading flag and an error string (set in
+        <code class="inline">try/catch/finally</code>) let the same component render three distinct states cleanly.</li>
+      <li><strong>Automatic re-render</strong> — Blazor calls <code class="inline">StateHasChanged</code> after an
+        awaited event handler, so the table reflects new data without extra plumbing.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

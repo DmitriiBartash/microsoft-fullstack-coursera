@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Activity Pseudocode — Course 1 · Module 2</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 2 · Lesson 5
+      <span class="pill">You Try It!</span></p>
+    <h1>Activity: Pseudocode</h1>
+    <p class="lead">
+      Practise turning a plain-English problem into <strong>pseudocode</strong> — language-agnostic,
+      step-by-step logic — before writing any real code. You follow a fixed three-part method
+      (<strong>define → identify processes → write pseudocode</strong>) and apply it to two short
+      problems built around the <code>Input → Processing → Output</code> model.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn to translate a problem statement into clear pseudocode by
+      <strong>defining the problem</strong>, <strong>identifying its key processes</strong>, and
+      <strong>expressing the logic</strong> as simple, ordered steps — independent of any
+      programming language.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">📦</span> What you will produce</h2>
+  <div class="card">
+    <p>For each problem, a short worked solution in <strong>three parts</strong>:</p>
+    <table>
+      <thead><tr><th>Part</th><th>What it captures</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1. Define the problem</strong></td><td>A one-sentence restatement of what the program must do</td></tr>
+        <tr><td><strong>2. Identify processes</strong></td><td>The <strong>Input</strong>, <strong>Processing</strong>, and <strong>Output</strong> the problem needs</td></tr>
+        <tr><td><strong>3. Pseudocode</strong></td><td>Ordered, plain steps between <code>Start</code> and <code>End</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Model</h4>
+    <div class="flow">
+      <span class="c">Input</span> <span class="ar">→</span>
+      <span class="d">Processing</span> <span class="ar">→</span>
+      <span class="t">Output</span>
+    </div>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🧭</span> Walkthrough</h2>
+  <p style="margin:0 0 4px">Two problems are worked end-to-end below. Notice how each one follows the
+    <strong>same</strong> define → identify → pseudocode rhythm.</p>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Problem 1 — Calculate Total Marks</h3>
+    <p class="scenario">Write pseudocode for a program that calculates the total marks for a student
+      across three subjects — <strong>Math</strong>, <strong>Science</strong>, and <strong>English</strong>.
+      The program takes the marks for each subject as input, calculates the total, and prints it.</p>
+
+    <h4>1. Define the problem</h4>
+    <p>You need a program that takes the marks for three subjects (Math, Science, English) as input,
+      calculates the total marks, and prints the result.</p>
+
+    <h4>2. Identify key processes</h4>
+    <ul class="plain">
+      <li><strong>Input:</strong> Get marks for Math, Science, and English.</li>
+      <li><strong>Processing:</strong> Add the three marks to compute the total.</li>
+      <li><strong>Output:</strong> Display the total marks.</li>
+    </ul>
+
+    <h4>3. Pseudocode</h4>
+<pre class="code">Start
+    Get Math marks
+    Get Science marks
+    Get English marks
+    Set total to Math marks + Science marks + English marks
+    Print total
+End</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Problem 2 — Greet the User by Name</h3>
+    <p class="scenario">Write pseudocode for a program that takes a user's name as input and greets
+      them with a message that says <code class="inline">"Hello, [name]!"</code>.</p>
+
+    <h4>1. Define the problem</h4>
+    <p>Write a program that asks for the user's name and prints a greeting message in the format:
+      <code class="inline">"Hello, [name]!"</code>.</p>
+
+    <h4>2. Identify key processes</h4>
+    <ul class="plain">
+      <li><strong>Input:</strong> Get the user's name.</li>
+      <li><strong>Processing:</strong> Construct the greeting message.</li>
+      <li><strong>Output:</strong> Display the greeting message.</li>
+    </ul>
+
+    <h4>3. Pseudocode</h4>
+<pre class="code">Start
+    Get user's name
+    Set greeting to "Hello, " + user's name + "!"
+    Print greeting
+End</pre>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">✍️</span> Your turn</h2>
+  <div class="card">
+    <p>Pick a small problem of your own and run it through the <strong>same three-part method</strong>:</p>
+    <ul class="plain">
+      <li><strong>Define the problem</strong> in one clear sentence.</li>
+      <li><strong>Identify the processes</strong> — what is the <em>Input</em>, the <em>Processing</em>, and the <em>Output</em>?</li>
+      <li><strong>Write the pseudocode</strong> as ordered steps wrapped in <code class="inline">Start</code> … <code class="inline">End</code>.</li>
+    </ul>
+    <p style="margin:0">A good practice problem: <em>calculate the average of the three subject marks from
+      Problem 1</em> (reuse the inputs, then divide the total by 3 before printing).</p>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">👍</span> What good looks like</h2>
+  <div class="callout ok">
+    A strong solution restates each problem in <strong>one sentence</strong>, lists
+    <strong>Input / Processing / Output</strong> separately, and expresses language-agnostic steps with
+    plain verbs (<code class="inline">Get</code>, <code class="inline">Set</code>, <code class="inline">Print</code>)
+    wrapped in <code class="inline">Start</code> … <code class="inline">End</code> — so any reader could
+    translate it into the language of their choice.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Problem 1 has all three parts: definition, identified processes, and pseudocode</li>
+      <li>Problem 2 has all three parts: definition, identified processes, and pseudocode</li>
+      <li>Both pseudocode blocks correctly use <code class="inline">Get</code>, <code class="inline">Set</code>, and <code class="inline">Print</code> between <code class="inline">Start</code> and <code class="inline">End</code></li>
+      <li>Total in Problem 1 is the <strong>sum</strong> of the three subject marks</li>
+      <li>Greeting in Problem 2 matches the exact format <code class="inline">"Hello, [name]!"</code></li>
+      <li>You have written and checked one pseudocode solution of your own</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Pseudocode is language-agnostic</strong> — it describes <em>logic</em> in plain steps, so the
+        same solution can be implemented in any programming language.</li>
+      <li><strong>Define before you design</strong> — restating the problem in one sentence clarifies exactly
+        what the program must accomplish before you write a single step.</li>
+      <li><strong>Input → Processing → Output</strong> — almost every small program decomposes into getting
+        data, transforming it, and showing a result; spotting these three stages structures the logic.</li>
+      <li><strong>Plain, ordered actions</strong> — verbs like <code class="inline">Get</code>,
+        <code class="inline">Set</code>, and <code class="inline">Print</code>, one per line between
+        <code class="inline">Start</code> and <code class="inline">End</code>, keep the flow unambiguous.</li>
+      <li><strong>A repeatable method scales</strong> — the same define → identify → write approach works for
+        a two-line greeting or a far larger program.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

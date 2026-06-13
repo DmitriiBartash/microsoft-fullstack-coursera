@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Methods in C# — Course 1 · Module 5</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;     /* header / create  */
+    --pld: #0ea5e9 ;     /* payload / decode */
+    --sig: #22c55e ;     /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 5 · Lesson 2
+      <span class="pill">Activity</span></p>
+    <h1>Methods in C#</h1>
+    <p class="lead">
+      Practice writing <strong>methods</strong> in C# by solving two small geometry problems.
+      Each calculation lives in its own reusable method (<code>CalculateCircleArea</code>,
+      <code>CalculateTrapezoidArea</code>), while <code>Main</code> handles input, calls the
+      method, and prints the result — the core pattern of <em>parameters in, value out</em>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Use methods in C#: their <strong>definition</strong>, <strong>syntax</strong>,
+      and <strong>use cases</strong>. You will write two value-returning methods that each take one or
+      more parameters, then call them from <code class="inline">Main</code> to compute and display the
+      area of a circle and a trapezoid.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A single .NET console project named <code class="inline">MethodsDemo</code> that solves two problems:</p>
+    <table>
+      <thead><tr><th>Problem</th><th>Method</th><th>Parameters</th><th>Returns</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><code>CalculateCircleArea(double radius)</code></td><td><code>radius</code></td><td><code>double</code> area</td></tr>
+        <tr><td>2</td><td><code>CalculateTrapezoidArea(double a, double b, double height)</code></td><td><code>a</code>, <code>b</code>, <code>height</code></td><td><code>double</code> area</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Main</span> <span class="ar">→</span>
+      <span class="t">read input</span> <span class="ar">→</span>
+      <span class="d">TryParse</span> <span class="ar">→</span>
+      <span class="c">Calculate…Area(args)</span> <span class="ar">→</span>
+      <span class="t">area</span> <span class="ar">→</span>
+      <span class="ar">print</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>A code editor such as Visual Studio Code or Visual Studio</li>
+      <li>Basic familiarity with <code class="inline">Console.ReadLine</code>, <code class="inline">Console.WriteLine</code>, and <code class="inline">double.TryParse</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Create the console project</h3>
+    <p class="scenario">Scaffold a new console application and move into it.</p>
+<pre class="code">dotnet new console -n MethodsDemo
+cd MethodsDemo</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and clear any existing content so you can build it up from scratch.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Problem 1: a method for circle area</h3>
+    <p class="scenario">Write a method to calculate the area of a circle. It accepts one input parameter —
+      the <strong>radius</strong>. The program prompts for this value, computes the area, then displays the result.</p>
+<pre class="code"><span class="cmt">// Method to calculate area of a circle</span>
+static double CalculateCircleArea(double radius)
+{
+    return Math.PI * radius * radius;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Problem 2: a method for trapezoid area</h3>
+    <p class="scenario">Write a method to calculate the area of a trapezoid. It accepts three input parameters —
+      the lengths of the two parallel sides (<code class="inline">a</code> and <code class="inline">b</code>) and the
+      <strong>height</strong>.</p>
+    <p>Formula: the area of a trapezoid is <code class="inline">(a + b) / 2 * height</code>.</p>
+<pre class="code"><span class="cmt">// Method to calculate area of a trapezoid</span>
+static double CalculateTrapezoidArea(double a, double b, double height)
+{
+    return (a + b) / 2 * height;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Wire it up in <code>Main</code></h3>
+    <p class="scenario">Prompt for each value, parse safely with <code class="inline">double.TryParse</code>,
+      call the matching method, and print the result formatted to two decimals (<code class="inline">:F2</code>).</p>
+<pre class="code">class Program
+{
+    static void Main()
+    {
+        <span class="cmt">// ----- Problem 1: circle -----</span>
+        Console.Write("Enter the radius of the circle: ");
+        string? input = Console.ReadLine();
+
+        <span class="cmt">// Convert string to double</span>
+        if (double.TryParse(input, out double radius))
+        {
+            double area = CalculateCircleArea(radius);
+            Console.WriteLine($"The area of the circle is: {area:F2}");
+        }
+        else
+        {
+            Console.WriteLine("Invalid input. Please enter a numeric value.");
+        }
+
+        <span class="cmt">// ----- Problem 2: trapezoid -----</span>
+        Console.Write("Enter the length of side a: ");
+        string? inputA = Console.ReadLine();
+        Console.Write("Enter the length of side b: ");
+        string? inputB = Console.ReadLine();
+        Console.Write("Enter the height: ");
+        string? inputHeight = Console.ReadLine();
+
+        <span class="cmt">// Parse inputs to double</span>
+        if (double.TryParse(inputA, out double a) &amp;&amp;
+            double.TryParse(inputB, out double b) &amp;&amp;
+            double.TryParse(inputHeight, out double height))
+        {
+            double area = CalculateTrapezoidArea(a, b, height);
+            Console.WriteLine($"The area of the trapezoid is: {area:F2}");
+        }
+        else
+        {
+            Console.WriteLine("Invalid input. Please enter numeric values.");
+        }
+    }
+
+    <span class="cmt">// Method to calculate area of a circle</span>
+    static double CalculateCircleArea(double radius)
+    {
+        return Math.PI * radius * radius;
+    }
+
+    <span class="cmt">// Method to calculate area of a trapezoid</span>
+    static double CalculateTrapezoidArea(double a, double b, double height)
+    {
+        return (a + b) / 2 * height;
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Run it</h3>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Enter the prompted values when asked.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    With a radius of <code class="inline">5</code> and trapezoid sides <code class="inline">a = 4</code>,
+    <code class="inline">b = 6</code>, <code class="inline">height = 3</code>, the program prints
+    <strong>The area of the circle is: 78.54</strong> and <strong>The area of the trapezoid is: 15.00</strong>.
+    Non-numeric input falls through to a friendly "Invalid input" message instead of crashing.
+  </div>
+<pre class="code">Enter the radius of the circle: 5
+The area of the circle is: 78.54
+Enter the length of side a: 4
+Enter the length of side b: 6
+Enter the height: 3
+The area of the trapezoid is: 15.00</pre>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">MethodsDemo</code> console project created with <code class="inline">dotnet new console</code></li>
+      <li><code class="inline">CalculateCircleArea(double radius)</code> returns <code class="inline">Math.PI * radius * radius</code></li>
+      <li><code class="inline">CalculateTrapezoidArea(double a, double b, double height)</code> returns <code class="inline">(a + b) / 2 * height</code></li>
+      <li><code class="inline">Main</code> reads input, validates it with <code class="inline">double.TryParse</code>, and calls both methods</li>
+      <li>Results are printed with two-decimal formatting (<code class="inline">:F2</code>)</li>
+      <li><code class="inline">dotnet run</code> produces the expected circle and trapezoid areas</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Method definition &amp; signature</strong> — <code class="inline">static double CalculateCircleArea(double radius)</code>
+        names the method, declares its return type, and lists the parameters it accepts.</li>
+      <li><strong>Parameters in, value out</strong> — a method receives data through its parameters and hands a single
+        result back via <code class="inline">return</code>, keeping the calculation isolated from input/output.</li>
+      <li><strong>Reuse &amp; single responsibility</strong> — each method does exactly one job, so it can be called from
+        anywhere and tested on its own, which is the whole reason to factor logic into methods.</li>
+      <li><strong>Safe parsing with <code class="inline">double.TryParse</code></strong> — convert user input without throwing;
+        it reports success as a <code class="inline">bool</code> and writes the parsed value to an <code class="inline">out</code> variable.</li>
+      <li><strong>Output formatting</strong> — <code class="inline">{area:F2}</code> formats a <code class="inline">double</code>
+        to two decimal places for a clean, readable result.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

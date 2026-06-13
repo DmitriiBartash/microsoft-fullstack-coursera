@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Params in Methods — Course 1 · Module 5</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 5 · Lesson 4
+      <span class="pill">You Try It!</span></p>
+    <h1>Using Parameters in Methods</h1>
+    <p class="lead">
+      Build a small C# console app that solves <strong>two calculation problems</strong> using
+      methods with <strong>parameters</strong>. The point of the lab is <em>reuse</em>: each
+      calculation lives in its own focused method (<code>VolumeOfRectangle</code>,
+      <code>CalculateAverage</code>), and a shared <code>ReadAndValidate</code> helper handles
+      input — so <code>Main</code> just wires them together.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Use methods and parameters to create <strong>reusable code blocks</strong> in C# that
+      perform basic calculations — the volume of a rectangular box and the average of three numbers — while
+      keeping input reading and validation in one shared, reusable place.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A single console project named <code class="inline">ParamsInMethods</code> with one class that
+      exposes four methods:</p>
+    <table>
+      <thead><tr><th>Method</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Main()</code></td><td>Orchestrate: read inputs, call the calculations, print results</td></tr>
+        <tr><td><code>ReadAndValidate(string prompt)</code></td><td>Prompt, read a line, and return a validated positive <code>int</code></td></tr>
+        <tr><td><code>VolumeOfRectangle(int length, int width, int height)</code></td><td>Return <code>length * width * height</code></td></tr>
+        <tr><td><code>CalculateAverage(int num1, int num2, int num3)</code></td><td>Return the integer average of three numbers</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Main</span> <span class="ar">→</span>
+      <span class="c">ReadAndValidate(prompt)</span> <span class="ar">→</span>
+      <span class="t">int</span> <span class="ar">→</span>
+      <span class="d">VolumeOfRectangle / CalculateAverage</span> <span class="ar">→</span>
+      <span class="ar">result</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (or any C# editor)</li>
+      <li>Comfortable running a console app with <code class="inline">dotnet run</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Scaffold the console app and move into it.</p>
+<pre class="code">dotnet new console -n ParamsInMethods
+cd ParamsInMethods</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and <strong>clear any existing content</strong> — you'll replace it with the class below.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Problem 1: volume of a rectangular box</h3>
+    <p class="scenario">Accept three integer parameters — <code class="inline">length</code>,
+      <code class="inline">width</code>, <code class="inline">height</code> — and return
+      <code class="inline">length * width * height</code>.</p>
+<pre class="code">public static int VolumeOfRectangle(int length, int width, int height)
+{
+    return length * width * height;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Problem 2: average of three numbers</h3>
+    <p class="scenario">Accept three parameters — <code class="inline">num1</code>,
+      <code class="inline">num2</code>, <code class="inline">num3</code> — and return the average as an
+      <strong>integer</strong> (integer division).</p>
+<pre class="code">public static int CalculateAverage(int num1, int num2, int num3)
+{
+    return (num1 + num2 + num3) / 3;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Add a reusable input helper</h3>
+    <p class="scenario">Factor reading-and-validating into one method so it isn't repeated per value.
+      It loops until it gets a <strong>valid integer greater than 0</strong>, rejecting empty and
+      non-numeric input.</p>
+<pre class="code">public static int ReadAndValidate(string prompt)
+{
+    while (true)
+    {
+        Console.Write(prompt);
+        string? input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            Console.WriteLine("Input is empty or whitespace.");
+            continue;
+        }
+        if (!int.TryParse(input, out int number) || number &lt;= 0)
+        {
+            Console.WriteLine("Input must be a valid integer greater than 0.");
+            continue;
+        }
+        return number;
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Wire everything together in <code>Main</code></h3>
+    <p class="scenario">Read each value through <code class="inline">ReadAndValidate</code>, pass them as
+      <strong>arguments</strong> to the calculation methods, and print the results. Here is the complete
+      <code class="inline">Program.cs</code>:</p>
+<pre class="code">namespace ParamsInMethods
+{
+    public class ParamsInMethods
+    {
+        public static void Main()
+        {
+            <span class="cmt">// Problem 1</span>
+            int length = ReadAndValidate("Enter the length: ");
+            int width = ReadAndValidate("Enter the width: ");
+            int height = ReadAndValidate("Enter the height: ");
+            int volume = VolumeOfRectangle(length, width, height);
+            Console.WriteLine($"The volume of the rectangular box is: {volume}");
+
+            <span class="cmt">// Problem 2</span>
+            int num1 = ReadAndValidate("Enter the first number: ");
+            int num2 = ReadAndValidate("Enter the second number: ");
+            int num3 = ReadAndValidate("Enter the third number: ");
+            int average = CalculateAverage(num1, num2, num3);
+            Console.WriteLine($"The average of the three numbers is: {average}");
+        }
+
+        public static int ReadAndValidate(string prompt)
+        {
+            while (true)
+            {
+                Console.Write(prompt);
+                string? input = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    Console.WriteLine("Input is empty or whitespace.");
+                    continue;
+                }
+                if (!int.TryParse(input, out int number) || number &lt;= 0)
+                {
+                    Console.WriteLine("Input must be a valid integer greater than 0.");
+                    continue;
+                }
+                return number;
+            }
+        }
+
+        public static int VolumeOfRectangle(int length, int width, int height)
+        {
+            return length * width * height;
+        }
+
+        public static int CalculateAverage(int num1, int num2, int num3)
+        {
+            return (num1 + num2 + num3) / 3;
+        }
+    }
+}</pre>
+    <p style="margin:12px 0 0">Run it:</p>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The program prompts for length, width, and height, then prints the box volume; then it prompts for
+    three numbers and prints their integer average. Entering <strong>2, 3, 4</strong> for the box and
+    <strong>10, 20, 30</strong> for the numbers prints
+    <code class="inline">The volume of the rectangular box is: 24</code> and
+    <code class="inline">The average of the three numbers is: 20</code>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">ParamsInMethods</code> console project created and <code class="inline">Program.cs</code> cleared</li>
+      <li><code class="inline">VolumeOfRectangle(length, width, height)</code> returns the product of the three dimensions</li>
+      <li><code class="inline">CalculateAverage(num1, num2, num3)</code> returns the integer average of three numbers</li>
+      <li><code class="inline">ReadAndValidate(prompt)</code> rejects empty/whitespace and non-positive input, looping until valid</li>
+      <li><code class="inline">Main</code> reads inputs, calls both methods with arguments, and prints both results</li>
+      <li><code class="inline">dotnet run</code> produces the volume and the average</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Parameters carry data into methods</strong> — <code class="inline">length</code>,
+        <code class="inline">width</code>, <code class="inline">height</code>,
+        <code class="inline">num1</code>–<code class="inline">num3</code> are <em>parameters</em> in the
+        signature; the values passed from <code>Main</code> are <em>arguments</em>.</li>
+      <li><strong>Return values flow data back out</strong> — each method <code class="inline">return</code>s
+        an <code class="inline">int</code>, so callers can store the result
+        (<code class="inline">volume</code>, <code class="inline">average</code>) and reuse it.</li>
+      <li><strong>Reuse over repetition (DRY)</strong> — extracting <code class="inline">ReadAndValidate</code>
+        means input validation is written once and called six times, instead of copy-pasted per value.</li>
+      <li><strong>Integer division truncates</strong> — <code class="inline">(num1 + num2 + num3) / 3</code>
+        discards the fractional part, which is why the average is returned as an <code class="inline">int</code>
+        (e.g. <code class="inline">10/3</code> → <code class="inline">3</code>).</li>
+      <li><strong><code class="inline">int.TryParse</code> is safe parsing</strong> — it returns
+        <code class="inline">false</code> instead of throwing on bad input, making it the idiomatic way to
+        validate user-entered numbers.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

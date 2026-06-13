@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project - Building a Simple API with Copilot — Course 5 · Module 5</title>
+<style>
+  :root {
+    --hdr: #2563eb ;      /* header / create  */
+    --pld: #0891b2 ;      /* payload / decode */
+    --sig: #3b82f6 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 5 — Back-End Development with .NET · Module 5
+      <span class="pill">Activity</span></p>
+    <h1>Project - Building a Simple API with Copilot</h1>
+    <p class="lead">
+      Use <strong>Microsoft Copilot</strong> to scaffold, write, and enhance a
+      <strong>User Management API</strong> for TechHive Solutions. You will build an ASP.NET Core
+      Web API named <code>UserManagementAPI</code> with full <strong>CRUD</strong> endpoints for
+      user records, then test every route in Postman — the first of three activities that grow
+      into a complete back-end project.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Practice AI-assisted back-end development: have Copilot generate the
+      boilerplate and CRUD endpoints for a <code class="inline">UserManagementAPI</code>, then
+      <strong>review, enhance, and test</strong> the generated code so you end with a working API
+      and notes on exactly how Copilot helped.</p>
+  </div>
+
+  <!-- ===================== SCENARIO ===================== -->
+  <h2 class="section"><span class="em">🏢</span> Scenario</h2>
+  <div class="card">
+    <p style="margin:0">You've been hired by <strong>TechHive Solutions</strong> to develop a
+      <strong>User Management API</strong> for their internal tools. The HR and IT departments need
+      an API that lets them <strong>create, update, retrieve, and delete</strong> user records
+      efficiently. Your task is to build the core functionality of the API, using Microsoft Copilot
+      to scaffold, enhance, and test the code.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single ASP.NET Core Web API project named <code class="inline">UserManagementAPI</code>
+      exposing CRUD over a <code class="inline">User</code> resource:</p>
+    <table>
+      <thead><tr><th>Method</th><th>Route</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET</code></td><td><code>/api/users</code></td><td>Retrieve the list of all users</td></tr>
+        <tr><td><code>GET</code></td><td><code>/api/users/{id}</code></td><td>Retrieve a single user by ID</td></tr>
+        <tr><td><code>POST</code></td><td><code>/api/users</code></td><td>Add a new user</td></tr>
+        <tr><td><code>PUT</code></td><td><code>/api/users/{id}</code></td><td>Update an existing user's details</td></tr>
+        <tr><td><code>DELETE</code></td><td><code>/api/users/{id}</code></td><td>Remove a user by ID</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">Copilot scaffolds Program.cs</span> <span class="ar">→</span>
+      <span class="d">generate UsersController CRUD</span> <span class="ar">→</span>
+      <span class="t">run</span> <span class="ar">→</span>
+      <span class="d">test in Postman</span> <span class="ar">→</span>
+      <span class="ar">document Copilot's help</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (or Visual Studio) with the <strong>GitHub Copilot</strong> extension enabled</li>
+      <li><strong>Postman</strong> (or a similar HTTP client) to exercise the endpoints</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Review the scenario</h3>
+    <p class="scenario">Confirm the intent before writing code.</p>
+    <p style="margin:0">Read the TechHive scenario above and confirm the goal: an internal API that
+      performs CRUD on user records. Each user has an <strong>ID</strong>, a <strong>name</strong>,
+      and an <strong>email</strong> — keep the model small for this first activity.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Set up the project</h3>
+    <p class="scenario">Create the Web API project, then let Copilot scaffold <code class="inline">Program.cs</code>.</p>
+<pre class="code">dotnet new webapi -n UserManagementAPI
+cd UserManagementAPI
+dotnet run</pre>
+    <p>Open <code class="inline">Program.cs</code> and use a Copilot prompt such as <em>"scaffold a
+      minimal ASP.NET Core Web API host with controllers and Swagger enabled."</em> The result
+      should look like this:</p>
+<pre class="code"><span class="cmt">// Program.cs — host setup: controllers + Swagger</span>
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.MapControllers();
+app.Run();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Define the model</h3>
+    <p class="scenario">Ask Copilot to generate a simple <code class="inline">User</code> class.</p>
+<pre class="code"><span class="cmt">// Models/User.cs</span>
+namespace UserManagementAPI.Models;
+
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Generate API endpoints</h3>
+    <p class="scenario">Prompt Copilot for <em>"a UsersController with CRUD endpoints backed by an
+      in-memory list,"</em> then enhance its output into the controller below.</p>
+<pre class="code"><span class="cmt">// Controllers/UsersController.cs</span>
+using Microsoft.AspNetCore.Mvc;
+using UserManagementAPI.Models;
+
+namespace UserManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/users")]
+public class UsersController : ControllerBase
+{
+    <span class="cmt">// In-memory store for this first activity (replaced by a database later).</span>
+    private static readonly List&lt;User&gt; Users = new();
+    private static int _nextId = 1;
+
+    <span class="cmt">// GET /api/users — retrieve all users</span>
+    [HttpGet]
+    public ActionResult&lt;IEnumerable&lt;User&gt;&gt; GetAll() =&gt; Ok(Users);
+
+    <span class="cmt">// GET /api/users/{id} — retrieve a specific user</span>
+    [HttpGet("{id:int}")]
+    public ActionResult&lt;User&gt; GetById(int id)
+    {
+        var user = Users.FirstOrDefault(u =&gt; u.Id == id);
+        return user is null ? NotFound() : Ok(user);
+    }
+
+    <span class="cmt">// POST /api/users — add a new user</span>
+    [HttpPost]
+    public ActionResult&lt;User&gt; Create(User user)
+    {
+        if (string.IsNullOrWhiteSpace(user.Name) || string.IsNullOrWhiteSpace(user.Email))
+            return BadRequest("Name and Email are required.");
+
+        user.Id = _nextId++;
+        Users.Add(user);
+        return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
+    }
+
+    <span class="cmt">// PUT /api/users/{id} — update an existing user</span>
+    [HttpPut("{id:int}")]
+    public IActionResult Update(int id, User updated)
+    {
+        var user = Users.FirstOrDefault(u =&gt; u.Id == id);
+        if (user is null) return NotFound();
+
+        user.Name = updated.Name;
+        user.Email = updated.Email;
+        return NoContent();
+    }
+
+    <span class="cmt">// DELETE /api/users/{id} — remove a user</span>
+    [HttpDelete("{id:int}")]
+    public IActionResult Delete(int id)
+    {
+        var user = Users.FirstOrDefault(u =&gt; u.Id == id);
+        if (user is null) return NotFound();
+
+        Users.Remove(user);
+        return NoContent();
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Test API functionality</h3>
+    <p class="scenario">Run the API and exercise every endpoint in Postman or the Swagger UI at
+      <code class="inline">/swagger</code>.</p>
+<pre class="code">dotnet run</pre>
+    <p>Test each CRUD route, for example:</p>
+<pre class="code">POST https://localhost:5001/api/users
+Content-Type: application/json
+
+{ "name": "Ada Lovelace", "email": "ada@techhive.io" }</pre>
+    <ul class="plain">
+      <li>As you go, <strong>document the specific ways Copilot assisted</strong> — which prompts
+        produced the boilerplate, the controller, and the validation, and what you refined by hand.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Save your work</h3>
+    <p style="margin:0">Confirm you have a functional <code class="inline">UserManagementAPI</code>
+      with robust CRUD operations plus your notes on Copilot's contribution, then save the project.
+      <strong>You will reuse this code in later activities.</strong></p>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Running <code class="inline">dotnet run</code> starts the API; in Postman every endpoint behaves
+    correctly — <strong>POST</strong> creates a user and returns <strong>201 Created</strong>,
+    <strong>GET</strong> lists or fetches users, <strong>PUT</strong> updates a record
+    (<strong>204</strong>), <strong>DELETE</strong> removes it (<strong>204</strong>), and unknown
+    IDs return <strong>404 Not Found</strong>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">UserManagementAPI</code> Web API project created with Copilot-scaffolded <code class="inline">Program.cs</code></li>
+      <li><code class="inline">User</code> model defined with <code class="inline">Id</code>, <code class="inline">Name</code>, and <code class="inline">Email</code></li>
+      <li><code class="inline">UsersController</code> exposes all five CRUD endpoints (<code class="inline">GET</code> list, <code class="inline">GET</code> by id, <code class="inline">POST</code>, <code class="inline">PUT</code>, <code class="inline">DELETE</code>)</li>
+      <li>Basic input validation and correct status codes (201 / 204 / 404) in place</li>
+      <li>Every endpoint tested in Postman or Swagger</li>
+      <li>Notes recorded on how Copilot assisted, and the project saved for later activities</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>AI-assisted scaffolding</strong> — Copilot accelerates boilerplate and CRUD
+        generation, but you stay the author: read, refine, and verify every block it produces.</li>
+      <li><strong>RESTful CRUD design</strong> — map HTTP verbs to actions
+        (<code class="inline">GET</code>/<code class="inline">POST</code>/<code class="inline">PUT</code>/<code class="inline">DELETE</code>)
+        and return meaningful status codes (<code class="inline">200</code>, <code class="inline">201</code>,
+        <code class="inline">204</code>, <code class="inline">404</code>) rather than always <code class="inline">200</code>.</li>
+      <li><strong>Iterative prompting</strong> — clear, specific prompts ("controller with in-memory
+        store and validation") yield better generated code than vague ones; refine the prompt, not
+        just the output.</li>
+      <li><strong>Test before you trust</strong> — generated endpoints aren't done until exercised
+        end-to-end in Postman/Swagger across happy-path and error cases.</li>
+      <li><strong>Build incrementally</strong> — this activity establishes the API core that later
+        activities extend (persistence, middleware, auth), so keep the model and structure clean.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

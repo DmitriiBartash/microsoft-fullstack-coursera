@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Handling API Responses and State Management in Blazor — Course 7 · Module 2</title>
+<style>
+  :root {
+    --hdr: #db2777 ;      /* header / create  */
+    --pld: #9333ea ;      /* payload / decode */
+    --sig: #ec4899 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 2 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Handling API Responses and State Management in Blazor</h1>
+    <p class="lead">
+      Extend your Blazor WebAssembly <code>WeatherApp</code> so it consumes a <em>second</em> API
+      (JSONPlaceholder users) alongside the weather feed, then make the two stay in sync through a
+      shared <code>WeatherStateService</code>. You'll deserialize JSON with <code>HttpClient</code>,
+      cancel stale requests with a <code>CancellationToken</code>, broadcast changes with an
+      <code>Action</code> delegate, and re-render with <code>StateHasChanged()</code>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn how to handle live API responses and manage <strong>shared state</strong> in a Blazor
+      WebAssembly app: fetch and deserialize JSON from multiple endpoints, store the results in a singleton
+      state service, notify components when that state changes, and drive the UI to update dynamically —
+      including a loading indicator and cancellation of overlapping requests.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>You extend the existing <code class="inline">WeatherApp</code> project with one new page, two models,
+      and a shared state service:</p>
+    <table>
+      <thead><tr><th>File</th><th>Folder</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>DynamicWeather.razor</code></td><td><code>Pages/</code></td><td>Page that fetches both APIs, shows a loader, and renders live data</td></tr>
+        <tr><td><code>Models/User.cs</code></td><td><code>Models/</code></td><td>Model for the JSONPlaceholder <code>users</code> response</td></tr>
+        <tr><td><code>Models/WeatherData.cs</code></td><td><code>Models/</code></td><td>Model for the weather API response</td></tr>
+        <tr><td><code>Services/WeatherStateService.cs</code></td><td><code>Services/</code></td><td>Hold weather + user data and <strong>notify</strong> subscribers on change</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Button</span> <span class="ar">→</span>
+      <span class="c">fetch (HttpClient + CancellationToken)</span> <span class="ar">→</span>
+      <span class="t">deserialize</span> <span class="ar">→</span>
+      <span class="d">WeatherStateService</span> <span class="ar">→</span>
+      <span class="c">OnChange</span> <span class="ar">→</span>
+      <span class="d">StateHasChanged()</span> <span class="ar">→</span>
+      <span class="ar">UI</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>The <code class="inline">WeatherApp</code> Blazor WebAssembly project from the previous activity, with a working <code class="inline">WeatherFetch.razor</code> component already fetching from the weather API.</li>
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code>.</li>
+      <li>Visual Studio Code (or Visual Studio).</li>
+      <li>A free, no-auth public API for the second feed: <code class="inline">https://jsonplaceholder.typicode.com/users</code>.</li>
+    </ul>
+    <div class="callout">
+      The <code class="inline">System.Net.Http.Json</code> extension methods (<code class="inline">GetFromJsonAsync</code>)
+      ship with the Blazor WebAssembly SDK, so <strong>no extra NuGet package</strong> is required.
+    </div>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Extend the Blazor application</h3>
+    <p class="scenario">Open the <code class="inline">WeatherApp</code> project from the previous activity and confirm the
+      existing <code class="inline">WeatherFetch.razor</code> component still fetches data correctly. Then add a new page
+      for the dynamic, state-driven view.</p>
+    <ul class="plain">
+      <li>Create a new Razor component named <code class="inline">DynamicWeather.razor</code> in the <code class="inline">Pages</code> folder.</li>
+      <li>Create a <code class="inline">Models</code> folder and a <code class="inline">Services</code> folder at the project root if they do not already exist.</li>
+    </ul>
+<pre class="code">cd WeatherApp
+mkdir Models Services</pre>
+    <p>Give the new page a route and a placeholder so it compiles before the data wiring is in place:</p>
+<pre class="code">@page "/dynamic-weather"
+
+&lt;PageTitle&gt;Dynamic Weather&lt;/PageTitle&gt;
+
+&lt;h1&gt;Dynamic Weather &amp;amp; Users&lt;/h1&gt;
+
+&lt;p&gt;Coming soon…&lt;/p&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Fetch and deserialize a JSON response</h3>
+    <p class="scenario">You'll pull placeholder <strong>user</strong> data from JSONPlaceholder and deserialize it
+      into a strongly-typed model.</p>
+    <ul class="plain">
+      <li>Add a <code class="inline">User</code> class to the <code class="inline">Models</code> folder that mirrors the JSONPlaceholder response.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Models/User.cs</span>
+using System.Text.Json.Serialization;
+
+namespace WeatherApp.Models;
+
+public class User
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+}</pre>
+    <ul class="plain">
+      <li><strong>Inject <code class="inline">HttpClient</code></strong> into <code class="inline">DynamicWeather.razor</code> and add a method that fetches the users in <code class="inline">OnInitializedAsync</code>. Pass a <code class="inline">CancellationToken</code> so a new request can cancel any previous in-flight call.</li>
+    </ul>
+<pre class="code">@page "/dynamic-weather"
+@using WeatherApp.Models
+@using System.Net.Http.Json
+@inject HttpClient Http
+@implements IDisposable
+
+&lt;PageTitle&gt;Dynamic Weather&lt;/PageTitle&gt;
+
+&lt;h1&gt;Dynamic Weather &amp;amp; Users&lt;/h1&gt;
+
+@code {
+    private List&lt;User&gt;? users;
+    private CancellationTokenSource? cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        <span class="cmt">// Cancel any request that is still running before starting a new one.</span>
+        cts?.Cancel();
+        cts = new CancellationTokenSource();
+
+        try
+        {
+            users = await Http.GetFromJsonAsync&lt;List&lt;User&gt;&gt;(
+                "https://jsonplaceholder.typicode.com/users", cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            <span class="cmt">// A newer request superseded this one — ignore.</span>
+        }
+    }
+
+    public void Dispose() =&gt; cts?.Cancel();
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement state management for API data updates</h3>
+    <p class="scenario">Create a service that holds the weather and user data, and raises an event when
+      either changes so any subscribed component can re-render.</p>
+    <ul class="plain">
+      <li>Add a <code class="inline">WeatherData</code> class to the <code class="inline">Models</code> folder to model the weather API response.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Models/WeatherData.cs</span>
+using System.Text.Json.Serialization;
+
+namespace WeatherApp.Models;
+
+public class WeatherData
+{
+    [JsonPropertyName("location")]
+    public string Location { get; set; } = string.Empty;
+
+    [JsonPropertyName("temperatureC")]
+    public double TemperatureC { get; set; }
+
+    [JsonPropertyName("summary")]
+    public string Summary { get; set; } = string.Empty;
+}</pre>
+    <ul class="plain">
+      <li>Add a <code class="inline">WeatherStateService</code> class to the <code class="inline">Services</code> folder. It stores both datasets and uses an <code class="inline">Action</code> delegate (<code class="inline">OnChange</code>) to notify components of state changes.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Services/WeatherStateService.cs</span>
+using WeatherApp.Models;
+
+namespace WeatherApp.Services;
+
+public class WeatherStateService
+{
+    public WeatherData? Weather { get; private set; }
+    public List&lt;User&gt; Users { get; private set; } = new();
+
+    <span class="cmt">// Components subscribe to this to know when to re-render.</span>
+    public event Action? OnChange;
+
+    public void SetWeather(WeatherData weather)
+    {
+        Weather = weather;
+        NotifyStateChanged();
+    }
+
+    public void SetUsers(List&lt;User&gt; users)
+    {
+        Users = users;
+        NotifyStateChanged();
+    }
+
+    private void NotifyStateChanged() =&gt; OnChange?.Invoke();
+}</pre>
+    <ul class="plain">
+      <li>Register the state service as a singleton in <code class="inline">Program.cs</code> so every component shares one instance:</li>
+    </ul>
+<pre class="code"><span class="cmt">// Program.cs</span>
+using WeatherApp.Services;
+
+builder.Services.AddSingleton&lt;WeatherStateService&gt;();</pre>
+    <ul class="plain">
+      <li><strong>Inject the service</strong> into <code class="inline">DynamicWeather.razor</code> and subscribe to its <code class="inline">OnChange</code> event, calling <code class="inline">StateHasChanged</code> whenever the shared state updates. Always unsubscribe in <code class="inline">Dispose</code> to avoid leaks.</li>
+    </ul>
+<pre class="code">@inject WeatherStateService State
+
+@code {
+    protected override void OnInitialized()
+    {
+        <span class="cmt">// Re-render this component whenever the shared state changes.</span>
+        State.OnChange += StateHasChanged;
+    }
+
+    <span class="cmt">// Add to the existing Dispose():</span>
+    <span class="cmt">// State.OnChange -= StateHasChanged;</span>
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Test UI updates dynamically based on new API responses</h3>
+    <p class="scenario">Wire up triggers, push freshly fetched data into the service, and render it with
+      a loading indicator.</p>
+    <ul class="plain">
+      <li>Add <strong>buttons</strong> that fetch new data from both APIs on demand.</li>
+      <li>After each fetch, push the result into <code class="inline">WeatherStateService</code> — its <code class="inline">OnChange</code> event invokes <code class="inline">StateHasChanged()</code> automatically. Use <code class="inline">StateHasChanged()</code> directly inside the loading branch so the spinner appears immediately.</li>
+      <li>Show a <strong>loading indicator</strong> while an API call is in progress, then display the weather and user data.</li>
+    </ul>
+<pre class="code">@page "/dynamic-weather"
+@using WeatherApp.Models
+@using WeatherApp.Services
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject WeatherStateService State
+@implements IDisposable
+
+&lt;PageTitle&gt;Dynamic Weather&lt;/PageTitle&gt;
+
+&lt;h1&gt;Dynamic Weather &amp;amp; Users&lt;/h1&gt;
+
+&lt;button class="btn btn-primary" @onclick="RefreshUsersAsync" disabled="@isLoading"&gt;
+    Refresh Users
+&lt;/button&gt;
+&lt;button class="btn btn-secondary" @onclick="RefreshWeatherAsync" disabled="@isLoading"&gt;
+    Refresh Weather
+&lt;/button&gt;
+
+@if (isLoading)
+{
+    &lt;p&gt;&lt;em&gt;Loading…&lt;/em&gt;&lt;/p&gt;
+}
+else
+{
+    @if (State.Weather is not null)
+    {
+        &lt;h2&gt;Weather&lt;/h2&gt;
+        &lt;p&gt;@State.Weather.Location: @State.Weather.TemperatureC °C — @State.Weather.Summary&lt;/p&gt;
+    }
+
+    &lt;h2&gt;Users (@State.Users.Count)&lt;/h2&gt;
+    &lt;ul&gt;
+        @foreach (var user in State.Users)
+        {
+            &lt;li&gt;@user.Name (@user.Email)&lt;/li&gt;
+        }
+    &lt;/ul&gt;
+}
+
+@code {
+    private bool isLoading;
+    private CancellationTokenSource? cts;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshUsersAsync();
+    }
+
+    private async Task RefreshUsersAsync()
+    {
+        cts?.Cancel();
+        cts = new CancellationTokenSource();
+
+        isLoading = true;
+        StateHasChanged();   <span class="cmt">// show the loader right away</span>
+
+        try
+        {
+            var result = await Http.GetFromJsonAsync&lt;List&lt;User&gt;&gt;(
+                "https://jsonplaceholder.typicode.com/users", cts.Token);
+
+            if (result is not null)
+            {
+                State.SetUsers(result);   <span class="cmt">// raises OnChange → StateHasChanged</span>
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            <span class="cmt">// Superseded by a newer request — ignore.</span>
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RefreshWeatherAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var weather = await Http.GetFromJsonAsync&lt;WeatherData&gt;("api/weather");
+            if (weather is not null)
+            {
+                State.SetWeather(weather);
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
+        cts?.Cancel();
+    }
+}</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Navigate to <code class="inline">/dynamic-weather</code>. The page loads the JSONPlaceholder users on first render.
+    Clicking <strong>Refresh Users</strong> or <strong>Refresh Weather</strong> briefly shows the <em>Loading…</em>
+    indicator, then the corresponding section updates in place. Because both the page and any other component read from
+    the same singleton <code class="inline">WeatherStateService</code>, every view that subscribes to
+    <code class="inline">OnChange</code> re-renders the moment the shared state changes — and rapid clicks cancel the
+    previous request instead of stacking up.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">DynamicWeather.razor</code> exists in <code class="inline">Pages/</code> with the <code class="inline">/dynamic-weather</code> route.</li>
+      <li><code class="inline">Models/User.cs</code> and <code class="inline">Models/WeatherData.cs</code> model the two API responses.</li>
+      <li>User data is fetched and deserialized in <code class="inline">OnInitializedAsync</code> with a <code class="inline">CancellationToken</code> that cancels overlapping requests.</li>
+      <li><code class="inline">Services/WeatherStateService.cs</code> stores both datasets and exposes an <code class="inline">OnChange</code> event (<code class="inline">Action</code>/<code class="inline">EventCallback</code>).</li>
+      <li><code class="inline">builder.Services.AddSingleton&lt;WeatherStateService&gt;();</code> is registered in <code class="inline">Program.cs</code>.</li>
+      <li>The component subscribes to <code class="inline">OnChange</code> and calls <code class="inline">StateHasChanged()</code> so the UI updates when state changes.</li>
+      <li>Buttons trigger fresh fetches and a <strong>loading indicator</strong> shows while a call is in progress.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Typed JSON deserialization</strong> — <code class="inline">HttpClient.GetFromJsonAsync&lt;T&gt;</code> (from
+        <code class="inline">System.Net.Http.Json</code>) maps the response straight into <code class="inline">User</code>/<code class="inline">WeatherData</code>;
+        <code class="inline">[JsonPropertyName]</code> bridges JSON casing to C# properties.</li>
+      <li><strong>Cancelling stale requests</strong> — a fresh <code class="inline">CancellationTokenSource</code> per call lets a newer
+        request <code class="inline">Cancel()</code> the previous one, so out-of-order responses never overwrite newer data.</li>
+      <li><strong>Shared state via a singleton service</strong> — a single <code class="inline">WeatherStateService</code> registered with
+        <code class="inline">AddSingleton</code> is the single source of truth, decoupling data fetching from the components that display it.</li>
+      <li><strong>The notify pattern</strong> — the service raises <code class="inline">OnChange</code> (an <code class="inline">Action</code>/<code class="inline">EventCallback</code>);
+        components subscribe with <code class="inline">OnChange += StateHasChanged</code> and <strong>must</strong> unsubscribe in <code class="inline">Dispose</code> to prevent leaks.</li>
+      <li><strong>Explicit re-rendering</strong> — Blazor re-renders after its own event handlers automatically, but you call
+        <code class="inline">StateHasChanged()</code> yourself to reflect changes triggered outside the normal lifecycle (the loading flag, the service event).</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

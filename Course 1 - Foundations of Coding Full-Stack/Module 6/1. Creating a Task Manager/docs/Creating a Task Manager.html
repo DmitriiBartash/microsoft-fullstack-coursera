@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Creating a Task Manager — Course 1 · Module 6</title>
+<style>
+  :root {
+    --hdr: #0d9488;      /* header / create  */
+    --pld: #0ea5e9;      /* payload / decode */
+    --sig: #22c55e;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 6 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Creating a Task Manager</h1>
+    <p class="lead">
+      Build a small C# console <strong>task manager</strong> that stores up to three to-do items in
+      plain string variables and tracks each one's status with a Boolean flag. The point of the lab
+      is to solve a real problem using only the fundamentals you already know —
+      <strong>variables, <code>if</code>/<code>else</code> conditionals, Boolean logic, and a loop</strong> —
+      <em>before</em> arrays enter the picture.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">You will create a basic task manager program that stores and displays up to three tasks
+      using individual <code class="inline">string</code> variables. Tasks can be marked as completed using
+      <strong>Boolean flags</strong>, and the program displays which tasks are completed or still pending —
+      all driven by <code class="inline">if</code>/<code class="inline">else</code> decisions inside a menu loop.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single-file console app, <code class="inline">TaskManager</code>, with a menu loop that routes the
+      user to small helper methods:</p>
+    <table>
+      <thead><tr><th>Piece</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>task1</code>, <code>task2</code>, <code>task3</code></td><td>Three <code>string</code> slots that hold the task descriptions</td></tr>
+        <tr><td><code>isTask1Completed</code> … <code>3Completed</code></td><td>Three <code>bool</code> flags tracking each task's status</td></tr>
+        <tr><td><code>ShowMenu()</code></td><td>Print the options and prompt for a choice</td></tr>
+        <tr><td><code>AddTask()</code> / <code>GetTaskDescription()</code></td><td>Store a new task in the first empty slot</td></tr>
+        <tr><td><code>MarkTaskAsCompleted()</code></td><td>Flip a task's Boolean flag to <code>true</code></td></tr>
+        <tr><td><code>RemoveTask()</code></td><td>Clear a task slot and reset its flag</td></tr>
+        <tr><td><code>ShowTasks()</code> / <code>ShowTask(...)</code></td><td>Print each task with <code>Completed</code> / <code>Pending</code> / <code>[Empty]</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Main loop</span> <span class="ar">→</span>
+      <span class="c">ShowMenu()</span> <span class="ar">→</span>
+      <span class="t">read choice</span> <span class="ar">→</span>
+      <span class="d">switch</span> <span class="ar">→</span>
+      <span class="ar">Add / Mark / Show / Remove / Exit</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>A code editor such as Visual Studio Code</li>
+      <li>Comfort with C# <code class="inline">string</code> and <code class="inline">bool</code> variables,
+        <code class="inline">if</code>/<code class="inline">else</code>, and a <code class="inline">while</code> loop</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Create the project</h3>
+    <p class="scenario">Scaffold a new console app and move into it.</p>
+<pre class="code">dotnet new console -n TaskManager
+cd TaskManager</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and <strong>clear any existing content</strong> — you will
+        replace it with the code below.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create variables for tasks and their status</h3>
+    <p class="scenario">Declare three <code class="inline">string</code> task slots and three
+      <code class="inline">bool</code> status flags. Empty strings make an open slot easy to detect.</p>
+<pre class="code"><span class="cmt">// Task descriptions and statuses</span>
+static string task1 = "", task2 = "", task3 = "";
+static bool isTask1Completed = false, isTask2Completed = false, isTask3Completed = false;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Prompt the user to add a task</h3>
+    <p class="scenario">Store the new task in the first empty slot; if all three are full, say so.</p>
+<pre class="code">static void AddTask()
+{
+    if (task1 == "")
+    {
+        task1 = GetTaskDescription();
+        Console.WriteLine("Task 1 added.");
+    }
+    else if (task2 == "")
+    {
+        task2 = GetTaskDescription();
+        Console.WriteLine("Task 2 added.");
+    }
+    else if (task3 == "")
+    {
+        task3 = GetTaskDescription();
+        Console.WriteLine("Task 3 added.");
+    }
+    else
+    {
+        Console.WriteLine("Task list is full. You can't add more than 3 tasks.");
+    }
+}
+
+static string GetTaskDescription()
+{
+    Console.Write("Enter task description: ");
+    return Console.ReadLine() ?? "";
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Mark a task as completed</h3>
+    <p class="scenario">Use <code class="inline">if</code>/<code class="inline">else</code> to flip the matching
+      Boolean flag to <code class="inline">true</code>; reject an invalid or non-existent task number.</p>
+<pre class="code">static void MarkTaskAsCompleted()
+{
+    Console.Write("Enter task number to mark as completed (1-3): ");
+    string taskNum = Console.ReadLine() ?? "";
+    if (taskNum == "1" &amp;&amp; task1 != "")
+        isTask1Completed = true;
+    else if (taskNum == "2" &amp;&amp; task2 != "")
+        isTask2Completed = true;
+    else if (taskNum == "3" &amp;&amp; task3 != "")
+        isTask3Completed = true;
+    else
+    {
+        Console.WriteLine("Invalid task number or task does not exist.");
+        return;
+    }
+    Console.WriteLine($"Task {taskNum} marked as completed.");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Display the tasks and their status</h3>
+    <p class="scenario">A conditional expression turns each Boolean flag into
+      <code class="inline">Completed</code> or <code class="inline">Pending</code>; empty slots show
+      <code class="inline">[Empty]</code>.</p>
+<pre class="code">static void ShowTasks()
+{
+    Console.WriteLine("\n--- Task List ---");
+    ShowTask(1, task1, isTask1Completed);
+    ShowTask(2, task2, isTask2Completed);
+    ShowTask(3, task3, isTask3Completed);
+}
+
+static void ShowTask(int number, string task, bool isCompleted)
+{
+    if (task == "")
+        Console.WriteLine($"Task {number}: [Empty]");
+    else
+        Console.WriteLine($"Task {number}: {task} - {(isCompleted ? "Completed" : "Pending")}");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Add a remove (clean) option</h3>
+    <p class="scenario">Clear the chosen slot back to <code class="inline">""</code> and reset its flag so the
+      slot can be reused.</p>
+<pre class="code">static void RemoveTask()
+{
+    Console.Write("Enter task number to remove (1-3): ");
+    string taskNum = Console.ReadLine() ?? "";
+    if (taskNum == "1" &amp;&amp; task1 != "")
+    {
+        task1 = "";
+        isTask1Completed = false;
+        Console.WriteLine("Task 1 removed.");
+    }
+    else if (taskNum == "2" &amp;&amp; task2 != "")
+    {
+        task2 = "";
+        isTask2Completed = false;
+        Console.WriteLine("Task 2 removed.");
+    }
+    else if (taskNum == "3" &amp;&amp; task3 != "")
+    {
+        task3 = "";
+        isTask3Completed = false;
+        Console.WriteLine("Task 3 removed.");
+    }
+    else
+    {
+        Console.WriteLine("Invalid task number or task does not exist.");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Wire it together in <code>Main</code> and run</h3>
+    <p class="scenario">A <code class="inline">while</code> loop shows the menu, reads the choice, and a
+      <code class="inline">switch</code> calls the right method. Option <code class="inline">4</code> ends the loop.</p>
+<pre class="code">using System;
+
+namespace TaskManager
+{
+    class TaskManager
+    {
+        <span class="cmt">// Task descriptions and statuses</span>
+        static string task1 = "", task2 = "", task3 = "";
+        static bool isTask1Completed = false, isTask2Completed = false, isTask3Completed = false;
+
+        static void Main()
+        {
+            bool running = true;
+            while (running)
+            {
+                ShowMenu();
+                string choice = Console.ReadLine() ?? "";
+                switch (choice)
+                {
+                    case "1":
+                        AddTask();
+                        break;
+                    case "2":
+                        MarkTaskAsCompleted();
+                        break;
+                    case "3":
+                        ShowTasks();
+                        break;
+                    case "4":
+                        running = false;
+                        Console.WriteLine("Exiting Task Manager. Goodbye!");
+                        break;
+                    case "5":
+                        RemoveTask();
+                        break;
+                    default:
+                        Console.WriteLine("Invalid option. Try again.");
+                        break;
+                }
+            }
+        }
+
+        static void ShowMenu()
+        {
+            Console.WriteLine("\n=== Task Manager ===");
+            Console.WriteLine("1. Add Task");
+            Console.WriteLine("2. Mark Task as Completed");
+            Console.WriteLine("3. Show Tasks");
+            Console.WriteLine("4. Exit");
+            Console.WriteLine("5. Remove (Clean) a Task");
+            Console.Write("Choose an option (1-5): ");
+        }
+
+        <span class="cmt">// ... AddTask, GetTaskDescription, MarkTaskAsCompleted,</span>
+        <span class="cmt">//     ShowTasks, ShowTask, and RemoveTask from the steps above</span>
+    }
+}</pre>
+    <ul class="plain">
+      <li>Run the application:</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The menu loops until you choose <strong>4 (Exit)</strong>. Adding a task fills the next free slot, marking it
+    flips its status to <strong>Completed</strong>, and <strong>Show Tasks</strong> prints each slot as
+    <code class="inline">Completed</code>, <code class="inline">Pending</code>, or <code class="inline">[Empty]</code>.
+  </div>
+<pre class="code">=== Task Manager ===
+1. Add Task
+2. Mark Task as Completed
+3. Show Tasks
+4. Exit
+5. Remove (Clean) a Task
+Choose an option (1-5): 1
+Enter task description: Write unit tests
+Task 1 added.
+
+Choose an option (1-5): 2
+Enter task number to mark as completed (1-3): 1
+Task 1 marked as completed.
+
+Choose an option (1-5): 3
+
+--- Task List ---
+Task 1: Write unit tests - Completed
+Task 2: [Empty]
+Task 3: [Empty]</pre>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">TaskManager</code> console project created and <code class="inline">Program.cs</code> cleared</li>
+      <li>Three <code class="inline">string</code> task slots and three <code class="inline">bool</code> status flags declared</li>
+      <li><code class="inline">AddTask()</code> fills the first empty slot and rejects a 4th task when full</li>
+      <li><code class="inline">MarkTaskAsCompleted()</code> flips the right flag and errors on an invalid number</li>
+      <li><code class="inline">ShowTasks()</code> prints <code class="inline">Completed</code>, <code class="inline">Pending</code>, or <code class="inline">[Empty]</code> for each slot</li>
+      <li><code class="inline">RemoveTask()</code> clears a slot and resets its flag</li>
+      <li><code class="inline">dotnet run</code> shows the menu loop and exits cleanly on option <code class="inline">4</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Boolean flags as state</strong> — a single <code class="inline">bool</code> per task captures
+        "done vs not done", and a conditional expression turns that flag into the words
+        <code class="inline">Completed</code> / <code class="inline">Pending</code>.</li>
+      <li><strong><code class="inline">if</code>/<code class="inline">else</code> chains for selection</strong> —
+        checking slots in order (<code class="inline">task1</code> empty? else <code class="inline">task2</code>? …)
+        is how you route work before you know about arrays or collections.</li>
+      <li><strong>Guard before you act</strong> — every action validates first
+        (<code class="inline">taskNum == "2" &amp;&amp; task2 != ""</code>), so the program fails gracefully on bad
+        input instead of corrupting state.</li>
+      <li><strong>A menu loop with <code class="inline">switch</code></strong> — a
+        <code class="inline">while (running)</code> loop plus a <code class="inline">switch</code> on the choice is a
+        classic, readable shape for a console app, with <code class="inline">running = false</code> as the clean exit.</li>
+      <li><strong>Small, single-purpose methods</strong> — <code class="inline">AddTask</code>,
+        <code class="inline">ShowTask</code>, <code class="inline">RemoveTask</code> each do one thing, keeping
+        <code class="inline">Main</code> short and the logic easy to follow.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

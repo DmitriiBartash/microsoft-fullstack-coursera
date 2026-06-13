@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing Client-Side State Management in Blazor — Course 7 · Module 3</title>
+<style>
+  :root {
+    --hdr: #db2777 ;      /* header / create  */
+    --pld: #9333ea ;      /* payload / decode */
+    --sig: #ec4899 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 3 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Client-Side State Management in Blazor</h1>
+    <p class="lead">
+      Build a <strong>Blazor WebAssembly</strong> app that persists UI state in the browser. You'll save a
+      theme preference to <strong>local storage</strong>, keep a shopping cart in <strong>session storage</strong>,
+      and add a button that <strong>clears both</strong> — the three everyday tools of client-side state management.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity, you will be able to implement client-side state management
+      techniques in a Blazor WebAssembly application — using <strong>local storage</strong> for data that should
+      survive a browser restart, <strong>session storage</strong> for data scoped to the current tab, and
+      <strong>clearing stored data</strong> programmatically.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A Blazor WebAssembly project named <code class="inline">ClientStateApp</code> with these pieces:</p>
+    <table>
+      <thead><tr><th>Piece</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Blazored.LocalStorage</code></td><td>Persist the user's <strong>theme</strong> across browser sessions</td></tr>
+        <tr><td><code>Blazored.SessionStorage</code></td><td>Hold the <strong>shopping cart</strong> for the current tab only</td></tr>
+        <tr><td><code>Pages/Home.razor</code></td><td>Theme selector + a <strong>Clear All Storage</strong> button</td></tr>
+        <tr><td><code>Pages/Cart.razor</code></td><td>Add/list cart items, persisted to session storage</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Register both storage services with DI</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">Home (theme)</span> <span class="ar">→</span> <span class="t">localStorage</span>
+      <span class="ar"> · </span>
+      <span class="d">Cart (items)</span> <span class="ar">→</span> <span class="t">sessionStorage</span>
+      <span class="ar"> · </span>
+      <span class="ar">Clear</span> <span class="ar">→</span> <span class="ar">wipes both</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li><strong>.NET 6 SDK or higher</strong> — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (with the C# / C# Dev Kit extension)</li>
+      <li>NuGet packages: <code class="inline">Blazored.LocalStorage</code>, <code class="inline">Blazored.SessionStorage</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Create a new Blazor WebAssembly project, move into it, and open it in VS Code.</p>
+<pre class="code">dotnet new blazorwasm -o ClientStateApp
+cd ClientStateApp
+code .</pre>
+    <ul class="plain">
+      <li>Confirm the app runs with <code class="inline">dotnet run</code>, then stop it (<code class="inline">Ctrl+C</code>) before continuing.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Implement local storage (theme preference)</h3>
+    <p class="scenario">Persist the user's theme so it survives a full browser restart.</p>
+    <h4>Install the package</h4>
+<pre class="code">dotnet add package Blazored.LocalStorage</pre>
+    <h4>Register the service in Program.cs</h4>
+<pre class="code">using Blazored.LocalStorage;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using ClientStateApp;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add&lt;App&gt;("#app");
+builder.RootComponents.Add&lt;HeadOutlet&gt;("head::after");
+
+builder.Services.AddScoped(sp =&gt; new HttpClient
+{
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+});
+
+<span class="cmt">// Client-side storage services</span>
+builder.Services.AddBlazoredLocalStorage();
+
+await builder.Build().RunAsync();</pre>
+    <h4>Edit Pages/Home.razor</h4>
+    <p>Add a theme selector that reads on load and writes on change:</p>
+<pre class="code">@page "/"
+@using Blazored.LocalStorage
+@inject ILocalStorageService LocalStorage
+
+&lt;PageTitle&gt;Home&lt;/PageTitle&gt;
+
+&lt;h1&gt;Theme preference&lt;/h1&gt;
+
+&lt;p&gt;Current theme: &lt;strong&gt;@_theme&lt;/strong&gt;&lt;/p&gt;
+
+&lt;select value="@_theme" @onchange="OnThemeChanged"&gt;
+    &lt;option value="light"&gt;Light&lt;/option&gt;
+    &lt;option value="dark"&gt;Dark&lt;/option&gt;
+&lt;/select&gt;
+
+@code {
+    private const string ThemeKey = "theme";
+    private string _theme = "light";
+
+    protected override async Task OnInitializedAsync()
+    {
+        <span class="cmt">// Retrieve the saved theme on initialization</span>
+        var saved = await LocalStorage.GetItemAsync&lt;string&gt;(ThemeKey);
+        if (!string.IsNullOrWhiteSpace(saved))
+        {
+            _theme = saved;
+        }
+    }
+
+    private async Task OnThemeChanged(ChangeEventArgs e)
+    {
+        _theme = e.Value?.ToString() ?? "light";
+        <span class="cmt">// Save the theme preference to local storage</span>
+        await LocalStorage.SetItemAsync(ThemeKey, _theme);
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Use session storage (shopping cart)</h3>
+    <p class="scenario">Store cart items in session storage so they live only as long as the browser tab.</p>
+    <h4>Install the package</h4>
+<pre class="code">dotnet add package Blazored.SessionStorage</pre>
+    <h4>Register it in Program.cs alongside local storage</h4>
+<pre class="code"><span class="cmt">// Client-side storage services</span>
+builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddBlazoredSessionStorage();</pre>
+    <h4>Create Pages/Cart.razor</h4>
+<pre class="code">@page "/cart"
+@using Blazored.SessionStorage
+@inject ISessionStorageService SessionStorage
+
+&lt;PageTitle&gt;Cart&lt;/PageTitle&gt;
+
+&lt;h1&gt;Shopping cart&lt;/h1&gt;
+
+&lt;input @bind="_newItem" placeholder="Add an item" /&gt;
+&lt;button @onclick="AddItem"&gt;Add&lt;/button&gt;
+
+&lt;ul&gt;
+    @foreach (var item in _items)
+    {
+        &lt;li&gt;@item&lt;/li&gt;
+    }
+&lt;/ul&gt;
+
+@code {
+    private const string CartKey = "cart";
+    private List&lt;string&gt; _items = new();
+    private string _newItem = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        <span class="cmt">// Retrieve the cart contents on initialization</span>
+        var saved = await SessionStorage.GetItemAsync&lt;List&lt;string&gt;&gt;(CartKey);
+        if (saved is not null)
+        {
+            _items = saved;
+        }
+    }
+
+    private async Task AddItem()
+    {
+        if (string.IsNullOrWhiteSpace(_newItem))
+        {
+            return;
+        }
+
+        _items.Add(_newItem.Trim());
+        _newItem = string.Empty;
+
+        <span class="cmt">// Save the cart contents to session storage</span>
+        await SessionStorage.SetItemAsync(CartKey, _items);
+    }
+}</pre>
+    <h4>Add a link to the cart in Shared/NavMenu.razor</h4>
+<pre class="code">&lt;div class="nav-item px-3"&gt;
+    &lt;NavLink class="nav-link" href="cart"&gt;
+        &lt;span class="oi oi-cart" aria-hidden="true"&gt;&lt;/span&gt; Cart
+    &lt;/NavLink&gt;
+&lt;/div&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Clear storage</h3>
+    <p class="scenario">Add a button to <code class="inline">Home.razor</code> that wipes both local and session storage.</p>
+    <h4>Inject session storage in Pages/Home.razor</h4>
+<pre class="code">@inject ISessionStorageService SessionStorage</pre>
+    <h4>Add the button and message to the markup</h4>
+<pre class="code">&lt;button class="btn btn-danger" @onclick="ClearAllStorage"&gt;Clear All Storage&lt;/button&gt;
+
+@if (_cleared)
+{
+    &lt;p&gt;&lt;em&gt;All stored data cleared.&lt;/em&gt;&lt;/p&gt;
+}</pre>
+    <h4>Add the handler to the @code block</h4>
+<pre class="code">private bool _cleared;
+
+private async Task ClearAllStorage()
+{
+    <span class="cmt">// Wipe every key from both stores</span>
+    await LocalStorage.ClearAsync();
+    await SessionStorage.ClearAsync();
+
+    _theme = "light";
+    _cleared = true;
+}</pre>
+    <ul class="plain">
+      <li>Run the app and verify the behavior:</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    <ul class="plain" style="margin:0">
+      <li>Pick a theme on <strong>Home</strong>, refresh (or fully restart the browser) — the choice <strong>persists</strong> via local storage.</li>
+      <li>Add items on <strong>Cart</strong>, refresh the tab — items <strong>persist</strong>; open a <em>new</em> tab and the cart is <strong>empty</strong> (session-scoped).</li>
+      <li>Click <strong>Clear All Storage</strong>, then refresh — both the saved theme and the cart are <strong>gone</strong>.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">ClientStateApp</code> Blazor WebAssembly project created and runs</li>
+      <li><code class="inline">Blazored.LocalStorage</code> and <code class="inline">Blazored.SessionStorage</code> packages added and registered in <code class="inline">Program.cs</code></li>
+      <li><code class="inline">Home.razor</code> saves and restores the theme via <strong>local storage</strong></li>
+      <li><code class="inline">Cart.razor</code> saves and restores cart items via <strong>session storage</strong></li>
+      <li><strong>Clear All Storage</strong> button empties both stores</li>
+      <li>Refresh/restart behavior matches the expected result for each store</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Local vs. session storage</strong> — local storage persists across browser restarts and tabs;
+        session storage is cleared when the tab closes and is <strong>not</strong> shared between tabs. Choose by lifetime.</li>
+      <li><strong>DI registration is required</strong> — <code class="inline">AddBlazoredLocalStorage()</code> /
+        <code class="inline">AddBlazoredSessionStorage()</code> in <code class="inline">Program.cs</code> make
+        <code class="inline">ILocalStorageService</code> / <code class="inline">ISessionStorageService</code> injectable into components.</li>
+      <li><strong>Read on init, write on change</strong> — load persisted state in
+        <code class="inline">OnInitializedAsync</code> and save in the event handler so the UI and storage stay in sync.</li>
+      <li><strong>Serialization is automatic</strong> — Blazored serializes objects (like
+        <code class="inline">List&lt;string&gt;</code>) to JSON, so you can store and retrieve typed data with
+        <code class="inline">SetItemAsync</code> / <code class="inline">GetItemAsync&lt;T&gt;</code>.</li>
+      <li><strong>Client-side storage isn't secure</strong> — it's plain text in the browser; never keep secrets or
+        sensitive data there, and call <code class="inline">ClearAsync</code> to remove state on sign-out or reset.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

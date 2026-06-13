@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Building an HTML Document — Course 3 · Module 1</title>
+<style>
+  :root {
+    --hdr: #ea580c;      /* header / create  */
+    --pld: #f59e0b;      /* payload / decode */
+    --sig: #f43f5e;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 3 — Introduction to Web Development · Module 1 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Building an HTML Document</h1>
+    <p class="lead">
+      Build a structured <strong>Personal Webpage</strong> from scratch using core HTML elements —
+      headings, paragraphs, ordered and unordered lists, and a feedback <strong>form</strong> — that
+      introduces you, lists your interests and goals, and lets visitors leave feedback.
+      One semantic document, assembled section by section.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Build a structured HTML document that includes headings, lists, and a form, following
+      web development best practices. By the end you will have a single, valid <code class="inline">.html</code> file —
+      a personal webpage that applies the foundational HTML elements you will reuse on every project that follows.</p>
+  </div>
+
+  <!-- ===================== SCENARIO ===================== -->
+  <h2 class="section"><span class="em">📄</span> Scenario</h2>
+  <div class="card">
+    <p style="margin:0">You are tasked with creating a <strong>Personal Webpage</strong> that introduces yourself,
+      displays your interests, and includes a form for visitors to leave feedback. This activity helps you apply
+      HTML elements such as headings, lists, forms, and more in a realistic page layout.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A single file named <code class="inline">index.html</code> with a standard document skeleton and five content sections:</p>
+    <table>
+      <thead><tr><th>Section</th><th>Elements</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>Document head</td><td><code>&lt;!DOCTYPE&gt;</code>, <code>&lt;head&gt;</code>, <code>&lt;meta&gt;</code>, <code>&lt;title&gt;</code></td><td>Declare the doc type, charset, viewport</td></tr>
+        <tr><td>About Me</td><td><code>&lt;h1&gt;</code>, <code>&lt;h2&gt;</code>, <code>&lt;p&gt;</code></td><td>Introduce yourself</td></tr>
+        <tr><td>Favorite Hobbies</td><td><code>&lt;h3&gt;</code>, <code>&lt;ul&gt;</code>, <code>&lt;li&gt;</code></td><td>An <strong>unordered</strong> list of interests</td></tr>
+        <tr><td>Personal Goals</td><td><code>&lt;h3&gt;</code>, <code>&lt;ol&gt;</code>, <code>&lt;li&gt;</code></td><td>An <strong>ordered</strong> list of goals</td></tr>
+        <tr><td>Feedback Form</td><td><code>&lt;form&gt;</code>, <code>&lt;label&gt;</code>, <code>&lt;input&gt;</code></td><td>Collect a name, email, and a rating</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">Document skeleton</span> <span class="ar">→</span>
+      <span class="d">headings &amp; intro</span> <span class="ar">→</span>
+      <span class="t">unordered list</span> <span class="ar">→</span>
+      <span class="d">ordered list</span> <span class="ar">→</span>
+      <span class="c">form</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>A plain text editor — <strong>Visual Studio Code</strong> is recommended</li>
+      <li>A modern web browser (Chrome, Edge, or Firefox) to open and preview the file</li>
+      <li>No build tools, server, or extensions required — HTML runs straight from the file</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Create the document skeleton</h3>
+    <p class="scenario">Create a new file named <code class="inline">index.html</code>. Start with the HTML5 doctype
+      and the <code class="inline">&lt;head&gt;</code> metadata every page needs: the character set, a responsive
+      viewport, and a page title shown in the browser tab.</p>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+  &lt;title&gt;My Personal Webpage&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  <span class="cmt">&lt;!-- page content goes here --&gt;</span>
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+    <ul class="plain">
+      <li><code class="inline">&lt;!DOCTYPE html&gt;</code> tells the browser to use standards mode.</li>
+      <li><code class="inline">lang="en"</code> declares the document language for accessibility and search engines.</li>
+      <li><code class="inline">&lt;meta charset="UTF-8"&gt;</code> ensures characters render correctly.</li>
+      <li>The viewport <code class="inline">&lt;meta&gt;</code> makes the page scale properly on mobile devices.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Add the headings and introduction</h3>
+    <p class="scenario">Inside <code class="inline">&lt;body&gt;</code>, add a top-level <code class="inline">&lt;h1&gt;</code>
+      for the page, an <code class="inline">&lt;h2&gt;</code> for the "About Me" section, and a
+      <code class="inline">&lt;p&gt;</code> introducing yourself. Use headings in order
+      (<code class="inline">h1</code> → <code class="inline">h2</code> → <code class="inline">h3</code>) rather than for visual size.</p>
+<pre class="code">  &lt;h1&gt;Welcome to My Personal Webpage&lt;/h1&gt;
+  &lt;h2&gt;About Me&lt;/h2&gt;
+  &lt;p&gt;
+    Hello! My name is Dima, and I'm passionate about web development and technology.
+    I enjoy learning new skills, building projects, and exploring creative solutions through code.
+    This webpage is a place where I share more about myself and my interests.
+  &lt;/p&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Add an unordered list of hobbies</h3>
+    <p class="scenario">Use an <code class="inline">&lt;h3&gt;</code> subheading followed by an unordered list
+      <code class="inline">&lt;ul&gt;</code>. Each item is a <code class="inline">&lt;li&gt;</code>. Unordered lists
+      render with bullets and are for items whose order doesn't matter.</p>
+<pre class="code">  &lt;h3&gt;My Favorite Hobbies&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;Coding&lt;/li&gt;
+    &lt;li&gt;Reading tech blogs&lt;/li&gt;
+    &lt;li&gt;Playing board games&lt;/li&gt;
+    &lt;li&gt;Playing video games&lt;/li&gt;
+    &lt;li&gt;Traveling&lt;/li&gt;
+  &lt;/ul&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Add an ordered list of goals</h3>
+    <p class="scenario">For goals where sequence or priority matters, use an ordered list
+      <code class="inline">&lt;ol&gt;</code>. Browsers number the items automatically, so you never hard-code
+      "1.", "2.", "3.".</p>
+<pre class="code">  &lt;h3&gt;My Personal Goals&lt;/h3&gt;
+  &lt;ol&gt;
+    &lt;li&gt;Become a full-stack web developer&lt;/li&gt;
+    &lt;li&gt;Build my own personal portfolio website&lt;/li&gt;
+    &lt;li&gt;Contribute to open-source projects&lt;/li&gt;
+    &lt;li&gt;Learn advanced JavaScript and frameworks like React or Angular&lt;/li&gt;
+    &lt;li&gt;Land a job in a tech company&lt;/li&gt;
+  &lt;/ol&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Add the feedback form</h3>
+    <p class="scenario">Build a <code class="inline">&lt;form&gt;</code> that collects a name, an email, and a rating.
+      Pair every input with a <code class="inline">&lt;label&gt;</code> via matching
+      <code class="inline">for</code>/<code class="inline">id</code> attributes, mark required fields with
+      <code class="inline">required</code>, and use the right <code class="inline">type</code> for each control.</p>
+<pre class="code">  &lt;h3&gt;Feedback Form&lt;/h3&gt;
+  &lt;form action="#" method="post"&gt;
+    &lt;label for="name"&gt;Name:&lt;/label&gt;&lt;br&gt;
+    &lt;input type="text" id="name" name="name" required&gt;&lt;br&gt;&lt;br&gt;
+
+    &lt;label for="email"&gt;Email:&lt;/label&gt;&lt;br&gt;
+    &lt;input type="email" id="email" name="email" required&gt;&lt;br&gt;&lt;br&gt;
+
+    &lt;p&gt;How would you rate this site?&lt;/p&gt;
+    &lt;input type="radio" id="excellent" name="rating" value="Excellent" required&gt;
+    &lt;label for="excellent"&gt;Excellent&lt;/label&gt;&lt;br&gt;
+    &lt;input type="radio" id="good" name="rating" value="Good"&gt;
+    &lt;label for="good"&gt;Good&lt;/label&gt;&lt;br&gt;
+    &lt;input type="radio" id="average" name="rating" value="Average"&gt;
+    &lt;label for="average"&gt;Average&lt;/label&gt;&lt;br&gt;&lt;br&gt;
+
+    &lt;input type="submit" value="Submit Feedback"&gt;
+  &lt;/form&gt;</pre>
+    <ul class="plain">
+      <li>All three radio buttons share <code class="inline">name="rating"</code>, so only one can be selected at a time.</li>
+      <li><code class="inline">action="#"</code> is a placeholder target; <code class="inline">method="post"</code> sends the data in the request body.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Assemble and preview</h3>
+    <p class="scenario">Put it all together into one file, then <strong>open <code class="inline">index.html</code>
+      in your browser</strong> (double-click it, or drag it onto a browser tab). You should see your headings,
+      both lists, and a working feedback form.</p>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+  &lt;title&gt;My Personal Webpage&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;Welcome to My Personal Webpage&lt;/h1&gt;
+  &lt;h2&gt;About Me&lt;/h2&gt;
+  &lt;p&gt;
+    Hello! My name is Dima, and I'm passionate about web development and technology.
+    I enjoy learning new skills, building projects, and exploring creative solutions through code.
+    This webpage is a place where I share more about myself and my interests.
+  &lt;/p&gt;
+
+  &lt;h3&gt;My Favorite Hobbies&lt;/h3&gt;
+  &lt;ul&gt;
+    &lt;li&gt;Coding&lt;/li&gt;
+    &lt;li&gt;Reading tech blogs&lt;/li&gt;
+    &lt;li&gt;Playing board games&lt;/li&gt;
+    &lt;li&gt;Playing video games&lt;/li&gt;
+    &lt;li&gt;Traveling&lt;/li&gt;
+  &lt;/ul&gt;
+
+  &lt;h3&gt;My Personal Goals&lt;/h3&gt;
+  &lt;ol&gt;
+    &lt;li&gt;Become a full-stack web developer&lt;/li&gt;
+    &lt;li&gt;Build my own personal portfolio website&lt;/li&gt;
+    &lt;li&gt;Contribute to open-source projects&lt;/li&gt;
+    &lt;li&gt;Learn advanced JavaScript and frameworks like React or Angular&lt;/li&gt;
+    &lt;li&gt;Land a job in a tech company&lt;/li&gt;
+  &lt;/ol&gt;
+
+  &lt;h3&gt;Feedback Form&lt;/h3&gt;
+  &lt;form action="#" method="post"&gt;
+    &lt;label for="name"&gt;Name:&lt;/label&gt;&lt;br&gt;
+    &lt;input type="text" id="name" name="name" required&gt;&lt;br&gt;&lt;br&gt;
+
+    &lt;label for="email"&gt;Email:&lt;/label&gt;&lt;br&gt;
+    &lt;input type="email" id="email" name="email" required&gt;&lt;br&gt;&lt;br&gt;
+
+    &lt;p&gt;How would you rate this site?&lt;/p&gt;
+    &lt;input type="radio" id="excellent" name="rating" value="Excellent" required&gt;
+    &lt;label for="excellent"&gt;Excellent&lt;/label&gt;&lt;br&gt;
+    &lt;input type="radio" id="good" name="rating" value="Good"&gt;
+    &lt;label for="good"&gt;Good&lt;/label&gt;&lt;br&gt;
+    &lt;input type="radio" id="average" name="rating" value="Average"&gt;
+    &lt;label for="average"&gt;Average&lt;/label&gt;&lt;br&gt;&lt;br&gt;
+
+    &lt;input type="submit" value="Submit Feedback"&gt;
+  &lt;/form&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Opening the file in a browser shows a personal webpage with a main heading, an "About Me" paragraph, a
+    <strong>bulleted</strong> hobbies list, a <strong>numbered</strong> goals list, and a feedback form with
+    name, email, and rating fields. Submitting with a required field empty triggers the browser's built-in
+    validation message — proving the <code class="inline">required</code> attributes work.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>An <code class="inline">index.html</code> file exists with a valid <code class="inline">&lt;!DOCTYPE html&gt;</code> and <code class="inline">&lt;head&gt;</code> (charset, viewport, title)</li>
+      <li>An <code class="inline">&lt;h1&gt;</code> and an "About Me" <code class="inline">&lt;h2&gt;</code> with an introductory <code class="inline">&lt;p&gt;</code></li>
+      <li>An <strong>unordered</strong> list (<code class="inline">&lt;ul&gt;</code>) of hobbies and an <strong>ordered</strong> list (<code class="inline">&lt;ol&gt;</code>) of goals</li>
+      <li>A <code class="inline">&lt;form&gt;</code> with labelled <code class="inline">name</code>, <code class="inline">email</code>, and <code class="inline">rating</code> inputs plus a submit button</li>
+      <li>Every <code class="inline">&lt;input&gt;</code> is paired with a <code class="inline">&lt;label&gt;</code> via matching <code class="inline">for</code>/<code class="inline">id</code>, and required fields use <code class="inline">required</code></li>
+      <li>The page opens in a browser and the form's required-field validation works</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Document structure</strong> — every HTML page needs a doctype, an <code class="inline">&lt;html lang&gt;</code>
+        root, a <code class="inline">&lt;head&gt;</code> with metadata, and a <code class="inline">&lt;body&gt;</code> for visible content.</li>
+      <li><strong>Headings are an outline, not styling</strong> — use <code class="inline">&lt;h1&gt;</code>–<code class="inline">&lt;h3&gt;</code>
+        in order to describe the page's hierarchy; size is a CSS concern, not a reason to pick a heading level.</li>
+      <li><strong>Lists communicate meaning</strong> — <code class="inline">&lt;ul&gt;</code> for unordered items (bullets),
+        <code class="inline">&lt;ol&gt;</code> for sequence or priority (auto-numbered); never fake numbering by hand.</li>
+      <li><strong>Forms and accessibility</strong> — associate each <code class="inline">&lt;input&gt;</code> with a
+        <code class="inline">&lt;label&gt;</code> (matching <code class="inline">for</code>/<code class="inline">id</code>),
+        pick the correct <code class="inline">type</code>, group radios by a shared <code class="inline">name</code>, and use <code class="inline">required</code> for built-in validation.</li>
+      <li><strong>Semantic HTML first</strong> — choosing the right element for the job makes pages accessible,
+        search-friendly, and easy to style and maintain later.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

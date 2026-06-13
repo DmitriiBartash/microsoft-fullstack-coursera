@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project Management System — Course 1</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack
+      <span class="pill">Project</span></p>
+    <h1>Project Management System</h1>
+    <p class="lead">
+      Final-project capstone: build a <strong>console-based Inventory Management System</strong> in C#
+      from scratch. Users add, view, update, and remove products; the app keeps a menu running in a
+      loop and stores everything in memory at runtime. This is your first program written end-to-end
+      on your own — it ties together classes, control structures, loops, and methods.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Design and implement a working, menu-driven inventory application in a
+      <strong>C# console</strong> environment that lets users <strong>add</strong>, <strong>view</strong>,
+      <strong>update</strong>, and <strong>remove</strong> products — applying object-oriented principles,
+      control structures, loops, and function decomposition to reach a runnable result.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single C# console project (suggested name <code class="inline">InventoryManagementSystem</code>)
+      with two classes:</p>
+    <table>
+      <thead><tr><th>Component</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Product</code></td><td>Model a product: <code>Name</code> (string), <code>Price</code> (decimal), <code>Stock</code> (int); display itself</td></tr>
+        <tr><td><code>Program</code></td><td>Menu loop plus the four operation methods that drive the inventory</td></tr>
+        <tr><td><code>AddProduct()</code></td><td>Read name, price, stock; create a <code>Product</code> and store it</td></tr>
+        <tr><td><code>ViewInventory()</code></td><td>List every product and its current stock level</td></tr>
+        <tr><td><code>UpdateStock()</code></td><td>Find a product by name and adjust its stock (positive or negative)</td></tr>
+        <tr><td><code>RemoveProduct()</code></td><td>Find a product by name and remove it from the list</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">menu</span> <span class="ar">→</span>
+      <span class="c">switch(choice)</span> <span class="ar">→</span>
+      <span class="t">AddProduct / ViewInventory / UpdateStock / RemoveProduct</span> <span class="ar">→</span>
+      <span class="d">loop until Exit</span>
+    </div>
+  </div>
+
+  <!-- ===================== REQUIREMENTS & OBJECTIVES ===================== -->
+  <h2 class="section"><span class="em">📋</span> Requirements and objectives</h2>
+  <div class="card">
+    <p>You define what you are solving before you build it. Requirements fall into two categories —
+      functional (what the system does) and non-functional (how it behaves) — followed by the
+      objectives you aim to achieve.</p>
+    <h4>Functional requirements</h4>
+    <ul class="plain">
+      <li>Add new products with <strong>Name</strong> (string), <strong>Price</strong> (decimal), and <strong>Stock quantity</strong> (integer).</li>
+      <li>View all products, displaying name, price, and current stock.</li>
+      <li>Update stock levels when items are sold or restocked (positive <strong>or</strong> negative adjustment).</li>
+      <li>Remove a product from inventory by name.</li>
+      <li>Present a menu of options in a loop until the user chooses to exit.</li>
+    </ul>
+    <h4>Non-functional requirements</h4>
+    <ul class="plain">
+      <li>The system is a <strong>console application written in C#</strong>.</li>
+      <li>Handle user input errors gracefully (e.g., invalid menu option or wrong data type).</li>
+      <li>Keep code modular — a separate method for each major function (e.g., <code class="inline">AddProduct</code>, <code class="inline">UpdateStock</code>).</li>
+      <li>Be easy to use, with clear instructions and labels.</li>
+    </ul>
+    <h4>Project objectives</h4>
+    <ul class="plain">
+      <li>Design and implement a working inventory system using object-oriented principles.</li>
+      <li>Demonstrate control structures (<code class="inline">if-else</code>, <code class="inline">switch</code>) for decision-making logic.</li>
+      <li>Use loop constructs (<code class="inline">while</code>, <code class="inline">for</code>) to support ongoing interaction.</li>
+      <li>Apply function decomposition by defining and calling custom methods.</li>
+      <li>Practice structured programming and basic user interaction in a C# console environment.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== DESIGN OUTLINE ===================== -->
+  <h2 class="section"><span class="em">🧭</span> Design outline</h2>
+  <div class="card">
+    <p>Plan the major tasks and the code component each one needs before writing it.</p>
+    <table>
+      <thead><tr><th>Task</th><th>Description</th><th>Code component needed</th></tr></thead>
+      <tbody>
+        <tr><td>Display menu</td><td>Show options (Add, View, Update, Remove, Exit)</td><td><code>switch</code> or <code>if-else</code> in a loop</td></tr>
+        <tr><td>Add new product</td><td>Get name, price, stock; create and store a product</td><td><code>AddProduct()</code> + variables</td></tr>
+        <tr><td>View inventory</td><td>Display all products in the list</td><td><code>ViewInventory()</code> + <code>foreach</code></td></tr>
+        <tr><td>Update product stock</td><td>Search by name, adjust stock (add or subtract)</td><td><code>UpdateStock()</code> + conditionals</td></tr>
+        <tr><td>Remove product</td><td>Search by name, remove from list</td><td><code>RemoveProduct()</code> + list methods</td></tr>
+        <tr><td>Keep program running</td><td>Loop through menu until exit is chosen</td><td><code>while</code> / <code>do-while</code> loop</td></tr>
+        <tr><td>Handle errors</td><td>Validate input, display error messages</td><td><code>TryParse</code> / <code>if-else</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Planned variables</h4>
+    <table>
+      <thead><tr><th>Variable name</th><th>Type</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>inventory</code></td><td><code>List&lt;Product&gt;</code></td><td>Stores all products in memory</td></tr>
+        <tr><td><code>name</code></td><td><code>string</code></td><td>Holds product name input</td></tr>
+        <tr><td><code>price</code></td><td><code>decimal</code></td><td>Holds product price input</td></tr>
+        <tr><td><code>stock</code></td><td><code>int</code></td><td>Holds quantity input</td></tr>
+        <tr><td><code>choice</code></td><td><code>string</code></td><td>Holds user menu selection</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      <strong>Diagram:</strong> the original includes a flowchart — "Picture 1: Inventory Management System
+      Flowchart" — that walks the menu loop: display options → branch on the user's choice → perform the
+      action → ask whether to continue or exit.
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (Copilot is optional and may assist while you code)</li>
+      <li>Basic familiarity with C# classes, <code class="inline">switch</code>/<code class="inline">if-else</code>, loops, and methods</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Scaffold the console project</h3>
+    <p class="scenario">Create the project and move into it.</p>
+<pre class="code">dotnet new console -n InventoryManagementSystem
+cd InventoryManagementSystem</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Define the <code>Product</code> model</h3>
+    <p class="scenario">Create <code class="inline">Product.cs</code>. The class holds the three product
+      fields and can print itself, using a primary constructor so the fields are populated at creation.</p>
+<pre class="code">class Product(string name, decimal price, int stock)
+{
+    public string Name { get; set; } = name;
+    public decimal Price { get; set; } = price;
+    public int Stock { get; set; } = stock;
+
+    public void Display()
+    {
+        Console.WriteLine($"Name: {Name}, Price: ${Price}, Stock: {Stock}");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Build the menu loop in <code>Main</code></h3>
+    <p class="scenario">In <code class="inline">Program.cs</code>, keep the inventory in a
+      <code class="inline">List&lt;Product&gt;</code> and loop over a menu with a <code class="inline">switch</code>
+      statement until the user chooses <strong>Exit (5)</strong>.</p>
+<pre class="code">class Program
+{
+    static readonly List&lt;Product&gt; inventory = [];
+
+    static void Main()
+    {
+        bool running = true;
+        while (running)
+        {
+            Console.WriteLine("\nInventory Management System");
+            Console.WriteLine("1. Add Product");
+            Console.WriteLine("2. View Inventory");
+            Console.WriteLine("3. Update Stock");
+            Console.WriteLine("4. Remove Product");
+            Console.WriteLine("5. Exit");
+            Console.Write("Choose an option (1-5): ");
+            string choice = Console.ReadLine() ?? string.Empty;
+
+            switch (choice)
+            {
+                case "1":
+                    AddProduct();
+                    break;
+                case "2":
+                    ViewInventory();
+                    break;
+                case "3":
+                    UpdateStock();
+                    break;
+                case "4":
+                    RemoveProduct();
+                    break;
+                case "5":
+                    running = false;
+                    break;
+                default:
+                    Console.WriteLine("Invalid option. Please choose between 1 and 5.");
+                    break;
+            }
+        }
+        Console.WriteLine("Exiting the program. Goodbye!");
+    }</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Add a product</h3>
+    <p class="scenario"><code class="inline">AddProduct()</code> reads input and validates the numeric
+      fields with <code class="inline">TryParse</code>, returning early on bad input so the program never crashes.</p>
+<pre class="code">    static void AddProduct()
+    {
+        Console.Write("Enter product name: ");
+        string name = Console.ReadLine() ?? string.Empty;
+
+        Console.Write("Enter price: ");
+        if (!decimal.TryParse(Console.ReadLine(), out decimal price))
+        {
+            Console.WriteLine("Invalid price input.");
+            return;
+        }
+
+        Console.Write("Enter stock quantity: ");
+        if (!int.TryParse(Console.ReadLine(), out int stock))
+        {
+            Console.WriteLine("Invalid stock input.");
+            return;
+        }
+
+        inventory.Add(new Product(name, price, stock));
+        Console.WriteLine("Product added successfully.");
+    }</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> View the inventory</h3>
+    <p class="scenario"><code class="inline">ViewInventory()</code> handles the empty case, then prints
+      each product via <code class="inline">Product.Display()</code>.</p>
+<pre class="code">    static void ViewInventory()
+    {
+        if (inventory.Count == 0)
+        {
+            Console.WriteLine("Inventory is empty.");
+        }
+        else
+        {
+            Console.WriteLine("\nCurrent Inventory:");
+            foreach (var product in inventory)
+            {
+                product.Display();
+            }
+        }
+    }</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Update stock</h3>
+    <p class="scenario"><code class="inline">UpdateStock()</code> finds a product by name (case-insensitive)
+      and applies a signed adjustment — positive to restock, negative to record a sale.</p>
+<pre class="code">    static void UpdateStock()
+    {
+        Console.Write("Enter product name to update: ");
+        string name = Console.ReadLine() ?? string.Empty;
+
+        Product? found = inventory.Find(p =&gt; p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (found != null)
+        {
+            Console.Write("Enter quantity to add (use negative number to subtract): ");
+            if (!int.TryParse(Console.ReadLine(), out int quantityChange))
+            {
+                Console.WriteLine("Invalid input.");
+                return;
+            }
+            found.Stock += quantityChange;
+            Console.WriteLine("Stock updated successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Product not found.");
+        }
+    }</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Remove a product</h3>
+    <p class="scenario"><code class="inline">RemoveProduct()</code> looks the product up the same way and
+      removes it from the list.</p>
+<pre class="code">    static void RemoveProduct()
+    {
+        Console.Write("Enter product name to remove: ");
+        string name = Console.ReadLine() ?? string.Empty;
+
+        Product? found = inventory.Find(p =&gt; p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (found != null)
+        {
+            inventory.Remove(found);
+            Console.WriteLine("Product removed successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Product not found.");
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">8</span> Run, then save and submit</h3>
+    <p class="scenario">Run the app and exercise every menu option, then save your project outline and code
+      and paste the relevant sections into the submission prompts.</p>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The program prints the menu and loops on each choice. <strong>Add</strong> stores a product,
+    <strong>View</strong> lists every product (<code class="inline">Name: ..., Price: $..., Stock: ...</code>),
+    <strong>Update</strong> adjusts a found product's stock, <strong>Remove</strong> deletes it, and invalid
+    menu input prints <code class="inline">Invalid option. Please choose between 1 and 5.</code> Choosing
+    <strong>5</strong> prints <code class="inline">Exiting the program. Goodbye!</code> and ends the loop.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Console project created and <code class="inline">Product</code> modeled with <code class="inline">Name</code>, <code class="inline">Price</code>, <code class="inline">Stock</code></li>
+      <li>Menu loop runs via a <code class="inline">switch</code> over options 1–5 until <strong>Exit</strong></li>
+      <li><code class="inline">AddProduct()</code>, <code class="inline">ViewInventory()</code>, <code class="inline">UpdateStock()</code>, <code class="inline">RemoveProduct()</code> implemented and called</li>
+      <li>Numeric input validated with <code class="inline">TryParse</code>; invalid input handled gracefully</li>
+      <li>Functional/non-functional requirements and objectives written up</li>
+      <li><code class="inline">dotnet run</code> works end-to-end; outline and code saved and submitted</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Object-oriented modeling</strong> — <code class="inline">Product</code> bundles data
+        (<code class="inline">Name</code>, <code class="inline">Price</code>, <code class="inline">Stock</code>) with behavior
+        (<code class="inline">Display()</code>), so the rest of the program works with whole products instead of loose variables.</li>
+      <li><strong>Function decomposition</strong> — each menu action is its own method
+        (<code class="inline">AddProduct</code>, <code class="inline">ViewInventory</code>, <code class="inline">UpdateStock</code>,
+        <code class="inline">RemoveProduct</code>), keeping <code class="inline">Main</code> a thin dispatcher that is easy to read and change.</li>
+      <li><strong>Control flow drives the UX</strong> — a <code class="inline">while</code> loop sustains interaction and a
+        <code class="inline">switch</code> routes the user's choice; the program only stops when the user explicitly exits.</li>
+      <li><strong>Validate input, fail gracefully</strong> — <code class="inline">decimal.TryParse</code> /
+        <code class="inline">int.TryParse</code> reject bad data and return early, so a typo never crashes the app.</li>
+      <li><strong>Requirements before code</strong> — separating functional from non-functional requirements and setting
+        objectives turns a vague brief into a checklist you can actually build against.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

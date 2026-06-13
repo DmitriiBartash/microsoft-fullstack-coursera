@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing State Management — Course 4 · Module 3</title>
+<style>
+  :root {
+    --hdr: #6d28d9 ;      /* header / create  */
+    --pld: #4f46e5 ;      /* payload / decode */
+    --sig: #8b5cf6 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 4 — Blazor for Front-End Development · Module 3 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing State Management</h1>
+    <p class="lead">
+      Build a Blazor WebAssembly app — <code>FeedbackApp</code> — that collects user feedback through
+      a validated <code>&lt;EditForm&gt;</code>, stores submissions in an injected <strong>state service</strong>,
+      and renders them in a list. The lab ties together three Blazor pillars:
+      <strong>two-way data binding</strong>, <strong>DataAnnotations validation</strong>, and
+      <strong>in-memory state management via DI</strong>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Create a Blazor WebAssembly application that demonstrates <strong>state management</strong>
+      and includes a <strong>form with validation</strong> to collect user feedback. By the end you will have a
+      working form that validates input, persists each entry in a singleton-style service, and displays all
+      collected feedback on a separate page.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A Blazor WebAssembly project named <code class="inline">FeedbackApp</code> made of these pieces:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Models/FeedbackItem.cs</code></td><td>Data model with validation attributes (<code>Name</code>, <code>Email</code>, <code>Comment</code>)</td></tr>
+        <tr><td><code>Services/IFeedbackService.cs</code></td><td>Abstraction for adding and retrieving feedback</td></tr>
+        <tr><td><code>Services/FeedbackService.cs</code></td><td>In-memory state store backing the feedback list</td></tr>
+        <tr><td><code>Pages/FeedbackForm.razor</code></td><td>Validated <code>&lt;EditForm&gt;</code> that captures and submits feedback</td></tr>
+        <tr><td><code>Pages/FeedbackList.razor</code></td><td>Table view that reads feedback from the service</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Registers <code>FeedbackService</code> for dependency injection</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">FeedbackForm</span> <span class="ar">→</span>
+      <span class="ar">EditForm (validate)</span> <span class="ar">→</span>
+      <span class="t">FeedbackService.Add()</span> <span class="ar">→</span>
+      <span class="ar">state</span> <span class="ar">→</span>
+      <span class="d">FeedbackList.GetAll()</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>The Blazor WebAssembly templates (ship with the .NET SDK)</li>
+      <li>Visual Studio Code</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare for the application</h3>
+    <p class="scenario">Scaffold a new Blazor WebAssembly project to manage user feedback, then open it.</p>
+<pre class="code">dotnet new blazorwasm -o FeedbackApp
+cd FeedbackApp</pre>
+    <ul class="plain">
+      <li>Open the <code class="inline">FeedbackApp</code> folder in Visual Studio Code.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Set up the data model</h3>
+    <p class="scenario">Define a model to store feedback details, including validation attributes.</p>
+    <ul class="plain">
+      <li>Create a folder named <code class="inline">Models</code> in the project root.</li>
+      <li>Inside <code class="inline">Models</code>, create a file named <code class="inline">FeedbackItem.cs</code>.</li>
+      <li>Define a <code class="inline">FeedbackItem</code> class: <code class="inline">Name</code> (<strong>required</strong>),
+        <code class="inline">Email</code> (<strong>email</strong> format), <code class="inline">Comment</code>
+        (<strong>max length</strong> 500).</li>
+    </ul>
+<pre class="code">using System.ComponentModel.DataAnnotations;
+
+namespace FeedbackApp.Models
+{
+    public class FeedbackItem
+    {
+        [Required(ErrorMessage = "Name is required")]
+        public string Name { get; set; } = string.Empty;
+
+        [EmailAddress(ErrorMessage = "Invalid email format")]
+        public string Email { get; set; } = string.Empty;
+
+        [MaxLength(500, ErrorMessage = "Comment cannot exceed 500 characters")]
+        public string Comment { get; set; } = string.Empty;
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement state management</h3>
+    <p class="scenario">Store and manage submitted feedback in the application state behind a service abstraction.</p>
+    <ul class="plain">
+      <li>Create a new folder named <code class="inline">Services</code>.</li>
+      <li>Add <code class="inline">IFeedbackService.cs</code> — the contract for adding and retrieving feedback.</li>
+      <li>Add <code class="inline">FeedbackService.cs</code> — an in-memory implementation that holds the list.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Services/IFeedbackService.cs</span>
+using FeedbackApp.Models;
+
+namespace FeedbackApp.Services;
+
+public interface IFeedbackService
+{
+    void Add(FeedbackItem item);
+    IReadOnlyList&lt;FeedbackItem&gt; GetAll();
+}</pre>
+<pre class="code"><span class="cmt">// Services/FeedbackService.cs</span>
+using System.Collections.ObjectModel;
+using FeedbackApp.Models;
+
+namespace FeedbackApp.Services;
+
+public class FeedbackService : IFeedbackService
+{
+    private readonly ObservableCollection&lt;FeedbackItem&gt; _items = new();
+
+    public void Add(FeedbackItem item)
+    {
+        if (item is null) return;
+
+        _items.Add(new FeedbackItem
+        {
+            Name = item.Name,
+            Email = item.Email,
+            Comment = item.Comment
+        });
+    }
+
+    public IReadOnlyList&lt;FeedbackItem&gt; GetAll()
+        =&gt; new ReadOnlyCollection&lt;FeedbackItem&gt;(_items);
+}</pre>
+    <div class="callout">
+      The service stores a <strong>copy</strong> of each submitted item, so later edits to the bound form
+      model cannot mutate already-stored feedback.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Register the service for dependency injection</h3>
+    <p class="scenario">Wire the service into the DI container so components can inject it.</p>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and register <code class="inline">FeedbackService</code> against its interface:</li>
+    </ul>
+<pre class="code">builder.Services.AddScoped&lt;IFeedbackService, FeedbackService&gt;();</pre>
+    <div class="callout">
+      In Blazor WebAssembly the app is single-user, so a <code class="inline">Scoped</code> registration behaves
+      like a singleton for the lifetime of the loaded app — keeping the feedback list alive as you navigate
+      between pages.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Build the feedback form &amp; handle submission</h3>
+    <p class="scenario">Create a form to capture user feedback, validate it, and persist it on submit.</p>
+    <ul class="plain">
+      <li>Open the <code class="inline">Pages</code> folder and create <code class="inline">FeedbackForm.razor</code>.</li>
+      <li>Use <code class="inline">&lt;EditForm&gt;</code>, <code class="inline">&lt;InputText&gt;</code>,
+        <code class="inline">&lt;InputTextArea&gt;</code> and <code class="inline">&lt;ValidationSummary&gt;</code>,
+        binding inputs to the <code class="inline">FeedbackItem</code> model.</li>
+      <li>Add <code class="inline">&lt;DataAnnotationsValidator&gt;</code> to enable validation from the model's attributes.</li>
+      <li>In <code class="inline">OnValidSubmit</code>, inject <code class="inline">IFeedbackService</code>, add the
+        feedback, show a confirmation message, and reset the form.</li>
+    </ul>
+<pre class="code">@page "/feedback"
+@using FeedbackApp.Models
+@using FeedbackApp.Services
+@inject IFeedbackService FeedbackService
+
+&lt;h3&gt;Submit Feedback&lt;/h3&gt;
+
+&lt;EditForm Model="@model" OnValidSubmit="HandleValidSubmit"&gt;
+    &lt;DataAnnotationsValidator /&gt;
+    &lt;ValidationSummary /&gt;
+
+    &lt;div class="mb-3"&gt;
+        &lt;label class="form-label"&gt;Name&lt;/label&gt;
+        &lt;InputText @bind-Value="model.Name" class="form-control" /&gt;
+        &lt;ValidationMessage For="@(() =&gt; model.Name)" /&gt;
+    &lt;/div&gt;
+
+    &lt;div class="mb-3"&gt;
+        &lt;label class="form-label"&gt;Email&lt;/label&gt;
+        &lt;InputText @bind-Value="model.Email" class="form-control" /&gt;
+        &lt;ValidationMessage For="@(() =&gt; model.Email)" /&gt;
+    &lt;/div&gt;
+
+    &lt;div class="mb-3"&gt;
+        &lt;label class="form-label"&gt;Comment&lt;/label&gt;
+        &lt;InputTextArea @bind-Value="model.Comment" class="form-control" rows="5" /&gt;
+        &lt;ValidationMessage For="@(() =&gt; model.Comment)" /&gt;
+    &lt;/div&gt;
+
+    &lt;button type="submit" class="btn btn-primary"&gt;Submit&lt;/button&gt;
+&lt;/EditForm&gt;
+
+@if (submitted)
+{
+    &lt;div class="alert alert-success mt-3"&gt;
+        Thanks for your feedback, @lastSubmittedName!
+    &lt;/div&gt;
+}
+
+@code {
+    private FeedbackItem model = new();
+    private bool submitted;
+    private string lastSubmittedName = string.Empty;
+
+    private void HandleValidSubmit()
+    {
+        FeedbackService.Add(model);
+        lastSubmittedName = model.Name;
+        submitted = true;
+        model = new();
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Display submitted feedback</h3>
+    <p class="scenario">Create a component that lists every stored feedback entry.</p>
+    <ul class="plain">
+      <li>Create <code class="inline">Pages/FeedbackList.razor</code>.</li>
+      <li>Retrieve the data from <code class="inline">FeedbackService</code> in <code class="inline">OnInitialized</code>.</li>
+      <li>Render the entries in a Blazor <code class="inline">&lt;table&gt;</code>, with a friendly empty state.</li>
+    </ul>
+<pre class="code">@page "/feedback/list"
+@using FeedbackApp.Models
+@using FeedbackApp.Services
+@inject IFeedbackService FeedbackService
+
+&lt;h3&gt;Feedback List&lt;/h3&gt;
+
+&lt;div class="mb-3"&gt;
+    &lt;NavLink class="btn btn-primary" href="feedback"&gt;+ Add Feedback&lt;/NavLink&gt;
+&lt;/div&gt;
+
+@if (items.Count == 0)
+{
+    &lt;p&gt;No feedback yet.&lt;/p&gt;
+    &lt;NavLink class="btn btn-outline-primary" href="feedback"&gt;Create first feedback&lt;/NavLink&gt;
+}
+else
+{
+    &lt;table class="table"&gt;
+        &lt;thead&gt;
+            &lt;tr&gt;
+                &lt;th&gt;Name&lt;/th&gt;
+                &lt;th&gt;Email&lt;/th&gt;
+                &lt;th&gt;Comment&lt;/th&gt;
+            &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+        @foreach (var f in items)
+        {
+            &lt;tr&gt;
+                &lt;td&gt;@f.Name&lt;/td&gt;
+                &lt;td&gt;@f.Email&lt;/td&gt;
+                &lt;td&gt;@f.Comment&lt;/td&gt;
+            &lt;/tr&gt;
+        }
+        &lt;/tbody&gt;
+    &lt;/table&gt;
+}
+
+@code {
+    private IReadOnlyList&lt;FeedbackItem&gt; items = Array.Empty&lt;FeedbackItem&gt;();
+
+    protected override void OnInitialized()
+    {
+        items = FeedbackService.GetAll();
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Run the application</h3>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Browse to <code class="inline">/feedback</code>, submit the form, then navigate to
+        <code class="inline">/feedback/list</code> to see the entry.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Navigating to <code class="inline">/feedback</code> shows the validated form. Submitting <strong>valid</strong>
+    data displays <em>"Thanks for your feedback, &lt;name&gt;!"</em> and clears the inputs; submitting
+    <strong>invalid</strong> data (blank name, malformed email, or an over-length comment) shows inline validation
+    messages and blocks the submit. On <code class="inline">/feedback/list</code> every stored submission appears in
+    the table, persisting as you move between the two pages.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">FeedbackApp</code> Blazor WebAssembly project created and opened</li>
+      <li><code class="inline">Models/FeedbackItem.cs</code> defines <code class="inline">Name</code> (required), <code class="inline">Email</code> (email), <code class="inline">Comment</code> (max 500)</li>
+      <li><code class="inline">IFeedbackService</code> and <code class="inline">FeedbackService</code> store feedback in memory</li>
+      <li><code class="inline">FeedbackService</code> registered in <code class="inline">Program.cs</code> via dependency injection</li>
+      <li><code class="inline">FeedbackForm.razor</code> validates input and adds feedback on <code class="inline">OnValidSubmit</code></li>
+      <li><code class="inline">FeedbackList.razor</code> reads from the service and renders the table</li>
+      <li><code class="inline">dotnet run</code> serves the app; valid submissions appear in the list, invalid ones are rejected</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Two-way data binding</strong> — <code class="inline">@bind-Value</code> on
+        <code class="inline">&lt;InputText&gt;</code> / <code class="inline">&lt;InputTextArea&gt;</code> keeps the UI
+        and the <code class="inline">FeedbackItem</code> model in sync without manual event wiring.</li>
+      <li><strong>Declarative validation</strong> — DataAnnotations (<code class="inline">[Required]</code>,
+        <code class="inline">[EmailAddress]</code>, <code class="inline">[MaxLength]</code>) plus
+        <code class="inline">&lt;DataAnnotationsValidator&gt;</code> drive <code class="inline">OnValidSubmit</code>
+        and the <code class="inline">&lt;ValidationMessage&gt;</code> output.</li>
+      <li><strong>State via DI</strong> — a service registered in the container holds application state and is
+        shared across components, so navigating away and back does not lose the collected feedback.</li>
+      <li><strong>Defensive storage</strong> — <code class="inline">FeedbackService.Add</code> copies the item and
+        <code class="inline">GetAll</code> returns a read-only view, preventing callers from mutating the internal collection.</li>
+      <li><strong>Routing between components</strong> — <code class="inline">@page</code> directives and
+        <code class="inline">&lt;NavLink&gt;</code> connect the form (<code class="inline">/feedback</code>) and the
+        list (<code class="inline">/feedback/list</code>) into a small navigable flow.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

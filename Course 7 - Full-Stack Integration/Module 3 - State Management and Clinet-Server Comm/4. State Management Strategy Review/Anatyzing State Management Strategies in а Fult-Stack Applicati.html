@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Anatyzing State Management Strategies in а Fult-Stack Applicati — Course 7 · Module 3</title>
+<style>
+  :root {
+    --hdr: #db2777 ;      /* header / create  */
+    --pld: #9333ea ;      /* payload / decode */
+    --sig: #ec4899 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 3 · Lesson 4
+      <span class="pill">You Try It!</span></p>
+    <h1>Analyzing State Management Strategies in a Full-Stack Application</h1>
+    <p class="lead">
+      Read a real full-stack app — the <strong>Task Tracker</strong> (Blazor WebAssembly +
+      .NET Minimal APIs + SQL Server + SignalR) — and learn to <strong>name the state-management
+      strategy</strong> at each layer: local component state, session state, real-time sync,
+      persistent state, and caching. Then turn the lens on a new app and write your own analysis.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Analyze a sample full-stack application, identify the state management
+      strategies used on the <strong>client</strong> and the <strong>server</strong>, evaluate how
+      well they fit, and suggest improvements for better <strong>consistency, performance, and
+      reliability</strong>.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">📦</span> What you'll produce</h2>
+  <div class="card">
+    <p>A short written analysis that, for a given full-stack app, names the strategy at each layer
+      and proposes concrete optimizations:</p>
+    <table>
+      <thead><tr><th>Layer</th><th>What to identify</th></tr></thead>
+      <tbody>
+        <tr><td>Client — local state</td><td>Component-scoped data for UI and in-flight edits</td></tr>
+        <tr><td>Client — session state</td><td>Where the auth token / identity lives across reloads</td></tr>
+        <tr><td>Client — real-time</td><td>How server-pushed changes reach the UI</td></tr>
+        <tr><td>Server — persistent</td><td>The system of record and its schema</td></tr>
+        <tr><td>Server — session</td><td>How each request is authenticated/authorized</td></tr>
+        <tr><td>Server — caching</td><td>What hot data is cached and why</td></tr>
+        <tr><td>Optimizations</td><td>2–4 grounded improvements for consistency, performance, or scalability</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">UI edit</span> <span class="ar">→</span>
+      <span class="c">local state</span> <span class="ar">→</span>
+      <span class="ar">API call</span> <span class="ar">→</span>
+      <span class="t">SQL Server</span> <span class="ar">→</span>
+      <span class="d">SignalR push</span> <span class="ar">→</span>
+      <span class="ar">all clients update</span>
+    </div>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🧭</span> Walkthrough — Case study: Task Tracker</h2>
+
+  <div class="card">
+    <p>The <strong>Task Tracker Application</strong> lets users:</p>
+    <ul class="plain">
+      <li>Log in to their accounts.</li>
+      <li>Create, edit, and delete tasks.</li>
+      <li>View a real-time dashboard of tasks shared across teams.</li>
+    </ul>
+    <p>Its stack is <strong>Blazor WebAssembly</strong> (front-end), <strong>.NET Minimal APIs</strong>
+      (back-end), <strong>SQL Server</strong> (persistent storage), and <strong>SignalR</strong>
+      (real-time updates).</p>
+  </div>
+
+  <div class="card">
+    <h3>Client-side state management</h3>
+    <ul class="plain">
+      <li><strong>Local component state</strong> — task data and temporary UI elements (e.g. the
+        edit-task modal) are held <em>inside</em> Blazor components. Example: a
+        <code class="inline">TaskListComponent</code> keeps a <code class="inline">List&lt;Task&gt;</code>
+        to render the current user's tasks.</li>
+      <li><strong>Session state</strong> — authentication tokens are stored in
+        <code class="inline">localStorage</code> so the session survives page reloads.</li>
+      <li><strong>Real-time updates</strong> — <code class="inline">SignalR</code> drives live changes.
+        Any change on the server (e.g. a new task) triggers a push to every connected client.</li>
+    </ul>
+    <p class="scenario">A minimal Blazor component shows where local and session state actually live:</p>
+<pre class="code">@inject HttpClient Http
+@inject ILocalStorageService LocalStorage
+
+@code {
+    <span class="cmt">// Local component state: this list IS the client-side state for rendering.</span>
+    private List&lt;TaskItem&gt; tasks = new();
+    private bool showEditModal;          <span class="cmt">// transient UI state, lives only here</span>
+
+    protected override async Task OnInitializedAsync()
+    {
+        <span class="cmt">// Session state: read the persisted auth token, attach it to every request.</span>
+        var token = await LocalStorage.GetItemAsync&lt;string&gt;("authToken");
+        Http.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        tasks = await Http.GetFromJsonAsync&lt;List&lt;TaskItem&gt;&gt;("/api/tasks") ?? new();
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3>Server-side state management</h3>
+    <ul class="plain">
+      <li><strong>Persistent state</strong> — tasks live in a <strong>SQL Server</strong> database for
+        long-term retention and consistency. Example: each task has <code class="inline">Title</code>,
+        <code class="inline">Status</code>, <code class="inline">AssignedTo</code>, and
+        <code class="inline">DueDate</code> columns.</li>
+      <li><strong>Session validation</strong> — the API validates the session token on
+        <strong>every request</strong> to keep access secure and authorized.</li>
+      <li><strong>Caching</strong> — frequently accessed data (e.g. task summaries) is cached in memory
+        with <code class="inline">IMemoryCache</code> to reduce database load.</li>
+    </ul>
+    <p class="scenario">A Minimal API endpoint shows persistent state, per-request session validation,
+      and caching together:</p>
+<pre class="code"><span class="cmt">// Program.cs — .NET Minimal API</span>
+var app = builder.Build();
+
+<span class="cmt">// Persistent state: SQL Server is the system of record (queried via EF Core / Dapper).</span>
+<span class="cmt">// Session validation: token check runs on each protected request.</span>
+app.MapGet("/api/tasks/summary", async (
+        IMemoryCache cache,
+        ITaskRepository repo) =&gt;
+{
+    <span class="cmt">// Caching: serve hot summaries from memory, fall back to the database on a miss.</span>
+    var summary = await cache.GetOrCreateAsync("task-summary", entry =&gt;
+    {
+        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30);
+        return repo.GetSummaryAsync();
+    });
+
+    return Results.Ok(summary);
+})
+.RequireAuthorization();   <span class="cmt">// validates the session token on every call</span></pre>
+    <p class="scenario">When a task changes, the server persists it and then pushes the change so every
+      client stays in sync:</p>
+<pre class="code">app.MapPost("/api/tasks", async (
+        TaskItem task,
+        ITaskRepository repo,
+        IHubContext&lt;TaskHub&gt; hub) =&gt;
+{
+    await repo.AddAsync(task);                      <span class="cmt">// persistent state (SQL Server)</span>
+    await hub.Clients.All.SendAsync("TaskCreated", task);  <span class="cmt">// real-time sync (SignalR)</span>
+    return Results.Created($"/api/tasks/{task.Id}", task);
+})
+.RequireAuthorization();</pre>
+  </div>
+
+  <div class="card">
+    <h3>How the concepts connect</h3>
+    <table>
+      <thead><tr><th>Concept</th><th>In Task Tracker</th></tr></thead>
+      <tbody>
+        <tr><td>Consistency across client &amp; server</td><td>State is synchronized with <code class="inline">SignalR</code>, so updates appear immediately on all clients</td></tr>
+        <tr><td>Client-side state</td><td>Local state handles transient/UI data; session state persists user identity</td></tr>
+        <tr><td>Server-side state</td><td>SQL Server guarantees long-term consistency; caching cuts repeat DB calls</td></tr>
+      </tbody>
+    </table>
+    <h4>Optimization opportunities</h4>
+    <ul class="plain">
+      <li><strong>Reduce unnecessary SignalR updates</strong> — fewer/coarser pushes scale better under load.</li>
+      <li><strong>Lazy-load tasks</strong> — when the list is large, fetch only the visible tasks instead of all of them.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">✍️</span> Your turn — Analyze a Social Media App</h2>
+  <div class="card">
+    <p class="scenario"><strong>Scenario:</strong> a Social Media Application lets users
+      <strong>post status updates</strong>, <strong>comment on posts</strong>, and
+      <strong>receive real-time notifications</strong> for likes and comments.</p>
+    <p>Work through the same three questions, then write it up.</p>
+    <ul class="plain">
+      <li><strong>Identify client-side state strategies</strong> — how does the app manage user session
+        tokens and transient data like <em>unsent posts</em>?</li>
+      <li><strong>Identify server-side state strategies</strong> — how does the back-end persist posts and
+        comments, and what makes real-time updates (notifications) possible?</li>
+      <li><strong>Propose improvements</strong> — suggest ways to optimize state management for performance
+        and consistency.</li>
+    </ul>
+    <div class="callout">
+      <strong>Submit:</strong> a brief report (<strong>200–300 words</strong>) covering the client-side and
+      server-side strategies, with suggestions for optimization. Try writing your own before reading the
+      reference analysis below.
+    </div>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">✅</span> What good looks like — Reference analysis</h2>
+  <div class="card">
+    <h4>Client-side state strategies</h4>
+    <p>User session tokens are stored in <code class="inline">localStorage</code> or
+      <code class="inline">sessionStorage</code>, so authentication persists across browser sessions and
+      page reloads without forcing repeated logins. Transient data — unsent posts and draft comments — is
+      held in <strong>local component state</strong>: e.g. a <code class="inline">PostComposer</code>
+      component keeps a <code class="inline">draft</code> object with the post text and attached media. To
+      prevent data loss on an accidental refresh, drafts can be <strong>auto-saved periodically</strong> to
+      <code class="inline">localStorage</code> or <code class="inline">IndexedDB</code>, giving users a
+      recovery path.</p>
+    <h4>Server-side state strategies</h4>
+    <p>Posts and comments are persisted in a relational database (<strong>SQL Server</strong> or
+      <strong>PostgreSQL</strong>). Each post carries fields like <code class="inline">AuthorId</code>,
+      <code class="inline">Content</code>, <code class="inline">Timestamp</code>, and
+      <code class="inline">LikesCount</code>; comments reference their parent post via
+      <strong>foreign keys</strong>. This structure protects data integrity and supports the complex queries
+      that feeds and search need. Real-time notifications use <strong>SignalR</strong> (or raw
+      <strong>WebSockets</strong>): on a new like or comment the server pushes an event to the connected
+      client instantly, updating the notification badge with no manual refresh.</p>
+    <h4>Optimization proposals</h4>
+    <ul class="plain">
+      <li><strong>Caching</strong> — use <strong>Redis</strong> or <code class="inline">IMemoryCache</code>
+        for hot data (popular posts, user profiles) to cut database load.</li>
+      <li><strong>Batch SignalR updates</strong> — group notifications into periodic batches instead of one
+        message each, improving scalability.</li>
+      <li><strong>Lazy loading</strong> — load posts incrementally as the user scrolls (infinite scroll)
+        rather than fetching the entire feed at once.</li>
+      <li><strong>Optimistic UI updates</strong> — reflect likes/comments on the client immediately, before
+        server confirmation, to improve perceived performance.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>For each layer, the <strong>client-side</strong> strategy is named: local component state, session state, real-time updates</li>
+      <li>For each layer, the <strong>server-side</strong> strategy is named: persistent storage, session validation, caching</li>
+      <li>Concrete artifacts are cited (storage location, schema fields, transport) — not just "it stores state"</li>
+      <li><strong>2–4 optimizations</strong> are proposed, each tied to consistency, performance, or scalability</li>
+      <li>The Social Media write-up is <strong>200–300 words</strong> and covers client, server, and improvements</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>State has layers</strong> — local component state (transient UI), session state (identity
+        across reloads), and persistent state (the database system of record) each solve a different problem.</li>
+      <li><strong>Real-time sync is a consistency tool</strong> — <code class="inline">SignalR</code>/WebSockets
+        push server changes to all clients so views don't drift; the cost is push volume, which batching keeps
+        in check.</li>
+      <li><strong>Cache hot, source-of-truth cold</strong> — <code class="inline">IMemoryCache</code>/Redis
+        speeds frequent reads, but the database stays authoritative; pick sensible expirations so cached data
+        doesn't go stale.</li>
+      <li><strong>Validate every request</strong> — session tokens are checked server-side on each call;
+        client-side storage (<code class="inline">localStorage</code>) is convenience, never the security boundary.</li>
+      <li><strong>Optimize perceived speed too</strong> — lazy loading and optimistic UI updates improve the
+        <em>felt</em> performance without changing the source of truth.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Setting up a Relational Database — Course 6 · Module 1</title>
+<style>
+  :root {
+    --hdr: #059669 ;      /* header / create  */
+    --pld: #0d9488 ;      /* payload / decode */
+    --sig: #10b981 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 6 — Database Integration and Management · Module 1 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Setting up a Relational Database</h1>
+    <p class="lead">
+      Stand up a working MySQL database from scratch using <strong>Visual Studio Code</strong>.
+      You will connect to a MySQL server, <strong>create the <code>CompanyDB</code> database</strong>
+      and an <code>Employees</code> table, add a dedicated user with the right <strong>privileges</strong>,
+      then insert and query data to prove the whole setup works end-to-end.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity you will be able to <strong>configure MySQL Server</strong>
+      and use <strong>Visual Studio Code</strong> to work with a relational database — creating a database and
+      table, securing it with a scoped user account, and verifying the setup with real SQL.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single MySQL database, <code class="inline">CompanyDB</code>, with one table and a dedicated application user:</p>
+    <table>
+      <thead><tr><th>Object</th><th>Definition</th></tr></thead>
+      <tbody>
+        <tr><td>Database</td><td><code>CompanyDB</code></td></tr>
+        <tr><td>Table</td><td><code>Employees</code> (<code>EmployeeID</code>, <code>FirstName</code>, <code>LastName</code>, <code>Department</code>)</td></tr>
+        <tr><td>User</td><td><code>'manager'@'localhost'</code> with <strong>all privileges</strong> on <code>CompanyDB.*</code></td></tr>
+        <tr><td>Verification script</td><td><code>Test.sql</code> — drops, recreates, seeds, and queries the database</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Connect</span> <span class="ar">→</span>
+      <span class="c">CREATE DATABASE</span> <span class="ar">→</span>
+      <span class="c">CREATE TABLE</span> <span class="ar">→</span>
+      <span class="d">CREATE USER + GRANT</span> <span class="ar">→</span>
+      <span class="t">INSERT</span> <span class="ar">→</span>
+      <span class="ar">SELECT</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li><strong>MySQL Server</strong> installed and running locally</li>
+      <li><strong>Visual Studio Code</strong> with the <strong>MySQL Shell for VS Code</strong> extension installed</li>
+      <li>A MySQL account that can create databases and users (e.g. <code class="inline">root</code>)</li>
+      <li>Connection details to hand: host <code class="inline">localhost</code>, user <code class="inline">root</code>, your <code class="inline">root</code> password</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Set up the database connection in VS Code</h3>
+    <p class="scenario">Ensure your connection to the MySQL server is active and ready for running SQL commands.</p>
+    <ul class="plain">
+      <li>Open <strong>Visual Studio Code</strong>.</li>
+      <li>Click the <strong>MySQL Shell</strong> icon in the sidebar to access the extension.</li>
+      <li>Connect to your MySQL server:
+        <ul class="plain">
+          <li>Click <strong>New Connection</strong> to open a connection to MySQL.</li>
+          <li>If prompted, enter your MySQL server details (for example, host: <code class="inline">localhost</code>, user: <code class="inline">root</code>, password: <code class="inline">password</code>).</li>
+        </ul>
+      </li>
+      <li>Confirm the connection by running a simple query. In the editor, create the following SQL statement, then execute it with the <strong>Execute</strong> (lightning bolt) button above the code window:</li>
+    </ul>
+<pre class="code">SHOW DATABASES;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Configure the database</h3>
+    <p class="scenario">Create the database and a table for a relational data model.</p>
+    <ul class="plain">
+      <li>In the editor, create a new database:</li>
+    </ul>
+<pre class="code">CREATE DATABASE CompanyDB;</pre>
+    <ul class="plain">
+      <li>Set the new database as the default for your session:</li>
+    </ul>
+<pre class="code">USE CompanyDB;</pre>
+    <ul class="plain">
+      <li>Create a table named <code class="inline">Employees</code> with the following structure —
+        <code class="inline">EmployeeID</code> as an auto-incrementing primary key, plus three <code class="inline">VARCHAR(50)</code> columns:</li>
+    </ul>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td><code>EmployeeID</code></td><td><code>INT</code></td><td>Primary key, <code>AUTO_INCREMENT</code></td></tr>
+        <tr><td><code>FirstName</code></td><td><code>VARCHAR(50)</code></td><td></td></tr>
+        <tr><td><code>LastName</code></td><td><code>VARCHAR(50)</code></td><td></td></tr>
+        <tr><td><code>Department</code></td><td><code>VARCHAR(50)</code></td><td></td></tr>
+      </tbody>
+    </table>
+<pre class="code">CREATE TABLE Employees (
+    EmployeeID INT AUTO_INCREMENT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    Department VARCHAR(50)
+);</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Configure user accounts and permissions</h3>
+    <p class="scenario">Secure the database by adding a user account and granting it permissions.</p>
+    <ul class="plain">
+      <li>Create a new user for accessing the database:</li>
+    </ul>
+<pre class="code">CREATE USER 'manager'@'localhost' IDENTIFIED BY 'StrongPassword123';</pre>
+    <ul class="plain">
+      <li>Grant this user permissions for the <code class="inline">CompanyDB</code> database:</li>
+    </ul>
+<pre class="code">GRANT ALL PRIVILEGES ON CompanyDB.* TO 'manager'@'localhost';
+FLUSH PRIVILEGES;</pre>
+    <ul class="plain">
+      <li>Test the new user by connecting to the database using this account (add a new MySQL Shell connection with user <code class="inline">manager</code> and password <code class="inline">StrongPassword123</code>).</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Test and verify the setup</h3>
+    <p class="scenario">Confirm the database and user account are functioning as expected.</p>
+    <ul class="plain">
+      <li>Insert a sample record into the <code class="inline">Employees</code> table:</li>
+    </ul>
+<pre class="code">INSERT INTO Employees (FirstName, LastName, Department)
+VALUES ('John', 'Doe', 'HR');</pre>
+    <ul class="plain">
+      <li>Query the table to confirm the record was inserted:</li>
+    </ul>
+<pre class="code">SELECT * FROM Employees;</pre>
+    <ul class="plain">
+      <li>Verify that the user <code class="inline">manager</code> can access and query the database by logging in with that account and running the same <code class="inline">SELECT</code> query.</li>
+    </ul>
+
+    <h4><code class="inline">Test.sql</code> — full setup and verification script</h4>
+    <p class="scenario">Run this end-to-end script to recreate the database from a clean state, seed it with several rows, and verify the result.</p>
+<pre class="code"><span class="cmt">-- Step 1: Create Database</span>
+DROP DATABASE IF EXISTS CompanyDB;
+CREATE DATABASE CompanyDB;
+USE CompanyDB;
+
+<span class="cmt">-- Step 2: Create Table</span>
+DROP TABLE IF EXISTS Employees;
+CREATE TABLE Employees (
+    EmployeeID INT AUTO_INCREMENT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    Department VARCHAR(50)
+);
+
+<span class="cmt">-- Step 3: Insert Records</span>
+INSERT INTO Employees (FirstName, LastName, Department)
+VALUES
+('John', 'Doe', 'HR'),
+('Ivan', 'Petrov', 'IT'),
+('Anna', 'Smirnova', 'Finance');
+
+<span class="cmt">-- Step 4: Verify</span>
+SELECT DATABASE();
+SHOW TABLES;
+DESCRIBE Employees;
+SELECT * FROM Employees;</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    <code class="inline">SHOW DATABASES;</code> lists <strong><code class="inline">CompanyDB</code></strong>, and the verification queries confirm the setup:
+    <code class="inline">SELECT DATABASE();</code> returns <code class="inline">CompanyDB</code>, <code class="inline">SHOW TABLES;</code> lists <code class="inline">Employees</code>,
+    <code class="inline">DESCRIBE Employees;</code> shows the four columns with <code class="inline">EmployeeID</code> as the primary key, and
+    <code class="inline">SELECT * FROM Employees;</code> returns the seeded rows (John Doe / HR, Ivan Petrov / IT, Anna Smirnova / Finance) —
+    each with an auto-generated <code class="inline">EmployeeID</code>. The <code class="inline">manager</code> user can run the same <code class="inline">SELECT</code> successfully.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>MySQL Shell connection to <code class="inline">localhost</code> is active and <code class="inline">SHOW DATABASES;</code> runs successfully</li>
+      <li><code class="inline">CompanyDB</code> database created and selected with <code class="inline">USE CompanyDB;</code></li>
+      <li><code class="inline">Employees</code> table created with <code class="inline">EmployeeID</code> primary key (<code class="inline">AUTO_INCREMENT</code>) and three <code class="inline">VARCHAR(50)</code> columns</li>
+      <li><code class="inline">'manager'@'localhost'</code> user created and granted <strong>all privileges</strong> on <code class="inline">CompanyDB.*</code></li>
+      <li>A sample record inserted and returned by <code class="inline">SELECT * FROM Employees;</code></li>
+      <li>The <code class="inline">manager</code> user can connect and query <code class="inline">CompanyDB</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Database vs. session context</strong> — <code class="inline">CREATE DATABASE</code> defines storage;
+        <code class="inline">USE</code> sets the active database for the session so later statements don't need to qualify the table name.</li>
+      <li><strong>Primary key + <code class="inline">AUTO_INCREMENT</code></strong> — <code class="inline">EmployeeID</code> uniquely identifies each row
+        and MySQL fills it automatically, so inserts only supply the meaningful columns.</li>
+      <li><strong>Least-privilege users</strong> — application code connects as a scoped user (<code class="inline">manager</code>) rather than
+        <code class="inline">root</code>; <code class="inline">GRANT ... ON CompanyDB.*</code> limits that account to a single database.</li>
+      <li><strong><code class="inline">GRANT</code> then <code class="inline">FLUSH PRIVILEGES</code></strong> — privilege changes take effect for new grants,
+        and flushing reloads the grant tables so the new access is picked up immediately.</li>
+      <li><strong>Verify with a repeatable script</strong> — <code class="inline">Test.sql</code> uses <code class="inline">DROP ... IF EXISTS</code> so the whole
+        database can be rebuilt deterministically, then <code class="inline">SELECT</code>/<code class="inline">DESCRIBE</code> prove it worked.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

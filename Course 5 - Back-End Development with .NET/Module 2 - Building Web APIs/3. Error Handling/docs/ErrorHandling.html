@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ErrorHandling — Course 5 · Module 2</title>
+<style>
+  :root {
+    --hdr: #2563eb;      /* header / create  */
+    --pld: #0891b2;      /* payload / decode */
+    --sig: #3b82f6;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 5 — Back-End Development with .NET · Module 2 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Error Handling and Logging in ASP.NET Core</h1>
+    <p class="lead">
+      Build a small ASP.NET Core web API and make it <strong>resilient</strong>: catch failures locally
+      with <code>try</code>/<code>catch</code>, add a <strong>global exception middleware</strong> as a safety net,
+      configure the built-in <code>ILogger</code>, then layer <strong>Serilog</strong> on top to write structured
+      logs to the console <em>and</em> a rolling file. Finally, trigger errors on purpose and read the logs back.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity you will be able to implement error-handling mechanisms in an
+      ASP.NET Core web API, set up logging with both the <strong>built-in</strong> provider and a
+      <strong>third-party</strong> provider (<strong>Serilog</strong>), and capture and analyze the resulting log data.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A web API project named <code class="inline">ErrorHandlingDemo</code> with one diagnostic endpoint and a
+      full error-handling + logging pipeline:</p>
+    <table>
+      <thead><tr><th>Piece</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>ErrorHandlingController.cs</code></td><td>A <code>divide</code> endpoint that uses <strong><code>try</code>/<code>catch</code></strong> and logs each outcome</td></tr>
+        <tr><td>Global exception middleware</td><td>Last-resort <code>try</code>/<code>catch</code> in <code>Program.cs</code> returning <strong>HTTP 500</strong></td></tr>
+        <tr><td>Built-in <code>ILogger</code></td><td>Per-class logging via dependency injection</td></tr>
+        <tr><td><strong>Serilog</strong></td><td>Structured sinks: <strong>console + rolling file</strong> (<code>logs/log-*.txt</code>)</td></tr>
+        <tr><td><code>appsettings.json</code></td><td>Log levels and Serilog sink configuration per environment</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Request</span> <span class="ar">→</span>
+      <span class="d">Global middleware</span> <span class="ar">→</span>
+      <span class="c">ErrorHandlingController.GetDivisionResult()</span> <span class="ar">→</span>
+      <span class="t">ILogger / Serilog</span> <span class="ar">→</span>
+      <span class="ar">console + file</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>NuGet packages: <code class="inline">Serilog.AspNetCore</code>, <code class="inline">Serilog.Sinks.Console</code>,
+        <code class="inline">Serilog.Sinks.File</code>, <code class="inline">Swashbuckle.AspNetCore</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Create a small ASP.NET Core web API in Visual Studio Code. It will expose a simple endpoint
+      and host the error-handling and logging configuration.</p>
+<pre class="code">dotnet new webapi -n ErrorHandlingDemo
+cd ErrorHandlingDemo</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and <strong>remove the default weather-forecast code</strong>.</li>
+      <li>Verify the environment is ready by confirming the project builds without errors:</li>
+    </ul>
+<pre class="code">dotnet build</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Basic error handling with try-catch blocks</h3>
+    <p class="scenario">Add error handling to manage unexpected situations inside an API endpoint.</p>
+    <ul class="plain">
+      <li>In the root of the project, create a new folder named <code class="inline">Controllers</code>.</li>
+      <li>Inside it, create a file named <code class="inline">ErrorHandlingController.cs</code>.</li>
+      <li>Define a class <code class="inline">ErrorHandlingController</code> that inherits from <code class="inline">ControllerBase</code>.</li>
+      <li>Add an action method <code class="inline">GetDivisionResult</code> taking <code class="inline">int numerator</code> and <code class="inline">int denominator</code>.</li>
+      <li>Wrap the division in a <strong><code>try</code>/<code>catch</code></strong> block to handle any division errors.</li>
+      <li>In the catch block, <strong>log</strong> <em>"Division by zero is not allowed."</em> and return a user-friendly error to the client.</li>
+    </ul>
+<pre class="code">using Microsoft.AspNetCore.Mvc;
+
+namespace ErrorHandlingDemo.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class ErrorHandlingController : ControllerBase
+    {
+        private readonly ILogger&lt;ErrorHandlingController&gt; _logger;
+
+        public ErrorHandlingController(ILogger&lt;ErrorHandlingController&gt; logger)
+        {
+            _logger = logger;
+        }
+
+        [HttpGet("divide")]
+        public IActionResult GetDivisionResult(int numerator, int denominator)
+        {
+            try
+            {
+                int result = numerator / denominator;
+                _logger.LogInformation("Division succeeded: {Numerator} / {Denominator} = {Result}",
+                    numerator, denominator, result);
+                return Ok(new { Result = result });
+            }
+            catch (DivideByZeroException)
+            {
+                _logger.LogError("Division by zero is not allowed. Numerator: {Numerator}", numerator);
+                return BadRequest(new { Error = "Division by zero is not allowed." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error occurred during division.");
+                return StatusCode(500, new { Error = "An unexpected server error occurred." });
+            }
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Global error handling using middleware</h3>
+    <p class="scenario">ASP.NET Core allows centralized error handling with custom middleware. This catches
+      <strong>unhandled</strong> exceptions that slip past a controller.</p>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and add middleware with <code class="inline">app.Use</code> to handle exceptions globally.</li>
+      <li>Inside it, add a <code>try</code>/<code>catch</code> that catches any unhandled exception.</li>
+      <li>Log a generic error message and set the response <strong><code class="inline">StatusCode</code> to 500</strong>.</li>
+      <li>Return a user-friendly message such as <em>"An unexpected error occurred. Please try again later."</em></li>
+    </ul>
+<pre class="code">app.Use(async (context, next) =&gt;
+{
+    var logger = context.RequestServices.GetRequiredService&lt;ILogger&lt;Program&gt;&gt;();
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Unhandled exception in global middleware.");
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            Error = "An unexpected error occurred. Please try again later."
+        });
+    }
+});</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Setting up logging</h3>
+    <p class="scenario">Configure logging to capture application events and error detail.</p>
+    <ul class="plain">
+      <li>In <code class="inline">Program.cs</code>, configure logging by setting up <strong>log levels</strong> (e.g. <code class="inline">Error</code>, <code class="inline">Warning</code>, <code class="inline">Information</code>).</li>
+      <li>Output to the <strong>console</strong> — the default host already wires the console provider; you can re-add it explicitly.</li>
+      <li>Define log levels in <code class="inline">appsettings.json</code> for both <strong>Development</strong> and <strong>Production</strong> to control verbosity.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Built-in console logging (re-added explicitly for clarity)</span>
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();</pre>
+<pre class="code"><span class="cmt">// appsettings.json — built-in Logging section</span>
+"Logging": {
+  "LogLevel": {
+    "Default": "Information",
+    "Microsoft.AspNetCore": "Warning"
+  }
+}</pre>
+<pre class="code"><span class="cmt">// appsettings.Development.json — more verbose in development</span>
+"Logging": {
+  "LogLevel": {
+    "Default": "Information",
+    "Microsoft.AspNetCore": "Information"
+  }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Adding third-party logging (Serilog)</h3>
+    <p class="scenario">Third-party frameworks like <strong>Serilog</strong> add structured logging and richer sinks.
+      Integrate it into the project.</p>
+    <ul class="plain">
+      <li>Install the Serilog packages:</li>
+    </ul>
+<pre class="code">dotnet add package Serilog.AspNetCore
+dotnet add package Serilog.Sinks.Console
+dotnet add package Serilog.Sinks.File</pre>
+    <ul class="plain">
+      <li>Configure Serilog to write to a <strong>file</strong> and the <strong>console</strong> via <code class="inline">appsettings.json</code>.</li>
+      <li>Update <code class="inline">Program.cs</code> to use Serilog as the logging provider <strong>before building the host</strong> (<code class="inline">builder.Host.UseSerilog(...)</code>).</li>
+    </ul>
+    <h4>Program.cs (complete)</h4>
+<pre class="code">using Serilog;
+using Microsoft.OpenApi.Models;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, lc) =&gt; lc
+    .ReadFrom.Configuration(ctx.Configuration)
+    .WriteTo.Console());
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =&gt;
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "ErrorHandlingDemo API",
+        Version = "v1"
+    });
+});
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =&gt;
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ErrorHandlingDemo API v1");
+    });
+    app.MapGet("/", context =&gt;
+    {
+        context.Response.Redirect("/swagger");
+        return Task.CompletedTask;
+    });
+}
+
+app.Use(async (context, next) =&gt;
+{
+    var logger = context.RequestServices.GetRequiredService&lt;ILogger&lt;Program&gt;&gt;();
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Unhandled exception in global middleware.");
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            Error = "An unexpected error occurred. Please try again later."
+        });
+    }
+});
+
+app.MapControllers();
+app.Run();</pre>
+    <h4>appsettings.json (complete)</h4>
+<pre class="code">{
+  "AllowedHosts": "*",
+  "Serilog": {
+    "Using": [ "Serilog.Sinks.Console", "Serilog.Sinks.File" ],
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Information",
+        "System": "Warning"
+      }
+    },
+    "WriteTo": [
+      { "Name": "Console" },
+      {
+        "Name": "File",
+        "Args": {
+          "path": "logs/log-.txt",
+          "rollingInterval": "Day",
+          "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"
+        }
+      }
+    ]
+  }
+}</pre>
+    <div class="callout">
+      <strong>Note:</strong> <code class="inline">WriteTo.Console()</code> in <code class="inline">Program.cs</code> is
+      redundant with the <code class="inline">Console</code> sink declared in <code class="inline">appsettings.json</code>;
+      either is enough. Keeping both is harmless, but configuration-only is cleaner.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Capturing and analyzing log data</h3>
+    <p class="scenario">Test and analyze the generated logs to understand the application's behavior.</p>
+    <ul class="plain">
+      <li>Run the application and <strong>intentionally trigger errors</strong> (call <code class="inline">GetDivisionResult</code> with a denominator of zero):</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+<pre class="code"><span class="cmt"># divide by zero → logged error + 400 response</span>
+curl "http://localhost:5000/api/ErrorHandling/divide?numerator=10&amp;denominator=0"</pre>
+    <ul class="plain">
+      <li>Open the console and verify the error logs contain appropriate messages and detail.</li>
+      <li>Review the logged messages to confirm they match the format and detail level defined earlier.</li>
+      <li>Inspect the rolling file under <code class="inline">logs/log-&lt;date&gt;.txt</code> for the persisted entries.</li>
+      <li>Adjust log levels in <code class="inline">appsettings.json</code> if needed, then rerun to validate your changes.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    <code class="inline">GET /api/ErrorHandling/divide?numerator=10&amp;denominator=2</code> returns
+    <strong><code>{ "Result": 5 }</code></strong> and logs an <strong>Information</strong> line; with
+    <code class="inline">denominator=0</code> it returns <strong>HTTP 400</strong>
+    <code>{ "Error": "Division by zero is not allowed." }</code> and logs an <strong>Error</strong> line. Any unhandled
+    exception is caught by the global middleware as <strong>HTTP 500</strong> with a friendly message, and identical
+    structured entries appear in the <strong>console</strong> and in <strong><code class="inline">logs/log-&lt;date&gt;.txt</code></strong>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">ErrorHandlingDemo</code> web API project created and the default code removed</li>
+      <li><code class="inline">Controllers/ErrorHandlingController.cs</code> exposes <code class="inline">GET /api/ErrorHandling/divide</code> with a <code>try</code>/<code>catch</code></li>
+      <li>A <code class="inline">DivideByZeroException</code> returns <strong>HTTP 400</strong> with a user-friendly message and is logged</li>
+      <li>Global <code class="inline">app.Use</code> middleware catches unhandled exceptions and returns <strong>HTTP 500</strong></li>
+      <li>Built-in log levels configured in <code class="inline">appsettings.json</code> (Development vs Production)</li>
+      <li>Serilog packages added and <code class="inline">builder.Host.UseSerilog(...)</code> wired before <code class="inline">Build()</code></li>
+      <li><code class="inline">dotnet run</code> + a divide-by-zero call produces matching entries in the console and <code class="inline">logs/log-&lt;date&gt;.txt</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Local vs global handling</strong> — <code class="inline">try</code>/<code class="inline">catch</code> inside an action gives precise, user-friendly responses; global middleware is the <strong>safety net</strong> for anything that slips through, guaranteeing no raw stack trace reaches the client.</li>
+      <li><strong>Right status, right message</strong> — map failures to HTTP codes deliberately: <code class="inline">400</code> for bad input (divide by zero), <code class="inline">500</code> for unexpected server faults; never leak internal exception detail to callers.</li>
+      <li><strong>Structured logging</strong> — message templates like <code class="inline">"… {Numerator} / {Denominator} = {Result}"</code> capture <em>named properties</em>, not just text, so logs are queryable rather than flat strings.</li>
+      <li><strong>Built-in + Serilog</strong> — the <code class="inline">ILogger</code> abstraction stays the same; swapping in <code class="inline">UseSerilog</code> only changes the <strong>provider</strong>, adding sinks (rolling file) and config-driven levels without touching call sites.</li>
+      <li><strong>Configuration over code</strong> — log levels and sinks live in <code class="inline">appsettings.json</code>, so verbosity can change per environment with <strong>no recompile</strong>.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Creating Practical Asynchronous Solutions — Course 2 · Module 4</title>
+<style>
+  :root {
+    --hdr: #7c3aed ;
+    --pld: #c026d3 ;
+    --sig: #6366f1 ;
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 2 — Introduction to Programming With C# · Module 4 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Creating Practical Asynchronous Solutions</h1>
+    <p class="lead">
+      Complete two C# exercises where the <code>async</code>/<code>await</code> keywords have been
+      removed. Fill in the blanks so the code runs correctly: <strong>Problem 1</strong> downloads
+      two files concurrently, and <strong>Problem 2</strong> processes a dataset in chunks
+      concurrently. A single console app wires both together and proves they run end-to-end.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Practice reading and completing asynchronous C# code so you can confidently
+      apply <code class="inline">async</code> and <code class="inline">await</code>: mark methods
+      that return <code class="inline">Task</code>/<code class="inline">Task&lt;T&gt;</code> as
+      <strong><code class="inline">async</code></strong>, place <strong><code class="inline">await</code></strong>
+      before any operation you must wait on, and use <code class="inline">Task.WhenAll</code> to run
+      independent work <strong>concurrently</strong>.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A single console project named <code class="inline">CreatingPracticalAsyncSol</code>
+      containing two worked problems driven from <code class="inline">Program.cs</code>:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Problem1.cs</code></td><td>Download two files concurrently with <code>Task.WhenAll</code></td></tr>
+        <tr><td><code>Problem2.cs</code></td><td>Process N data chunks concurrently with a <code>List&lt;Task&gt;</code> + <code>Task.WhenAll</code></td></tr>
+        <tr><td><code>Program.cs</code></td><td>Run Problem 1, then Problem 2, and report progress</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Program</span> <span class="ar">→</span>
+      <span class="c">Problem1.DownloadFilesAsync()</span> <span class="ar">→</span>
+      <span class="d">Problem2.ProcessLargeDatasetAsync(5)</span> <span class="ar">→</span>
+      <span class="ar">done</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (or any C# editor)</li>
+      <li>Familiarity with <code class="inline">Task</code>, <code class="inline">async</code>, and <code class="inline">await</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Scaffold the console app and move into it.</p>
+<pre class="code">dotnet new console -n CreatingPracticalAsyncSol
+cd CreatingPracticalAsyncSol</pre>
+    <div class="callout">
+      The default template targets a current .NET version and enables top-level statements; we
+      replace <code class="inline">Program.cs</code> with an explicit <code class="inline">Main</code>
+      so the two problems are easy to follow.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Problem 1: download files asynchronously</h3>
+    <p class="scenario">Some async keywords were removed (the <code class="inline">_____</code> blanks).
+      Fill them in so the method downloads two files <strong>concurrently</strong> and prints
+      start/completion messages.</p>
+    <ul class="plain">
+      <li>Methods that return <code class="inline">Task</code> or <code class="inline">Task&lt;T&gt;</code> are marked with <strong><code class="inline">async</code></strong>.</li>
+      <li>Any operation you must wait on (<code class="inline">Task.Delay</code>, <code class="inline">Task.WhenAll</code>) is preceded by <strong><code class="inline">await</code></strong>.</li>
+    </ul>
+    <p>Create <code class="inline">Problem1.cs</code> with the blanks filled in:</p>
+<pre class="code">namespace CreatingPracticalAsyncSol;
+
+public class Problem1
+{
+    public <b>async</b> Task&lt;string&gt; DownloadFileAsync(string fileName)
+    {
+        Console.WriteLine($"Starting download of {fileName}...");
+        <b>await</b> Task.Delay(3000); <span class="cmt">// Simulate a 3-second download time</span>
+        Console.WriteLine($"Completed download of {fileName}.");
+        return $"{fileName} content";
+    }
+
+    public <b>async</b> Task DownloadFilesAsync()
+    {
+        <span class="cmt">// Start downloading "File1.txt" and "File2.txt" concurrently</span>
+        var downloadTask1 = DownloadFileAsync("File1.txt");
+        var downloadTask2 = DownloadFileAsync("File2.txt");
+
+        <span class="cmt">// Wait for both downloads to complete</span>
+        <b>await</b> Task.WhenAll(downloadTask1, downloadTask2);
+
+        Console.WriteLine("All downloads completed.");
+    }
+}</pre>
+    <div class="callout">
+      The two downloads are <strong>started before either is awaited</strong>, so they overlap.
+      Awaiting each call in sequence instead would make total time ~6&nbsp;s; with
+      <code class="inline">Task.WhenAll</code> it is ~3&nbsp;s.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Problem 2: process data chunks asynchronously</h3>
+    <p class="scenario">Again the async keywords were removed. Fill them in so the code processes
+      chunks of data <strong>concurrently</strong> and prints a message when each chunk starts and
+      completes.</p>
+    <p>Create <code class="inline">Problem2.cs</code> with the blanks filled in:</p>
+<pre class="code">namespace CreatingPracticalAsyncSol
+{
+    public class Problem2
+    {
+        public <b>async</b> Task ProcessDataChunkAsync(int chunkNumber)
+        {
+            Console.WriteLine($"Processing chunk {chunkNumber}...");
+            <b>await</b> Task.Delay(1000); <span class="cmt">// Simulate processing time</span>
+            Console.WriteLine($"Completed processing of chunk {chunkNumber}.");
+        }
+
+        public <b>async</b> Task ProcessLargeDatasetAsync(int numberOfChunks)
+        {
+            var tasks = new List&lt;Task&gt;();
+
+            <span class="cmt">// Start processing each chunk concurrently</span>
+            for (int i = 1; i &lt;= numberOfChunks; i++)
+            {
+                tasks.Add(ProcessDataChunkAsync(i));
+            }
+
+            <span class="cmt">// Wait for all tasks to complete</span>
+            <b>await</b> Task.WhenAll(tasks);
+
+            Console.WriteLine("All data chunks processed.");
+        }
+    }
+}</pre>
+    <div class="callout">
+      The loop <strong>collects tasks without awaiting them</strong>, so all chunks are in flight at
+      once. Awaiting inside the loop would serialize them — collect first, then
+      <code class="inline">await Task.WhenAll(tasks)</code>.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Wire both problems in <code>Program.cs</code></h3>
+    <p class="scenario">Replace <code class="inline">Program.cs</code> with an async
+      <code class="inline">Main</code> that runs each problem in turn.
+      <code class="inline">Main</code> returns <code class="inline">Task</code>, so it can use
+      <code class="inline">await</code> directly.</p>
+<pre class="code">using CreatingPracticalAsyncSol;
+
+class Program
+{
+    public static async Task Main(string[] args)
+    {
+        Console.WriteLine("=== Running Program 1 ===");
+        var p1 = new Problem1();
+        await p1.DownloadFilesAsync();
+
+        Console.WriteLine("\n=== Running Program 2 ===");
+        var p2 = new Problem2();
+        await p2.ProcessLargeDatasetAsync(5); <span class="cmt">// Example with 5 chunks</span>
+
+        Console.WriteLine("\n=== All Programs Finished ===");
+    }
+}</pre>
+    <ul class="plain">
+      <li>Run the application:</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The two file downloads start almost together and both finish ~3&nbsp;s later (not ~6&nbsp;s),
+    then the five chunks all start and complete ~1&nbsp;s later — proving the work really runs
+    <strong>concurrently</strong>.
+  </div>
+  <div class="card">
+<pre class="code">=== Running Program 1 ===
+Starting download of File1.txt...
+Starting download of File2.txt...
+Completed download of File1.txt.
+Completed download of File2.txt.
+All downloads completed.
+
+=== Running Program 2 ===
+Processing chunk 1...
+Processing chunk 2...
+Processing chunk 3...
+Processing chunk 4...
+Processing chunk 5...
+Completed processing of chunk 1.
+Completed processing of chunk 2.
+Completed processing of chunk 3.
+Completed processing of chunk 4.
+Completed processing of chunk 5.
+All data chunks processed.
+
+=== All Programs Finished ===</pre>
+    <p style="margin:12px 0 0; color:var(--muted); font-size:.9rem;">The exact ordering of the
+      "Completed" lines may vary run to run — that is expected for concurrent work and confirms the
+      tasks really do overlap.</p>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">CreatingPracticalAsyncSol</code> console project created with <code class="inline">dotnet new console</code></li>
+      <li><code class="inline">Problem1.cs</code> filled in: methods marked <code class="inline">async</code>, <code class="inline">Task.Delay</code> and <code class="inline">Task.WhenAll</code> awaited</li>
+      <li><code class="inline">Problem2.cs</code> filled in: methods marked <code class="inline">async</code>, both awaits restored</li>
+      <li><code class="inline">Program.cs</code> has an <code class="inline">async Task Main</code> that runs Problem 1 then Problem 2</li>
+      <li><code class="inline">dotnet run</code> prints start/completion messages and work runs concurrently (not sequentially)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong><code class="inline">async</code> enables <code class="inline">await</code></strong> — a method must be marked
+        <code class="inline">async</code> (and return <code class="inline">Task</code>, <code class="inline">Task&lt;T&gt;</code>,
+        or <code class="inline">void</code> for handlers) before you can <code class="inline">await</code> inside it.</li>
+      <li><strong><code class="inline">await</code> yields, it doesn't block</strong> — it suspends the method until the awaited
+        operation finishes and frees the calling thread, unlike a blocking <code class="inline">.Wait()</code> or <code class="inline">.Result</code>.</li>
+      <li><strong>Start-then-await for concurrency</strong> — capturing tasks first and awaiting
+        <code class="inline">Task.WhenAll</code> later runs work in parallel; awaiting each call inline runs them one after another.</li>
+      <li><strong><code class="inline">Task.WhenAll</code> joins many tasks</strong> — it completes only when <em>every</em> task does,
+        making it the go-to for fan-out/fan-in patterns like batch downloads or chunked processing.</li>
+      <li><strong><code class="inline">async Task Main</code></strong> — entry points can be asynchronous in modern C#, so top-level
+        <code class="inline">await</code> works without <code class="inline">.GetAwaiter().GetResult()</code> plumbing.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

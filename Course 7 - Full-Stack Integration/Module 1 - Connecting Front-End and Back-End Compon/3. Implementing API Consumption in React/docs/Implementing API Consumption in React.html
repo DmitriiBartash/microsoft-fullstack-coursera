@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing API Consumption in React — Course 7 · Module 1</title>
+<style>
+  :root {
+    --hdr: #db2777 ;      /* header / create  */
+    --pld: #9333ea ;      /* payload / decode */
+    --sig: #ec4899 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 1 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing API Consumption in React</h1>
+    <p class="lead">
+      Build a small <strong>Blazor WebAssembly</strong> app that consumes a public RESTful API and
+      renders the results in the browser. You'll register <code>HttpClient</code> for dependency
+      injection, fetch JSON from <code>https://jsonplaceholder.typicode.com/posts</code> with
+      <code>GetFromJsonAsync</code>, bind it to a strongly-typed <code>Post</code> model, display it
+      in a table, and add graceful loading/error states.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn how to consume a RESTful API from a client-side app by wiring up
+      <code class="inline">HttpClient</code>, calling the endpoint asynchronously inside a component's
+      lifecycle, <strong>deserializing JSON into a typed model</strong>, rendering the data in a
+      user-friendly table, and handling failures with <code class="inline">try/catch</code> and
+      conditional UI.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A Blazor WebAssembly project named <code class="inline">ApiDemo</code> with a data component and a model:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Program.cs</code></td><td>Register <code>HttpClient</code> for dependency injection</td></tr>
+        <tr><td><code>Post.cs</code></td><td>Strongly-typed model (<code>Id</code>, <code>Title</code>, <code>Body</code>) for the API response</td></tr>
+        <tr><td><code>FetchData.razor</code></td><td>Inject <code>HttpClient</code>, call the API, and render the data in a table</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="d">OnInitializedAsync</span> <span class="ar">→</span>
+      <span class="c">HttpClient.GetFromJsonAsync(url)</span> <span class="ar">→</span>
+      <span class="t">Post[]</span> <span class="ar">→</span>
+      <span class="d">foreach</span> <span class="ar">→</span>
+      <span class="ar">&lt;table&gt; rows</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (with the C# / C# Dev Kit extension)</li>
+      <li>A network connection to reach <code class="inline">https://jsonplaceholder.typicode.com</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Create a new Blazor WebAssembly app, move into it, and confirm the default app runs.</p>
+<pre class="code">dotnet new blazorwasm -n ApiDemo
+cd ApiDemo
+dotnet run</pre>
+    <ul class="plain">
+      <li>Open the served URL in your browser and ensure the default app loads successfully.</li>
+      <li>Stop the app with <code class="inline">Ctrl+C</code> once you've confirmed it runs.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Set up API consumption with <code>HttpClient</code></h3>
+    <p class="scenario">Ensure <code class="inline">HttpClient</code> is registered for dependency injection. In a
+      Blazor WebAssembly project the template already does this in <code class="inline">Program.cs</code> —
+      confirm the registration is present.</p>
+<pre class="code">using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using ApiDemo;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add&lt;App&gt;("#app");
+builder.RootComponents.Add&lt;HeadOutlet&gt;("head::after");
+
+<span class="cmt">// Register HttpClient for dependency injection</span>
+builder.Services.AddScoped(sp =&gt; new HttpClient
+{
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+});
+
+await builder.Build().RunAsync();</pre>
+    <p>Next, define the data model so the JSON can be deserialized into typed objects. Create a new file
+      <code class="inline">Post.cs</code> with properties that match the API structure
+      (<code class="inline">Id</code>, <code class="inline">Title</code>, <code class="inline">Body</code>):</p>
+<pre class="code">namespace ApiDemo;
+
+public class Post
+{
+    public int Id { get; set; }
+    public string? Title { get; set; }
+    public string? Body { get; set; }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Make the API call</h3>
+    <p class="scenario">Create a new Razor component <code class="inline">Pages/FetchData.razor</code>. Inject
+      <code class="inline">HttpClient</code> with the <code class="inline">@inject</code> directive, declare a
+      <code class="inline">Posts</code> variable to hold the response, and fetch the data in
+      <code class="inline">OnInitializedAsync</code> using <code class="inline">GetFromJsonAsync</code>.</p>
+<pre class="code">@page "/fetchdata"
+@inject HttpClient Http
+
+&lt;h3&gt;Posts from API&lt;/h3&gt;
+
+@code {
+    private Post[]? Posts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Posts = await Http.GetFromJsonAsync&lt;Post[]&gt;(
+            "https://jsonplaceholder.typicode.com/posts");
+    }
+}</pre>
+    <ul class="plain">
+      <li><code class="inline">GetFromJsonAsync&lt;Post[]&gt;</code> sends the GET request <strong>and</strong>
+        deserializes the JSON response directly into the <code class="inline">Post[]</code> array declared in Step 2.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Display data in a user-friendly way</h3>
+    <p class="scenario">Render the retrieved data inside <code class="inline">FetchData.razor</code> as an HTML
+      <code class="inline">&lt;table&gt;</code>. Use a <code class="inline">foreach</code> loop to populate one row
+      per <code class="inline">Post</code>, with headers for <strong>Post ID</strong>, <strong>Title</strong>, and
+      <strong>Body</strong>.</p>
+<pre class="code">@page "/fetchdata"
+@inject HttpClient Http
+
+&lt;h3&gt;Posts from API&lt;/h3&gt;
+
+&lt;table class="table"&gt;
+    &lt;thead&gt;
+        &lt;tr&gt;
+            &lt;th&gt;Post ID&lt;/th&gt;
+            &lt;th&gt;Title&lt;/th&gt;
+            &lt;th&gt;Body&lt;/th&gt;
+        &lt;/tr&gt;
+    &lt;/thead&gt;
+    &lt;tbody&gt;
+        @foreach (var post in Posts!)
+        {
+            &lt;tr&gt;
+                &lt;td&gt;@post.Id&lt;/td&gt;
+                &lt;td&gt;@post.Title&lt;/td&gt;
+                &lt;td&gt;@post.Body&lt;/td&gt;
+            &lt;/tr&gt;
+        }
+    &lt;/tbody&gt;
+&lt;/table&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Implement basic error handling</h3>
+    <p class="scenario">Make the component resilient. Wrap the API call in a <code class="inline">try/catch</code>,
+      log any exception, set an error flag, and use a conditional to render <strong>"Loading..."</strong> or
+      <strong>"Error fetching data"</strong> based on the call's status.</p>
+<pre class="code">@page "/fetchdata"
+@inject HttpClient Http
+
+&lt;h3&gt;Posts from API&lt;/h3&gt;
+
+@if (hasError)
+{
+    &lt;p&gt;&lt;em&gt;Error fetching data. Please try again later.&lt;/em&gt;&lt;/p&gt;
+}
+else if (Posts is null)
+{
+    &lt;p&gt;&lt;em&gt;Loading...&lt;/em&gt;&lt;/p&gt;
+}
+else
+{
+    &lt;table class="table"&gt;
+        &lt;thead&gt;
+            &lt;tr&gt;
+                &lt;th&gt;Post ID&lt;/th&gt;
+                &lt;th&gt;Title&lt;/th&gt;
+                &lt;th&gt;Body&lt;/th&gt;
+            &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+            @foreach (var post in Posts)
+            {
+                &lt;tr&gt;
+                    &lt;td&gt;@post.Id&lt;/td&gt;
+                    &lt;td&gt;@post.Title&lt;/td&gt;
+                    &lt;td&gt;@post.Body&lt;/td&gt;
+                &lt;/tr&gt;
+            }
+        &lt;/tbody&gt;
+    &lt;/table&gt;
+}
+
+@code {
+    private Post[]? Posts;
+    private bool hasError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Posts = await Http.GetFromJsonAsync&lt;Post[]&gt;(
+                "https://jsonplaceholder.typicode.com/posts");
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            Console.Error.WriteLine($"API request failed: {ex.Message}");
+        }
+    }
+}</pre>
+    <p>Run the app again with <code class="inline">dotnet run</code> and navigate to
+      <code class="inline">/fetchdata</code> to see it in action.</p>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Navigating to <code class="inline">/fetchdata</code> briefly shows <strong>"Loading..."</strong>, then renders a
+    table of posts fetched from <code class="inline">https://jsonplaceholder.typicode.com/posts</code> — each row
+    showing the post's <strong>ID</strong>, <strong>Title</strong>, and <strong>Body</strong>. If the API is
+    unreachable, the page shows <strong>"Error fetching data"</strong> instead of crashing.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">ApiDemo</code> Blazor WebAssembly project created and the default app runs in the browser</li>
+      <li><code class="inline">HttpClient</code> is registered for dependency injection in <code class="inline">Program.cs</code></li>
+      <li><code class="inline">Post.cs</code> model defined with <code class="inline">Id</code>, <code class="inline">Title</code>, and <code class="inline">Body</code></li>
+      <li><code class="inline">FetchData.razor</code> injects <code class="inline">HttpClient</code> and calls the API in <code class="inline">OnInitializedAsync</code></li>
+      <li>Data is fetched with <code class="inline">GetFromJsonAsync</code> and rendered in an HTML <code class="inline">&lt;table&gt;</code> via <code class="inline">foreach</code></li>
+      <li>API call is wrapped in <code class="inline">try/catch</code>, with <code class="inline">Loading...</code> / <code class="inline">Error fetching data</code> states</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Dependency injection for <code class="inline">HttpClient</code></strong> — registering the client
+        once and injecting it with <code class="inline">@inject</code> keeps components decoupled from how the
+        client is constructed and configured.</li>
+      <li><strong>Typed deserialization</strong> — <code class="inline">GetFromJsonAsync&lt;Post[]&gt;</code> fetches
+        and maps JSON to your <code class="inline">Post</code> model in one call, so the rest of the component
+        works with strongly-typed objects.</li>
+      <li><strong>Async lifecycle methods</strong> — <code class="inline">OnInitializedAsync</code> is the right
+        hook to load data when a component first renders; <code class="inline">await</code> keeps the UI
+        responsive while the request is in flight.</li>
+      <li><strong>Resilient UI states</strong> — wrapping the call in <code class="inline">try/catch</code> and
+        branching the markup on loading / error / success turns transient network failures into a graceful
+        user experience.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

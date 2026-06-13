@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Analyzing a Public API — Course 7 · Module 2</title>
+<style>
+  :root {
+    --hdr: #db2777 ;      /* header / create  */
+    --pld: #9333ea ;      /* payload / decode */
+    --sig: #ec4899 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 2 · Lesson 4
+      <span class="pill">You Try It!</span></p>
+    <h1>Analyzing a Public API</h1>
+    <p class="lead">
+      Evaluate a public API through three lenses — <strong>performance</strong>,
+      <strong>security</strong>, and <strong>maintainability</strong> — then turn those insights
+      into concrete strategies for consuming the API from a <strong>Blazor</strong> app. You will
+      study <code>OpenWeather</code> as a worked example, then pick your own API and write a short
+      analysis report.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Evaluate the performance, security, and maintainability strategies of a
+      public API and apply those insights to improve a Blazor application's integration with that API.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">📦</span> What you will produce</h2>
+  <div class="card">
+    <p>A short <strong>analysis report (200–300 words)</strong> on a public API of your choice,
+      covering three dimensions and, for each, a practical Blazor strategy:</p>
+    <table>
+      <thead><tr><th>Dimension</th><th>Question to answer</th><th>Blazor strategy</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Rate limits</strong></td><td>What are the API's limits, and how do you stay under them?</td><td>Throttle / batch calls, limit refresh intervals</td></tr>
+        <tr><td><strong>Caching</strong></td><td>Does the API recommend caching? How would you cache responses?</td><td>In-memory cache or browser local storage, short TTL</td></tr>
+        <tr><td><strong>Security</strong></td><td>Does the API require authentication? How are credentials kept?</td><td>Store keys in <code>appsettings.json</code>, inject via DI, enforce HTTPS</td></tr>
+        <tr><td><strong>Maintainability</strong></td><td>How do you keep the integration clean and resilient?</td><td>Centralize calls in a service class, handle errors (HTTP 400 / 429)</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Pick an API</span> <span class="ar">→</span>
+      <span class="ar">read its docs</span> <span class="ar">→</span>
+      <span class="c">analyze (limits · caching · security)</span> <span class="ar">→</span>
+      <span class="d">map each to a Blazor strategy</span> <span class="ar">→</span>
+      <span class="t">write the report</span>
+    </div>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🔎</span> Walkthrough — the OpenWeather case study</h2>
+  <div class="card">
+    <p>The <strong>OpenWeather API</strong> provides weather data for cities worldwide — current
+      weather, forecasts, and historical data. It is a well-documented public API, which makes it a
+      good model for how performance, security, and maintainability concerns map onto a Blazor
+      integration.</p>
+    <p class="scenario"><strong>Source:</strong> OpenWeather API Documentation —
+      <a href="https://openweathermap.org/api">https://openweathermap.org/api</a></p>
+
+    <h4>API at a glance</h4>
+    <table>
+      <thead><tr><th>Property</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Endpoint</strong></td><td><code>https://api.openweathermap.org/data/2.5/weather</code></td></tr>
+        <tr><td><strong>Rate limits</strong></td><td>Free tier: <strong>60 calls per minute</strong></td></tr>
+        <tr><td><strong>Caching</strong></td><td>Encourages response caching for improved performance</td></tr>
+        <tr><td><strong>Security</strong></td><td>Requires an <strong>API key</strong> for authentication; <strong>HTTPS</strong> enforced</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Rate limits and performance</h4>
+    <p>The free tier enforces <strong>60 requests per minute</strong>. To stay under that limit in
+      Blazor, reduce unnecessary calls: limit data-refresh intervals (e.g. update weather
+      <strong>once per minute</strong>), or batch multiple requests. Reusing previously fetched
+      results — i.e. client-side caching — significantly improves performance and helps avoid
+      exceeding the rate limit.</p>
+
+    <h4>Caching policies</h4>
+    <p>OpenWeather encourages caching responses. In Blazor, weather data for a specific city can be
+      cached <strong>in memory</strong> or in <strong>browser local storage</strong> for a short
+      period such as <strong>five minutes</strong>. This minimizes redundant requests, reduces
+      network usage, and improves responsiveness — especially when users repeatedly request the
+      same city.</p>
+
+    <h4>Security features</h4>
+    <p>The API requires an <strong>API key</strong> and enforces <strong>HTTPS</strong>. The key
+      should <strong>never be hardcoded</strong>. Store it in configuration such as
+      <code class="inline">appsettings.json</code> and read it through <strong>dependency
+      injection</strong>. HTTPS protects sensitive data — including the API key — in transit.</p>
+<pre class="code"><span class="cmt">// appsettings.json — keep secrets out of source control (use user-secrets in dev)</span>
+{
+  "OpenWeather": {
+    "ApiKey": "&lt;your-api-key&gt;",
+    "BaseUrl": "https://api.openweathermap.org/data/2.5/"
+  }
+}</pre>
+
+    <h4>Maintainability</h4>
+    <p>Centralize API interactions in a <strong>reusable service class</strong> so the code is easy
+      to manage and update, and add <strong>error handling</strong> for invalid requests
+      (<strong>HTTP 400</strong>) and rate-limit violations (<strong>HTTP 429</strong>). The example
+      below shows how the strategies above come together in a single, injectable Blazor service.</p>
+<pre class="code"><span class="cmt">// Program.cs — register a typed HttpClient + in-memory cache (DI + HTTPS base address)</span>
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient&lt;WeatherService&gt;(client =&gt;
+{
+    var baseUrl = builder.Configuration["OpenWeather:BaseUrl"];
+    client.BaseAddress = new Uri(baseUrl!); <span class="cmt">// HTTPS endpoint</span>
+});</pre>
+<pre class="code"><span class="cmt">// WeatherService.cs — centralized API access: caching, secure key, error handling</span>
+public sealed class WeatherService
+{
+    private static readonly TimeSpan CacheFor = TimeSpan.FromMinutes(5); <span class="cmt">// short TTL</span>
+
+    private readonly HttpClient _http;
+    private readonly IMemoryCache _cache;
+    private readonly string _apiKey;
+
+    public WeatherService(HttpClient http, IMemoryCache cache, IConfiguration config)
+    {
+        _http = http;
+        _cache = cache;
+        _apiKey = config["OpenWeather:ApiKey"]
+                  ?? throw new InvalidOperationException("OpenWeather:ApiKey is not configured.");
+    }
+
+    public async Task&lt;WeatherInfo?&gt; GetWeatherAsync(string city, CancellationToken ct = default)
+    {
+        <span class="cmt">// Caching: serve from cache to respect the 60-calls/min limit</span>
+        if (_cache.TryGetValue(city, out WeatherInfo? cached))
+            return cached;
+
+        var url = $"weather?q={Uri.EscapeDataString(city)}&amp;units=metric&amp;appid={_apiKey}";
+
+        try
+        {
+            var response = await _http.GetAsync(url, ct);
+
+            if (response.StatusCode == HttpStatusCode.TooManyRequests) <span class="cmt">// HTTP 429</span>
+                throw new InvalidOperationException("Rate limit exceeded — try again shortly.");
+
+            response.EnsureSuccessStatusCode(); <span class="cmt">// surfaces HTTP 400 and other failures</span>
+
+            var data = await response.Content.ReadFromJsonAsync&lt;WeatherInfo&gt;(cancellationToken: ct);
+            if (data is not null)
+                _cache.Set(city, data, CacheFor);
+
+            return data;
+        }
+        catch (HttpRequestException ex)
+        {
+            <span class="cmt">// Maintainability: fail gracefully instead of crashing the component</span>
+            Console.Error.WriteLine($"Weather lookup failed for '{city}': {ex.Message}");
+            return null;
+        }
+    }
+}
+
+public sealed record WeatherInfo(string Name, MainInfo Main);
+public sealed record MainInfo(double Temp, int Humidity);</pre>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">🧩</span> Your turn — evaluate and report on a public API</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Select a public API</h3>
+    <p class="scenario">Choose one from the list below (or another well-documented public API).</p>
+    <table>
+      <thead><tr><th>API</th><th>Base URL</th></tr></thead>
+      <tbody>
+        <tr><td><strong>GitHub API</strong></td><td><code>https://api.github.com</code></td></tr>
+        <tr><td><strong>OpenWeather</strong></td><td><code>https://api.openweathermap.org</code></td></tr>
+        <tr><td><strong>SpaceX API</strong></td><td><code>https://api.spacexdata.com/v4</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Analyze the API</h3>
+    <p class="scenario">For your selected API, identify and describe:</p>
+    <ul class="plain">
+      <li><strong>Rate limits</strong> — What are the API's rate limits, and how can you handle them in Blazor?</li>
+      <li><strong>Caching policies</strong> — Does the API recommend caching responses? How would you implement caching in Blazor?</li>
+      <li><strong>Security features</strong> — Does the API require authentication? How will you manage credentials securely?</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Submit a report</h3>
+    <p class="scenario">Write a brief report (<strong>200–300 words</strong>) addressing the three
+      points above.</p>
+    <ul class="plain">
+      <li>Include practical strategies for applying these insights to a Blazor application.</li>
+      <li>Mirror the structure of the OpenWeather walkthrough — limits, caching, security, maintainability.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">🌟</span> What good looks like</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>One public API is chosen and its <strong>documentation source is cited</strong></li>
+      <li><strong>Rate limits</strong> are stated as concrete numbers, with a Blazor handling strategy (throttle / batch / limit refresh)</li>
+      <li><strong>Caching</strong> is addressed — whether the API recommends it, plus a Blazor approach (in-memory or local storage) and a sensible TTL</li>
+      <li><strong>Security</strong> is covered — auth mechanism named, credentials kept out of code (config + DI), HTTPS enforced</li>
+      <li><strong>Maintainability</strong> is noted — centralized service class and error handling for <strong>HTTP 400 / 429</strong></li>
+      <li>The report is <strong>200–300 words</strong> and ties every insight back to a Blazor implementation</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Read the contract first</strong> — rate limits, caching guidance, and auth
+        requirements all live in the API's own documentation; analyzing them up front shapes the
+        whole integration.</li>
+      <li><strong>Cache to respect limits</strong> — short-TTL client-side caching (in-memory or
+        local storage) cuts redundant calls, improves responsiveness, and is the simplest way to
+        stay under a quota like 60/min.</li>
+      <li><strong>Never hardcode credentials</strong> — keep API keys in
+        <code class="inline">appsettings.json</code> (or user-secrets), inject them via DI, and
+        always call over HTTPS so the key is protected in transit.</li>
+      <li><strong>Centralize and harden</strong> — a single reusable service class with error
+        handling for HTTP 400 and 429 keeps the integration maintainable and resilient.</li>
+      <li><strong>One pattern, many APIs</strong> — performance, security, and maintainability are
+        universal lenses; the same analysis transfers cleanly from OpenWeather to GitHub, SpaceX,
+        or any public API.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

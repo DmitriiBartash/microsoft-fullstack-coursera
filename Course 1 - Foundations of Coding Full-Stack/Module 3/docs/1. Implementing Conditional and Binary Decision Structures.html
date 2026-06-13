@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing Conditional and Binary Decision Structures — Course 1 · Module 3</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 3 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Conditional and Binary Decision Structures</h1>
+    <p class="lead">
+      Work through three small problems and, for each one, decide <strong>which conditional structure fits</strong>:
+      a binary <code>if/else</code> when there are exactly two outcomes, or a chained
+      <code>if / else if / else</code> when you are classifying among several. You follow the same four-step
+      method every time — <em>define the problem, identify the processes, choose the structure, then write the
+      pseudocode</em> — and finish by turning each design into runnable C#.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn to read a problem statement, judge whether the decision is <strong>binary</strong>
+      (two outcomes) or a <strong>multi-way classification</strong> (several outcomes), and pick the matching
+      control-flow structure — then express that decision first as pseudocode and then as working C# code.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">🧩</span> What you will produce</h2>
+  <div class="card">
+    <p>Three designed-and-implemented solutions, each derived with the same method:</p>
+    <table>
+      <thead><tr><th>Problem</th><th>Decision type</th><th>Right structure</th></tr></thead>
+      <tbody>
+        <tr><td>Discount eligibility</td><td>Binary (one threshold)</td><td><code>if / else</code></td></tr>
+        <tr><td>Book categorization</td><td>Multi-way classification</td><td><code>if / else if / … / else</code></td></tr>
+        <tr><td>Even or odd number</td><td>Binary (divisible by 2?)</td><td><code>if / else</code> with <code>%</code> (modulo)</td></tr>
+      </tbody>
+    </table>
+    <h4>Method (applied to every problem)</h4>
+    <div class="flow">
+      <span class="c">Define the problem</span> <span class="ar">→</span>
+      <span class="d">Identify key processes</span> <span class="ar">→</span>
+      <span class="t">Decide on a structure</span> <span class="ar">→</span>
+      <span class="d">Pseudocode</span> <span class="ar">→</span>
+      <span class="c">C# code</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>Understanding of variables and reading user input (<code class="inline">Console.ReadLine</code>)</li>
+      <li>Familiarity with comparison operators (<code class="inline">&gt;=</code>, <code class="inline">==</code>)
+        and the modulo operator (<code class="inline">%</code>)</li>
+      <li>A way to run C# — the .NET SDK (check with <code class="inline">dotnet --version</code>) or an online C# runner</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Walkthrough</h2>
+
+  <!-- Problem 1 -->
+  <div class="card">
+    <h3><span class="step-badge">1</span> Problem 1 — Discount eligibility</h3>
+    <p class="scenario">Determine whether a customer qualifies for a discount based on how much they have spent.
+      Spend <strong>$100 or more</strong> → print <code class="inline">10% discount applied.</code>; otherwise →
+      print <code class="inline">No discount.</code></p>
+
+    <h4>Define the problem</h4>
+    <p>Decide whether a customer qualifies for a discount based on their total spending.</p>
+
+    <h4>Identify key processes</h4>
+    <ul class="plain">
+      <li><strong>Input</strong> the total spending amount — the value the decision is based on.</li>
+      <li><strong>Check</strong> the spending condition — is it <code class="inline">&gt;= 100</code>?</li>
+      <li><strong>Output</strong> the result — apply a discount or not.</li>
+    </ul>
+
+    <h4>Decide on a structure</h4>
+    <ul class="plain">
+      <li>Multiple conditions? <strong>No</strong> — only one: <code class="inline">&gt;= $100</code>.</li>
+      <li>Is the decision binary? <strong>Yes</strong> — either "discount" or "no discount".</li>
+      <li>Appropriate structure? A simple <strong><code class="inline">if / else</code></strong> binary decision.</li>
+    </ul>
+
+    <h4>Pseudocode</h4>
+<pre class="code">Create variable totalAmount and set it to the value of the user input for "Enter total spending amount:"
+IF totalAmount is greater than or equal to 100 THEN
+    Display to user "10% discount applied."
+Otherwise
+    Display to user "No discount."</pre>
+
+    <h4>C# implementation</h4>
+<pre class="code">Console.Write("Enter total spending amount: ");
+double totalAmount = double.Parse(Console.ReadLine());
+
+if (totalAmount &gt;= 100)
+{
+    Console.WriteLine("10% discount applied.");
+}
+else
+{
+    Console.WriteLine("No discount.");
+}</pre>
+  </div>
+
+  <!-- Problem 2 -->
+  <div class="card">
+    <h3><span class="step-badge">2</span> Problem 2 — Book categorization</h3>
+    <p class="scenario">A library categorizes books by genre. Map <code class="inline">Fiction</code>,
+      <code class="inline">Non-Fiction</code>, and <code class="inline">Science Fiction</code> to their categories;
+      anything else → <code class="inline">Category: Unknown.</code></p>
+
+    <h4>Define the problem</h4>
+    <p>Classify books into categories based on the genre the user provides.</p>
+
+    <h4>Identify key processes</h4>
+    <ul class="plain">
+      <li><strong>Input</strong> the genre — get the genre name from the user.</li>
+      <li><strong>Check</strong> the genre against known categories — compare the input to predefined options.</li>
+      <li><strong>Output</strong> the category — show the matching classification.</li>
+    </ul>
+
+    <h4>Decide on a structure</h4>
+    <ul class="plain">
+      <li>Multiple conditions? <strong>Yes</strong> — several genres.</li>
+      <li>Is the decision binary? <strong>No</strong> — more than two outcomes.</li>
+      <li>Does it involve classification? <strong>Yes</strong>.</li>
+      <li>Appropriate structure? A sequence of <strong><code class="inline">if / else if / else</code></strong> statements.</li>
+    </ul>
+
+    <h4>Pseudocode</h4>
+<pre class="code">Create variable genre and set it to the value of the user input for "Enter the genre of the book:"
+IF genre is equal to "Fiction" THEN
+    Display to user "Category: Fiction."
+Otherwise IF genre is equal to "Non-Fiction" THEN
+    Display to user "Category: Non-Fiction."
+Otherwise IF genre is equal to "Science Fiction" THEN
+    Display to user "Category: Science Fiction."
+Otherwise
+    Display to user "Category: Unknown."</pre>
+
+    <h4>C# implementation</h4>
+<pre class="code">Console.Write("Enter the genre of the book: ");
+string genre = Console.ReadLine();
+
+if (genre == "Fiction")
+{
+    Console.WriteLine("Category: Fiction.");
+}
+else if (genre == "Non-Fiction")
+{
+    Console.WriteLine("Category: Non-Fiction.");
+}
+else if (genre == "Science Fiction")
+{
+    Console.WriteLine("Category: Science Fiction.");
+}
+else
+{
+    Console.WriteLine("Category: Unknown.");
+}</pre>
+  </div>
+
+  <!-- Problem 3 -->
+  <div class="card">
+    <h3><span class="step-badge">3</span> Problem 3 — Even or odd number</h3>
+    <p class="scenario">Determine whether a given number is even or odd. Even → print
+      <code class="inline">Even number.</code>; odd → print <code class="inline">Odd number.</code></p>
+
+    <h4>Define the problem</h4>
+    <p>Determine if the user-provided number is even or odd.</p>
+
+    <h4>Identify key processes</h4>
+    <ul class="plain">
+      <li><strong>Input</strong> the number — get a whole number from the user.</li>
+      <li><strong>Check</strong> even or odd — use the <strong>modulo</strong> operator to test divisibility by 2.</li>
+      <li><strong>Output</strong> the result — print whether it is even or odd.</li>
+    </ul>
+
+    <h4>Decide on a structure</h4>
+    <ul class="plain">
+      <li>Multiple conditions? <strong>No</strong> — only one: divisible by 2 or not.</li>
+      <li>Is the decision binary? <strong>Yes</strong>.</li>
+      <li>Appropriate structure? A binary <strong><code class="inline">if / else</code></strong> decision.</li>
+    </ul>
+
+    <h4>Pseudocode</h4>
+<pre class="code">Create variable number and set it to the value of the user input for "Enter a number:"
+IF number modulo 2 is equal to 0 THEN
+    Display to user "Even number."
+Otherwise
+    Display to user "Odd number."</pre>
+
+    <h4>C# implementation</h4>
+<pre class="code">Console.Write("Enter a number: ");
+int number = int.Parse(Console.ReadLine());
+
+if (number % 2 == 0)
+{
+    Console.WriteLine("Even number.");
+}
+else
+{
+    Console.WriteLine("Odd number.");
+}</pre>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">✍️</span> Your turn</h2>
+  <div class="card">
+    <p>Run the same four-step method on a fresh problem, then implement it:</p>
+    <ul class="plain">
+      <li><strong>Grading band</strong> — read a score from 0–100 and print a letter grade
+        (<code class="inline">A</code> for 90+, <code class="inline">B</code> for 80–89,
+        <code class="inline">C</code> for 70–79, otherwise <code class="inline">F</code>).
+        Which structure fits — binary or chained? Why?</li>
+      <li>For each problem above, before checking the solution, <strong>say out loud</strong> whether the decision
+        is binary or a classification, and justify the structure you picked.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">▶️</span> What good looks like</h2>
+  <div class="callout ok">
+    The <strong>structure matches the decision</strong>: <code class="inline">if / else</code> whenever there are
+    exactly two outcomes (Problems 1 and 3), and chained <code class="inline">if / else if / else</code> for
+    multi-way classification (Problem 2). Each program reads input, evaluates one clear condition path, and prints
+    exactly one result — the output strings match the spec verbatim
+    (e.g. <code class="inline">10% discount applied.</code>, <code class="inline">Category: Unknown.</code>), and you
+    can name <em>why</em> a structure was chosen, not just <em>that</em> it works.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Problem 1 designed as <strong><code class="inline">if / else</code></strong> and prints
+        <code class="inline">10% discount applied.</code> for <code class="inline">&gt;= 100</code>, else
+        <code class="inline">No discount.</code></li>
+      <li>Problem 2 designed as <strong><code class="inline">if / else if / else</code></strong> mapping the three
+        genres, with <code class="inline">Category: Unknown.</code> as the fallback</li>
+      <li>Problem 3 designed as <strong><code class="inline">if / else</code></strong> using
+        <code class="inline">number % 2 == 0</code> to print <code class="inline">Even number.</code> /
+        <code class="inline">Odd number.</code></li>
+      <li>Each solution has both <strong>pseudocode</strong> and a <strong>runnable C#</strong> implementation</li>
+      <li>For every problem you can state whether the decision is <strong>binary</strong> or a
+        <strong>classification</strong> and justify the structure</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Binary decisions use <code class="inline">if / else</code></strong> — when there are exactly two
+        mutually exclusive outcomes, a single condition splits the flow in two (discount vs. none, even vs. odd).</li>
+      <li><strong>Classification uses a chain</strong> — when there are more than two outcomes,
+        <code class="inline">if / else if / … / else</code> tests options in order and stops at the first match.</li>
+      <li><strong>Always include a catch-all <code class="inline">else</code></strong> — the final branch
+        (<code class="inline">Category: Unknown.</code>) handles every input you did not explicitly list, so nothing
+        falls through silently.</li>
+      <li><strong>Pick the structure from the question, not by habit</strong> — "How many distinct outcomes are
+        there?" decides binary vs. multi-way before you write a line of code.</li>
+      <li><strong>Modulo (<code class="inline">%</code>) is the even/odd test</strong> —
+        <code class="inline">n % 2 == 0</code> is the idiomatic, language-independent way to check divisibility by 2.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

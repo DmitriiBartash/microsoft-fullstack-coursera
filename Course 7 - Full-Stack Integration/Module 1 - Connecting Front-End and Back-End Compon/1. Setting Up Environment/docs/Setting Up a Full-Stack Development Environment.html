@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Setting Up a Full-Stack Development Environment — Course 7 · Module 1</title>
+<style>
+  :root {
+    --hdr: #db2777 ;      /* header / create  */
+    --pld: #9333ea ;      /* payload / decode */
+    --sig: #ec4899 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 1 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Setting Up a Full-Stack Development Environment</h1>
+    <p class="lead">
+      Stand up a complete full-stack workspace in Visual Studio Code: a <strong>Blazor WebAssembly</strong>
+      front end and a <strong>Minimal API</strong> back end, scaffolded with the .NET CLI and wired together
+      so the Blazor app fetches and renders data served by the API.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity, you will be able to set up a full-stack development
+      environment using <strong>Visual Studio Code</strong>, create front-end and back-end projects with
+      <strong>Blazor</strong> and <strong>Minimal APIs</strong>, and configure both projects to work
+      seamlessly together.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>Two .NET projects that run side by side and talk over HTTP:</p>
+    <table>
+      <thead><tr><th>Project</th><th>Template</th><th>Command</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>frontend</code></td>
+          <td>Blazor WebAssembly</td>
+          <td><code>dotnet new blazorwasm -o frontend</code></td>
+          <td>UI that calls the API and renders the results</td>
+        </tr>
+        <tr>
+          <td><code>backend</code></td>
+          <td>Minimal API (Web API)</td>
+          <td><code>dotnet new webapi -o backend</code></td>
+          <td>Exposes a <code>/products</code> endpoint returning sample data</td>
+        </tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="d">Blazor component</span> <span class="ar">→</span>
+      <span class="c">HttpClient.GetFromJsonAsync("/products")</span> <span class="ar">→</span>
+      <span class="ar">Minimal API</span> <span class="ar">→</span>
+      <span class="t">Product[]</span> <span class="ar">→</span>
+      <span class="ar">rendered list</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li><strong>.NET SDK</strong> installed — check with <code class="inline">dotnet --version</code></li>
+      <li><strong>Visual Studio Code</strong></li>
+      <li>VS Code extensions: <strong>C# Dev Kit</strong>, <strong>REST Client</strong>, <strong>CSharpier</strong></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare for the application</h3>
+    <p class="scenario">You will create a small application using the VS Code terminal you configured earlier.
+      It consists of a front-end Blazor project and a back-end Minimal API project.</p>
+    <ul class="plain">
+      <li>Open Visual Studio Code and navigate to the folder where you want your projects.</li>
+      <li>Open the terminal with <code class="inline">Ctrl + ~</code>.</li>
+      <li>Create the front-end and back-end projects:</li>
+    </ul>
+<pre class="code"><span class="cmt"># Blazor WebAssembly front end -> ./frontend</span>
+dotnet new blazorwasm -o frontend
+
+<span class="cmt"># Minimal API back end -> ./backend</span>
+dotnet new webapi -o backend</pre>
+    <ul class="plain">
+      <li>Open each project in its own VS Code window:</li>
+    </ul>
+<pre class="code">code frontend
+code backend</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Install and verify dependencies</h3>
+    <p class="scenario">Set up and verify everything the projects need.</p>
+    <ul class="plain">
+      <li>Confirm the SDK is available (if no version prints, reinstall the .NET SDK):</li>
+    </ul>
+<pre class="code">dotnet --version</pre>
+    <ul class="plain">
+      <li>Install the required VS Code extensions:</li>
+    </ul>
+    <table>
+      <thead><tr><th>Extension</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><strong>C# Dev Kit</strong></td><td>Enhanced C# language support</td></tr>
+        <tr><td><strong>REST Client</strong></td><td>Make HTTP requests directly inside VS Code</td></tr>
+        <tr><td><strong>CSharpier</strong></td><td>Automatic code formatting</td></tr>
+      </tbody>
+    </table>
+    <ul class="plain">
+      <li>Verify both projects compile — run <code class="inline">dotnet build</code> inside each folder:</li>
+    </ul>
+<pre class="code">cd frontend && dotnet build
+cd ../backend && dotnet build</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Configure the front-end project</h3>
+    <p class="scenario">Prepare the Blazor project to display data retrieved from the back-end API. The
+      <code class="inline">blazorwasm</code> template already registers an <code class="inline">HttpClient</code>
+      in <code class="inline">Program.cs</code> — point its <code class="inline">BaseAddress</code> at the
+      back-end API so components can call it.</p>
+    <h4>frontend/Program.cs</h4>
+<pre class="code">using frontend;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add&lt;App&gt;("#app");
+builder.RootComponents.Add&lt;HeadOutlet&gt;("head::after");
+
+<span class="cmt">// Point the front end at the back-end Minimal API.</span>
+<span class="cmt">// Replace the port with the HTTPS URL printed when the backend starts (Step 4).</span>
+builder.Services.AddScoped(sp =&gt; new HttpClient
+{
+    BaseAddress = new Uri("https://localhost:7001/")
+});
+
+await builder.Build().RunAsync();</pre>
+    <ul class="plain">
+      <li>Start the front end and confirm the default Blazor app loads in the browser:</li>
+    </ul>
+<pre class="code">dotnet watch</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Configure the back-end project</h3>
+    <p class="scenario">Set up the back end to handle API requests. Open
+      <code class="inline">backend/Program.cs</code> and define a simple endpoint that returns sample data —
+      a list of products. Enable CORS so the Blazor app (served from a different port) is allowed to call it.</p>
+    <h4>backend/Program.cs</h4>
+<pre class="code">var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+<span class="cmt">// Allow the Blazor WASM origin to call this API during development.</span>
+builder.Services.AddCors(options =&gt;
+    options.AddPolicy("AllowFrontend", policy =&gt; policy
+        .AllowAnyOrigin()
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseCors("AllowFrontend");
+
+<span class="cmt">// Sample data endpoint consumed by the Blazor front end.</span>
+app.MapGet("/products", () =&gt; new[]
+{
+    new Product(1, "Keyboard", 49.99m),
+    new Product(2, "Mouse", 24.50m),
+    new Product(3, "Monitor", 199.00m)
+});
+
+app.Run();
+
+record Product(int Id, string Name, decimal Price);</pre>
+    <ul class="plain">
+      <li>Start the back end and note the URL where the API is served (reuse the HTTPS port in
+        <code class="inline">frontend/Program.cs</code>):</li>
+    </ul>
+<pre class="code">dotnet watch</pre>
+    <div class="callout">
+      Open <code class="inline">https://localhost:7001/products</code> in a browser — you should see the
+      JSON array of products.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Integrate the front-end and back-end projects</h3>
+    <p class="scenario">Connect the Blazor front end to the Minimal API. Use the injected
+      <code class="inline">HttpClient</code> to call the <code class="inline">/products</code> endpoint and
+      render the results in a component.</p>
+    <h4>frontend/Pages/Products.razor</h4>
+<pre class="code">@page "/products"
+@inject HttpClient Http
+
+&lt;h1&gt;Products&lt;/h1&gt;
+
+@if (products is null)
+{
+    &lt;p&gt;&lt;em&gt;Loading...&lt;/em&gt;&lt;/p&gt;
+}
+else
+{
+    &lt;ul&gt;
+        @foreach (var p in products)
+        {
+            &lt;li&gt;@p.Name — @p.Price.ToString("C")&lt;/li&gt;
+        }
+    &lt;/ul&gt;
+}
+
+@code {
+    private Product[]? products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await Http.GetFromJsonAsync&lt;Product[]&gt;("products");
+    }
+
+    private record Product(int Id, string Name, decimal Price);
+}</pre>
+    <ul class="plain">
+      <li>With both <code class="inline">dotnet watch</code> sessions running, browse to
+        <code class="inline">/products</code> in the Blazor app — the component fetches the data from the API
+        and displays the product list.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Two projects run concurrently: the Minimal API serves <strong>GET <code class="inline">/products</code></strong>
+    (visible as JSON at <code class="inline">https://localhost:7001/products</code>), and the Blazor
+    <code class="inline">/products</code> page renders that same list in the browser — confirming the front end
+    and back end communicate end-to-end.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">frontend</code> (Blazor WASM) and <code class="inline">backend</code> (Minimal API) projects scaffolded with the .NET CLI</li>
+      <li><code class="inline">dotnet --version</code> prints a version; <strong>C# Dev Kit</strong>, <strong>REST Client</strong>, and <strong>CSharpier</strong> installed</li>
+      <li><code class="inline">dotnet build</code> succeeds in both project folders</li>
+      <li><code class="inline">backend/Program.cs</code> exposes <code class="inline">GET /products</code> with CORS enabled for the front end</li>
+      <li><code class="inline">frontend/Program.cs</code> sets <code class="inline">HttpClient.BaseAddress</code> to the back-end URL</li>
+      <li>The Blazor <code class="inline">/products</code> page renders data fetched from the API while both apps run under <code class="inline">dotnet watch</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Two-project full-stack layout</strong> — front end and back end are independent .NET projects in
+        separate folders/windows, each with its own <code class="inline">Program.cs</code>, started and reloaded independently.</li>
+      <li><strong>Scaffolding with the .NET CLI</strong> — <code class="inline">dotnet new blazorwasm</code> and
+        <code class="inline">dotnet new webapi</code> generate runnable starting points;
+        <code class="inline">dotnet build</code> verifies they compile before you add features.</li>
+      <li><strong>Minimal APIs</strong> — endpoints are declared directly in <code class="inline">Program.cs</code> with
+        <code class="inline">app.MapGet(...)</code>, no controllers required, returning data serialized to JSON automatically.</li>
+      <li><strong>HttpClient integration</strong> — Blazor's registered <code class="inline">HttpClient</code> (with a
+        <code class="inline">BaseAddress</code>) lets a component call the API via <code class="inline">GetFromJsonAsync</code>,
+        the seam that joins the two tiers.</li>
+      <li><strong>CORS in development</strong> — because the two apps run on different ports (origins), the API must
+        explicitly permit the front-end origin or the browser blocks the request.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

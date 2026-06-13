@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing Data Binding — Course 4 · Module 3</title>
+<style>
+  :root {
+    --hdr: #6d28d9 ;
+    --pld: #4f46e5 ;
+    --sig: #8b5cf6 ;
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 4 — Blazor for Front-End Development · Module 3 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Data Binding</h1>
+    <p class="lead">
+      Build a <strong>Recipe Manager</strong> app in Blazor WebAssembly that ties together the three
+      pillars of an interactive Blazor UI: <strong>data binding</strong> (lists and form inputs bound to
+      C# state), <strong>event handling</strong> (<code>@onclick</code>, <code>EditForm</code> submits), and
+      <strong>routing / navigation</strong> (route parameters and <code>NavigationManager</code>).
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Create a Blazor WebAssembly application where users can <strong>view a list of recipes</strong>,
+      <strong>add new recipes</strong> through a validated form, and <strong>open a detail page</strong> for any
+      recipe via a dynamically routed URL — wiring the UI to state with one-way and two-way data binding and
+      driving navigation from code.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A Blazor WebAssembly project named <code class="inline">RecipeManagerApp</code> made of these pieces:</p>
+    <table>
+      <thead><tr><th>File / Component</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Data/Recipe.cs</code></td><td>The model — <code>Id</code>, <code>Name</code>, <code>Description</code> (with validation attributes)</td></tr>
+        <tr><td><code>Data/RecipeService.cs</code></td><td>In-memory store: <code>GetAll()</code>, <code>GetById(id)</code>, <code>Add(recipe)</code></td></tr>
+        <tr><td><code>Pages/Home.razor</code></td><td>List all recipes; bind names/descriptions; link to details &amp; add page</td></tr>
+        <tr><td><code>Pages/AddRecipe.razor</code></td><td><code>EditForm</code> bound to a <code>Recipe</code>; submit adds and navigates home</td></tr>
+        <tr><td><code>Pages/RecipeDetails.razor</code></td><td>Dynamic route <code>/recipe/{id:int}</code>; show one recipe's details</td></tr>
+        <tr><td><code>Layout/NavMenu.razor</code></td><td>Navigation link to the Add Recipe page</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">Home (list)</span> <span class="ar">→</span>
+      <span class="ar">View details</span> <span class="ar">→</span>
+      <span class="t">/recipe/{id}</span>
+      <span class="ar">&nbsp;&nbsp;|&nbsp;&nbsp;</span>
+      <span class="c">Home</span> <span class="ar">→</span>
+      <span class="d">Add Recipe → submit</span> <span class="ar">→</span>
+      <span class="t">NavigationManager</span> <span class="ar">→</span>
+      <span class="c">Home</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>Basic familiarity with C# and Razor syntax</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">You'll create a Blazor WebAssembly application to manage recipes. Users will view a list of
+      recipes, add new recipes, and see detailed instructions for each recipe.</p>
+    <ul class="plain">
+      <li>Open <strong>Visual Studio Code</strong>.</li>
+      <li>Open the terminal (<code class="inline">Ctrl+`</code> or <strong>View &gt; Terminal</strong>) and create a new Blazor WebAssembly project:</li>
+    </ul>
+<pre class="code">dotnet new blazorwasm -o RecipeManagerApp
+cd RecipeManagerApp
+code .
+dotnet run</pre>
+    <ul class="plain">
+      <li>Create a folder called <code class="inline">Data</code> in the root directory of the project.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create the <code>Recipe</code> model and <code>RecipeService</code></h3>
+    <p class="scenario">The model defines a recipe; the service is an in-memory store that the components share
+      through dependency injection.</p>
+    <h4>Data/Recipe.cs</h4>
+<pre class="code">using System.ComponentModel.DataAnnotations;
+
+namespace RecipeManagerApp.Data;
+
+public class Recipe
+{
+    public int Id { get; set; }
+
+    [Required, StringLength(100)]
+    public string Name { get; set; } = "";
+
+    [Required, StringLength(500)]
+    public string Description { get; set; } = "";
+}</pre>
+    <h4>Data/RecipeService.cs</h4>
+<pre class="code">namespace RecipeManagerApp.Data;
+
+public class RecipeService
+{
+    private readonly List&lt;Recipe&gt; _recipes = new()
+    {
+        new Recipe { Id = 1, Name = "Pasta Carbonara", Description = "Creamy sauce with bacon and parmesan." },
+        new Recipe { Id = 2, Name = "Greek Salad", Description = "Tomatoes, cucumbers, olives, feta." },
+        new Recipe { Id = 3, Name = "Banana Bread", Description = "Moist, sweet loaf with ripe bananas." }
+    };
+
+    public IReadOnlyList&lt;Recipe&gt; GetAll() =&gt; _recipes;
+
+    public Recipe? GetById(int id) =&gt; _recipes.FirstOrDefault(r =&gt; r.Id == id);
+
+    public void Add(Recipe recipe)
+    {
+        recipe.Id = (_recipes.LastOrDefault()?.Id ?? 0) + 1;
+        _recipes.Add(recipe);
+    }
+}</pre>
+    <p>Register the service as a <strong>singleton</strong> in <code class="inline">Program.cs</code> so all
+      components share the same list for the app's lifetime:</p>
+<pre class="code">using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using RecipeManagerApp;
+using RecipeManagerApp.Data;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add&lt;App&gt;("#app");
+builder.RootComponents.Add&lt;HeadOutlet&gt;("head::after");
+
+builder.Services.AddScoped(sp =&gt; new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+builder.Services.AddSingleton&lt;RecipeService&gt;();
+
+await builder.Build().RunAsync();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Modify the Home component</h3>
+    <p class="scenario">The Home page displays the list of recipes and lets users view details or navigate to the
+      Add Recipe page. It binds a <code class="inline">List&lt;Recipe&gt;</code> to the UI and renders each recipe's
+      name and description with a link to its details.</p>
+    <h4>Pages/Home.razor</h4>
+<pre class="code">@page "/"
+@using RecipeManagerApp.Data
+@inject RecipeService RecipeService
+
+&lt;h1 class="mb-3"&gt;Recipes&lt;/h1&gt;
+
+&lt;div class="mb-3"&gt;
+    &lt;a class="btn btn-primary" href="/addrecipe"&gt;Add Recipe&lt;/a&gt;
+&lt;/div&gt;
+
+@if (recipes.Count == 0)
+{
+    &lt;p&gt;No recipes yet. Click &lt;strong&gt;Add Recipe&lt;/strong&gt; to create one.&lt;/p&gt;
+}
+else
+{
+    &lt;ul class="list-group"&gt;
+        @foreach (var r in recipes)
+        {
+            &lt;li class="list-group-item d-flex justify-content-between align-items-start"&gt;
+                &lt;div class="me-auto"&gt;
+                    &lt;div class="fw-bold"&gt;
+                        &lt;a href="@($"/recipe/{r.Id}")"&gt;@r.Name&lt;/a&gt;
+                    &lt;/div&gt;
+                    &lt;small&gt;@r.Description&lt;/small&gt;
+                &lt;/div&gt;
+                &lt;a class="btn btn-sm btn-outline-secondary" href="@($"/recipe/{r.Id}")"&gt;View details&lt;/a&gt;
+            &lt;/li&gt;
+        }
+    &lt;/ul&gt;
+}
+
+@code {
+    private List&lt;Recipe&gt; recipes = new();
+
+    protected override void OnInitialized()
+    {
+        recipes = RecipeService.GetAll().ToList();
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Create the Add Recipe page</h3>
+    <p class="scenario">The Add Recipe page lets users add a new recipe. It uses an <code class="inline">EditForm</code>
+      with <strong>two-way binding</strong> (<code class="inline">@bind-Value</code>) on the inputs and the
+      <code class="inline">NavigationManager</code> service to return to the Home page after a successful submit.</p>
+    <h4>Pages/AddRecipe.razor</h4>
+<pre class="code">@page "/addrecipe"
+@using RecipeManagerApp.Data
+@inject RecipeService RecipeService
+@inject NavigationManager Nav
+
+&lt;h3&gt;Add Recipe&lt;/h3&gt;
+
+&lt;EditForm Model="@model" OnValidSubmit="HandleSubmit"&gt;
+    &lt;DataAnnotationsValidator /&gt;
+    &lt;ValidationSummary /&gt;
+
+    &lt;div class="mb-3"&gt;
+        &lt;label class="form-label"&gt;Name&lt;/label&gt;
+        &lt;InputText class="form-control" @bind-Value="model.Name" /&gt;
+    &lt;/div&gt;
+    &lt;div class="mb-3"&gt;
+        &lt;label class="form-label"&gt;Description&lt;/label&gt;
+        &lt;InputTextArea class="form-control" @bind-Value="model.Description" rows="4" /&gt;
+    &lt;/div&gt;
+
+    &lt;button type="submit" class="btn btn-primary"&gt;Add&lt;/button&gt;
+    &lt;button type="button" class="btn btn-secondary ms-2" @onclick="Cancel"&gt;Cancel&lt;/button&gt;
+&lt;/EditForm&gt;
+
+@code {
+    private Recipe model = new();
+
+    private void HandleSubmit()
+    {
+        RecipeService.Add(model);
+        Nav.NavigateTo("/");
+    }
+
+    private void Cancel()
+    {
+        Nav.NavigateTo("/");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Add dynamic routing for recipe details</h3>
+    <p class="scenario">Enable users to navigate to a dynamically routed Recipe Details page. The
+      <code class="inline">{id:int}</code> route constraint binds the URL segment to an
+      <code class="inline">[Parameter]</code>, and the recipe is fetched in
+      <code class="inline">OnParametersSet</code> so it refreshes whenever the route value changes.</p>
+    <h4>Pages/RecipeDetails.razor</h4>
+<pre class="code">@page "/recipe/{id:int}"
+@using RecipeManagerApp.Data
+@inject RecipeService RecipeService
+@inject NavigationManager Nav
+
+&lt;h3&gt;Recipe Details&lt;/h3&gt;
+
+@if (recipe is null)
+{
+    &lt;div class="alert alert-warning"&gt;Recipe not found.&lt;/div&gt;
+    &lt;button class="btn btn-secondary" @onclick="GoBack"&gt;Back&lt;/button&gt;
+}
+else
+{
+    &lt;div class="card"&gt;
+        &lt;div class="card-body"&gt;
+            &lt;h4 class="card-title"&gt;@recipe.Name&lt;/h4&gt;
+            &lt;p class="card-text"&gt;@recipe.Description&lt;/p&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="mt-3"&gt;
+        &lt;button class="btn btn-secondary" @onclick="GoBack"&gt;Back&lt;/button&gt;
+    &lt;/div&gt;
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+
+    private Recipe? recipe;
+
+    protected override void OnParametersSet()
+    {
+        recipe = RecipeService.GetById(id);
+    }
+
+    private void GoBack() =&gt; Nav.NavigateTo("/");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Add navigation links</h3>
+    <p class="scenario">Add a navigation link so users can switch to the Add Recipe page from the side menu.</p>
+    <h4>Layout/NavMenu.razor</h4>
+<pre class="code">&lt;div class="nav-item px-3"&gt;
+    &lt;NavLink class="nav-link" href="addrecipe"&gt;
+        &lt;span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"&gt;&lt;/span&gt; Add Recipe
+    &lt;/NavLink&gt;
+&lt;/div&gt;</pre>
+    <p>For reference, <code class="inline">Layout/MainLayout.razor</code> keeps the standard shell that hosts every
+      page through <code class="inline">@Body</code>:</p>
+    <h4>Layout/MainLayout.razor</h4>
+<pre class="code">@inherits LayoutComponentBase
+
+&lt;div class="page"&gt;
+    &lt;div class="sidebar"&gt;
+        &lt;NavMenu /&gt;
+    &lt;/div&gt;
+    &lt;main&gt;
+        &lt;div class="top-row px-4"&gt;
+            &lt;a href="https://learn.microsoft.com/aspnet/core/" target="_blank"&gt;About&lt;/a&gt;
+        &lt;/div&gt;
+        &lt;article class="content px-4"&gt;
+            @Body
+        &lt;/article&gt;
+    &lt;/main&gt;
+&lt;/div&gt;</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Run the app with <strong>dotnet run</strong> and open it in the browser: the <strong>Home</strong> page lists the
+    three seeded recipes; clicking a name or <strong>View details</strong> opens <code class="inline">/recipe/{id}</code>
+    for that recipe (an unknown id shows "Recipe not found"); and <strong>Add Recipe</strong> submits a valid form,
+    adds the recipe, and navigates back to Home where the new entry now appears.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">RecipeManagerApp</code> Blazor WebAssembly project created and runs with <code class="inline">dotnet run</code></li>
+      <li><code class="inline">Data/Recipe.cs</code> model and <code class="inline">Data/RecipeService.cs</code> store exist, and <code class="inline">RecipeService</code> is registered in <code class="inline">Program.cs</code></li>
+      <li><code class="inline">Home.razor</code> binds the recipe list to the UI with links to details and the add page</li>
+      <li><code class="inline">AddRecipe.razor</code> uses an <code class="inline">EditForm</code> with <code class="inline">@bind-Value</code> and adds a recipe, then navigates home via <code class="inline">NavigationManager</code></li>
+      <li><code class="inline">RecipeDetails.razor</code> uses the <code class="inline">@page "/recipe/{id:int}"</code> route and shows the matching recipe (or a not-found message)</li>
+      <li><code class="inline">NavMenu.razor</code> includes a link to <code class="inline">/addrecipe</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>One-way vs. two-way binding</strong> — the list is rendered with one-way interpolation
+        (<code class="inline">@r.Name</code>), while form inputs use <code class="inline">@bind-Value</code> to keep the
+        <code>Recipe</code> model and the UI in sync as the user types.</li>
+      <li><strong><code class="inline">EditForm</code> + DataAnnotations</strong> — <code class="inline">[Required]</code> /
+        <code class="inline">[StringLength]</code> on the model plus <code class="inline">DataAnnotationsValidator</code>
+        give validated input for free; <code class="inline">OnValidSubmit</code> only fires when the form is valid.</li>
+      <li><strong>Event handling</strong> — <code class="inline">@onclick</code> and <code class="inline">OnValidSubmit</code>
+        map UI events to C# methods, the core of Blazor's interactivity.</li>
+      <li><strong>Route parameters &amp; constraints</strong> — <code class="inline">@page "/recipe/{id:int}"</code> binds a
+        URL segment to an <code class="inline">[Parameter]</code>; the <code class="inline">:int</code> constraint rejects
+        non-numeric ids before the component renders.</li>
+      <li><strong>Programmatic navigation &amp; shared state</strong> — <code class="inline">NavigationManager.NavigateTo</code>
+        moves between pages from code, and a singleton <code class="inline">RecipeService</code> lets every component read
+        and write the same recipe list.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing User Registration and Authentication — Course 8 · Module 1</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 1 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing User Registration and Authentication</h1>
+    <p class="lead">
+      Build an ASP.NET Core MVC app that handles <strong>user registration</strong> and
+      <strong>authentication</strong> with <strong>ASP.NET Identity</strong>, backed by the
+      <strong>Entity Framework Core in-memory provider</strong>. Using in-memory storage lets you
+      focus on the Identity workflow — <code>UserManager</code>, <code>SignInManager</code>,
+      automatic password hashing — without standing up a real database.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity, you will implement a user registration and
+      authentication process using <strong>ASP.NET Identity</strong> in an ASP.NET Core application.
+      You will use <strong>in-memory storage</strong> instead of a database, allowing you to focus on
+      functionality without requiring a database setup.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>An ASP.NET Core MVC project named <code class="inline">UserAuthInMemoryApp</code> with the following pieces:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Data/ApplicationDbContext.cs</code></td><td>Identity database context (<code>IdentityDbContext</code>)</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Register the in-memory DB, Identity services, and the auth middleware</td></tr>
+        <tr><td><code>Models/RegisterViewModel.cs</code></td><td>Email + password fields for the registration form</td></tr>
+        <tr><td><code>Models/LoginViewModel.cs</code></td><td>Email, password, and <strong>Remember Me</strong> fields for the login form</td></tr>
+        <tr><td><code>Controllers/AccountController.cs</code></td><td><code>Register</code> / <code>Login</code> / <code>Logout</code> actions using Identity services</td></tr>
+        <tr><td><code>Views/Account/Register.cshtml</code></td><td>The registration form</td></tr>
+        <tr><td><code>Views/Account/Login.cshtml</code></td><td>The login form</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Register form</span> <span class="ar">→</span>
+      <span class="c">UserManager.CreateAsync</span> <span class="ar">→</span>
+      <span class="ar">Login form</span> <span class="ar">→</span>
+      <span class="d">SignInManager.PasswordSignInAsync</span> <span class="ar">→</span>
+      <span class="t">authenticated session</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li><strong>.NET SDK</strong> installed — check with <code class="inline">dotnet --version</code></li>
+      <li><strong>Visual Studio Code</strong> with the <strong>C# for Visual Studio Code</strong> extension (powered by OmniSharp)</li>
+      <li>Familiarity with running commands in the integrated <strong>terminal</strong></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare for the application</h3>
+    <p class="scenario">You will create a new ASP.NET Core MVC application and add the Identity packages.</p>
+    <ul class="plain">
+      <li>Open Visual Studio Code and ensure the <strong>C# for Visual Studio Code</strong> extension is installed.</li>
+      <li>Open the terminal with <strong>Terminal &gt; New Terminal</strong>.</li>
+      <li>Create a new ASP.NET Core MVC project — this creates a <code class="inline">UserAuthInMemoryApp</code> folder with the necessary project files:</li>
+    </ul>
+<pre class="code">dotnet new mvc -n UserAuthInMemoryApp</pre>
+    <ul class="plain">
+      <li>Navigate into the project folder:</li>
+    </ul>
+<pre class="code">cd UserAuthInMemoryApp</pre>
+    <ul class="plain">
+      <li>Add the required NuGet packages:</li>
+    </ul>
+<pre class="code"><span class="cmt"># ASP.NET Identity with EF Core</span>
+dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
+
+<span class="cmt"># ASP.NET Identity UI</span>
+dotnet add package Microsoft.AspNetCore.Identity.UI
+
+<span class="cmt"># In-memory database provider</span>
+dotnet add package Microsoft.EntityFrameworkCore.InMemory</pre>
+    <ul class="plain">
+      <li>Restore packages to ensure they are properly installed:</li>
+    </ul>
+<pre class="code">dotnet restore</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create the application database context</h3>
+    <p class="scenario">Define a custom database context that ASP.NET Identity uses for managing user data.
+      Create a folder named <code class="inline">Data</code> and add <code class="inline">ApplicationDbContext.cs</code>.</p>
+<pre class="code"><span class="cmt">// Data/ApplicationDbContext.cs</span>
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
+namespace UserAuthInMemoryApp.Data;
+
+<span class="cmt">// Identity context: brings in Users, Roles, Claims, etc.</span>
+<span class="cmt">// IdentityUser is the built-in user type (Id, UserName, Email, PasswordHash, ...).</span>
+public class ApplicationDbContext : IdentityDbContext&lt;IdentityUser&gt;
+{
+    public ApplicationDbContext(DbContextOptions&lt;ApplicationDbContext&gt; options)
+        : base(options)
+    {
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Configure the application to use in-memory storage</h3>
+    <p class="scenario">Configure the project to use the in-memory database and register Identity services.
+      Open <code class="inline">Program.cs</code> and replace its contents.</p>
+<pre class="code"><span class="cmt">// Program.cs</span>
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using UserAuthInMemoryApp.Data;
+
+var builder = WebApplication.CreateBuilder(args);
+
+<span class="cmt">// Register the Identity DbContext using the in-memory provider.</span>
+<span class="cmt">// The named store lives only for the lifetime of the process.</span>
+builder.Services.AddDbContext&lt;ApplicationDbContext&gt;(options =&gt;
+    options.UseInMemoryDatabase("UserAuthInMemoryDb"));
+
+<span class="cmt">// Register ASP.NET Identity, backed by ApplicationDbContext.</span>
+builder.Services
+    .AddDefaultIdentity&lt;IdentityUser&gt;(options =&gt;
+    {
+        <span class="cmt">// Relax the defaults so the demo is easy to test.</span>
+        options.SignIn.RequireConfirmedAccount = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequiredLength = 6;
+    })
+    .AddEntityFrameworkStores&lt;ApplicationDbContext&gt;();
+
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+<span class="cmt">// Order matters: authentication must run before authorization.</span>
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.Run();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Create the user registration form</h3>
+    <p class="scenario">Create a registration form to let users input their email and password.</p>
+    <ul class="plain">
+      <li>In <code class="inline">Controllers</code>, create <code class="inline">AccountController.cs</code> with a <code class="inline">Register</code> action that renders the form.</li>
+      <li>In <code class="inline">Models</code>, create <code class="inline">RegisterViewModel.cs</code> with properties for email and password.</li>
+      <li>In <code class="inline">Views/Account</code>, create <code class="inline">Register.cshtml</code> to display the form.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Models/RegisterViewModel.cs</span>
+using System.ComponentModel.DataAnnotations;
+
+namespace UserAuthInMemoryApp.Models;
+
+public class RegisterViewModel
+{
+    [Required, EmailAddress]
+    [Display(Name = "Email")]
+    public string Email { get; set; } = string.Empty;
+
+    [Required, DataType(DataType.Password)]
+    [Display(Name = "Password")]
+    public string Password { get; set; } = string.Empty;
+
+    [DataType(DataType.Password)]
+    [Display(Name = "Confirm password")]
+    [Compare(nameof(Password), ErrorMessage = "The passwords do not match.")]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}</pre>
+<pre class="code"><span class="cmt">// Controllers/AccountController.cs  (registration GET action)</span>
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using UserAuthInMemoryApp.Models;
+
+namespace UserAuthInMemoryApp.Controllers;
+
+public class AccountController : Controller
+{
+    private readonly UserManager&lt;IdentityUser&gt; _userManager;
+    private readonly SignInManager&lt;IdentityUser&gt; _signInManager;
+
+    public AccountController(
+        UserManager&lt;IdentityUser&gt; userManager,
+        SignInManager&lt;IdentityUser&gt; signInManager)
+    {
+        _userManager = userManager;
+        _signInManager = signInManager;
+    }
+
+    <span class="cmt">// GET: render the empty registration form.</span>
+    [HttpGet]
+    public IActionResult Register() =&gt; View();
+}</pre>
+<pre class="code"><span class="cmt">@* Views/Account/Register.cshtml *@</span>
+@model UserAuthInMemoryApp.Models.RegisterViewModel
+@{
+    ViewData["Title"] = "Register";
+}
+
+&lt;h2&gt;Register&lt;/h2&gt;
+
+&lt;form asp-action="Register" method="post"&gt;
+    &lt;div asp-validation-summary="All" class="text-danger"&gt;&lt;/div&gt;
+
+    &lt;div class="mb-3"&gt;
+        &lt;label asp-for="Email" class="form-label"&gt;&lt;/label&gt;
+        &lt;input asp-for="Email" class="form-control" /&gt;
+        &lt;span asp-validation-for="Email" class="text-danger"&gt;&lt;/span&gt;
+    &lt;/div&gt;
+
+    &lt;div class="mb-3"&gt;
+        &lt;label asp-for="Password" class="form-label"&gt;&lt;/label&gt;
+        &lt;input asp-for="Password" class="form-control" /&gt;
+        &lt;span asp-validation-for="Password" class="text-danger"&gt;&lt;/span&gt;
+    &lt;/div&gt;
+
+    &lt;div class="mb-3"&gt;
+        &lt;label asp-for="ConfirmPassword" class="form-label"&gt;&lt;/label&gt;
+        &lt;input asp-for="ConfirmPassword" class="form-control" /&gt;
+        &lt;span asp-validation-for="ConfirmPassword" class="text-danger"&gt;&lt;/span&gt;
+    &lt;/div&gt;
+
+    &lt;button type="submit" class="btn btn-primary"&gt;Register&lt;/button&gt;
+    &lt;a asp-action="Login" class="btn btn-link"&gt;Already have an account? Log in&lt;/a&gt;
+&lt;/form&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Handle user registration</h3>
+    <p class="scenario">Process the form submission to register a new user.</p>
+    <ul class="plain">
+      <li>Update <code class="inline">AccountController</code> to handle the form <strong>POST</strong> and create a user with the <code class="inline">UserManager</code> service.</li>
+      <li>Password hashing happens <strong>automatically</strong> via ASP.NET Identity.</li>
+      <li>Redirect users to the <strong>login</strong> page upon successful registration.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Controllers/AccountController.cs  (registration POST action)</span>
+
+<span class="cmt">// POST: create the user. UserManager hashes the password for us.</span>
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task&lt;IActionResult&gt; Register(RegisterViewModel model)
+{
+    if (!ModelState.IsValid)
+        return View(model);
+
+    var user = new IdentityUser
+    {
+        UserName = model.Email,
+        Email = model.Email
+    };
+
+    <span class="cmt">// CreateAsync stores the user and the *hashed* password in the in-memory store.</span>
+    var result = await _userManager.CreateAsync(user, model.Password);
+
+    if (result.Succeeded)
+        return RedirectToAction(nameof(Login));
+
+    foreach (var error in result.Errors)
+        ModelState.AddModelError(string.Empty, error.Description);
+
+    return View(model);
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Implement user authentication</h3>
+    <p class="scenario">Add login functionality to authenticate users.</p>
+    <ul class="plain">
+      <li>In <code class="inline">Models</code>, create <code class="inline">LoginViewModel.cs</code> with properties for email, password, and <strong>Remember Me</strong>.</li>
+      <li>Update <code class="inline">AccountController</code> with a login action that <strong>renders</strong> the form and <strong>processes</strong> logins (plus a logout action).</li>
+      <li>In <code class="inline">Views/Account</code>, create <code class="inline">Login.cshtml</code> to display the login form.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Models/LoginViewModel.cs</span>
+using System.ComponentModel.DataAnnotations;
+
+namespace UserAuthInMemoryApp.Models;
+
+public class LoginViewModel
+{
+    [Required, EmailAddress]
+    [Display(Name = "Email")]
+    public string Email { get; set; } = string.Empty;
+
+    [Required, DataType(DataType.Password)]
+    [Display(Name = "Password")]
+    public string Password { get; set; } = string.Empty;
+
+    [Display(Name = "Remember Me")]
+    public bool RememberMe { get; set; }
+}</pre>
+<pre class="code"><span class="cmt">// Controllers/AccountController.cs  (login + logout actions)</span>
+
+<span class="cmt">// GET: render the empty login form.</span>
+[HttpGet]
+public IActionResult Login() =&gt; View();
+
+<span class="cmt">// POST: sign the user in via SignInManager.</span>
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task&lt;IActionResult&gt; Login(LoginViewModel model)
+{
+    if (!ModelState.IsValid)
+        return View(model);
+
+    var result = await _signInManager.PasswordSignInAsync(
+        model.Email,
+        model.Password,
+        isPersistent: model.RememberMe,   <span class="cmt">// honours "Remember Me"</span>
+        lockoutOnFailure: false);
+
+    if (result.Succeeded)
+        return RedirectToAction("Index", "Home");
+
+    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+    return View(model);
+}
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task&lt;IActionResult&gt; Logout()
+{
+    await _signInManager.SignOutAsync();
+    return RedirectToAction("Index", "Home");
+}</pre>
+<pre class="code"><span class="cmt">@* Views/Account/Login.cshtml *@</span>
+@model UserAuthInMemoryApp.Models.LoginViewModel
+@{
+    ViewData["Title"] = "Log in";
+}
+
+&lt;h2&gt;Log in&lt;/h2&gt;
+
+&lt;form asp-action="Login" method="post"&gt;
+    &lt;div asp-validation-summary="All" class="text-danger"&gt;&lt;/div&gt;
+
+    &lt;div class="mb-3"&gt;
+        &lt;label asp-for="Email" class="form-label"&gt;&lt;/label&gt;
+        &lt;input asp-for="Email" class="form-control" /&gt;
+        &lt;span asp-validation-for="Email" class="text-danger"&gt;&lt;/span&gt;
+    &lt;/div&gt;
+
+    &lt;div class="mb-3"&gt;
+        &lt;label asp-for="Password" class="form-label"&gt;&lt;/label&gt;
+        &lt;input asp-for="Password" class="form-control" /&gt;
+        &lt;span asp-validation-for="Password" class="text-danger"&gt;&lt;/span&gt;
+    &lt;/div&gt;
+
+    &lt;div class="form-check mb-3"&gt;
+        &lt;input asp-for="RememberMe" class="form-check-input" /&gt;
+        &lt;label asp-for="RememberMe" class="form-check-label"&gt;&lt;/label&gt;
+    &lt;/div&gt;
+
+    &lt;button type="submit" class="btn btn-primary"&gt;Log in&lt;/button&gt;
+    &lt;a asp-action="Register" class="btn btn-link"&gt;Create an account&lt;/a&gt;
+&lt;/form&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Test the application</h3>
+    <p class="scenario">Test the registration and authentication functionality.</p>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Open your browser and navigate to <code class="inline">https://localhost:[port number]</code> (the exact port is printed in the terminal), then go to <code class="inline">/Account/Register</code>.</li>
+      <li><strong>Test registration:</strong> fill out the form and submit it. Verify the new user is created (you are redirected to the login page).</li>
+      <li><strong>Test login:</strong> log in with the correct credentials, and try the <strong>Remember Me</strong> option.</li>
+      <li><strong>Restart the application</strong> and note that the data is <strong>lost</strong> — the expected behavior of in-memory storage.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    A registered user can log in successfully and lands back on the Home page in an authenticated
+    session. Logging in with wrong credentials shows an <strong>"Invalid login attempt."</strong> message.
+    After restarting the app, all previously registered users are gone, confirming that the in-memory
+    store does <strong>not</strong> persist between runs.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">UserAuthInMemoryApp</code> MVC project created with the three Identity / EF Core packages added</li>
+      <li><code class="inline">ApplicationDbContext</code> derives from <code class="inline">IdentityDbContext&lt;IdentityUser&gt;</code></li>
+      <li><code class="inline">Program.cs</code> registers <code class="inline">UseInMemoryDatabase</code>, <code class="inline">AddDefaultIdentity</code>, and <code class="inline">UseAuthentication</code></li>
+      <li>Registration creates a user via <code class="inline">UserManager.CreateAsync</code> (password hashed automatically)</li>
+      <li>Login authenticates via <code class="inline">SignInManager.PasswordSignInAsync</code>, honouring <strong>Remember Me</strong></li>
+      <li>After <code class="inline">dotnet run</code>, a user can register, log in, and the data is lost on restart</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>ASP.NET Identity does the heavy lifting</strong> — <code class="inline">UserManager</code> and
+        <code class="inline">SignInManager</code> handle user creation, secure <strong>password hashing</strong>, and
+        cookie-based sign-in, so you never store or compare raw passwords yourself.</li>
+      <li><strong>In-memory storage is volatile</strong> — the EF Core in-memory provider keeps data only for the
+        process lifetime; it is ideal for demos and tests but loses everything on restart.</li>
+      <li><strong><code class="inline">AddDefaultIdentity</code> + <code class="inline">AddEntityFrameworkStores</code></strong>
+        wire Identity to your <code class="inline">DbContext</code>, and Identity's password rules (length, character
+        classes) are configurable in <code class="inline">Program.cs</code>.</li>
+      <li><strong>Middleware order is load-bearing</strong> — <code class="inline">UseAuthentication()</code> must come
+        before <code class="inline">UseAuthorization()</code>, or the authenticated cookie is never read on incoming requests.</li>
+      <li><strong>Remember Me = persistent cookie</strong> — passing <code class="inline">isPersistent: true</code> to
+        <code class="inline">PasswordSignInAsync</code> issues a cookie that survives the browser session, instead of an
+        in-session cookie.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

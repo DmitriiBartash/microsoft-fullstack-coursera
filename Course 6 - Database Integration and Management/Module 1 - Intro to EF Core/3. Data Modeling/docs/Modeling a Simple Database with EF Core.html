@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Modeling a Simple Database with EF Core — Course 6 · Module 1</title>
+<style>
+  :root {
+    --hdr: #059669;      /* header / create  */
+    --pld: #0d9488;      /* payload / decode */
+    --sig: #10b981;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 6 — Database Integration and Management · Module 1 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Modeling a Simple Database with EF Core</h1>
+    <p class="lead">
+      Build a small .NET console app that models a simple HR database with
+      <strong>Entity Framework Core</strong> and <strong>SQLite</strong>. You will define
+      <code>Employee</code> and <code>Department</code> entities, wire a <strong>one-to-many</strong>
+      relationship in a <code>DbContext</code>, seed data, generate the schema with
+      <strong>migrations</strong>, and run <strong>CRUD</strong> queries end-to-end.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity, you will be able to apply data modeling techniques to
+      create a simple database using <strong>EF Core</strong> in a .NET application — modeling entities,
+      configuring relationships, seeding data, and querying with LINQ.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A console project named <code class="inline">EFCoreModelApp</code> backed by a SQLite database
+      (<code class="inline">hr.db</code>):</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Models/Department.cs</code></td><td><code>Department</code> entity — one department has many employees</td></tr>
+        <tr><td><code>Models/Employee.cs</code></td><td><code>Employee</code> entity — belongs to one department (navigation property)</td></tr>
+        <tr><td><code>Data/HRDbContext.cs</code></td><td><code>DbContext</code> — <code>DbSet</code>s, SQLite connection, relationship, seed data</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Create the DB, run LINQ queries, insert a new employee</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Models</span> <span class="ar">→</span>
+      <span class="c">HRDbContext</span> <span class="ar">(DbSets + relationship + seed)</span> <span class="ar">→</span>
+      <span class="d">migration</span> <span class="ar">→</span>
+      <span class="t">hr.db</span> <span class="ar">→</span>
+      <span class="ar">LINQ queries</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>A code editor (Visual Studio Code or Visual Studio)</li>
+      <li>The EF Core CLI tools (<code class="inline">dotnet-ef</code>) — installed in Step 1</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Install required tools and create a new console application</h3>
+    <p class="scenario">Set up your environment, install the necessary dependencies, and create a new console
+      application for your EF Core project.</p>
+<pre class="code"><span class="cmt"># Install the EF Core command-line tools globally</span>
+dotnet tool install --global dotnet-ef
+
+<span class="cmt"># Create the console app and move into the project directory</span>
+dotnet new console -n EFCoreModelApp
+cd EFCoreModelApp
+
+<span class="cmt"># Add the SQLite provider and the design-time package used by migrations</span>
+dotnet add package Microsoft.EntityFrameworkCore.Sqlite
+dotnet add package Microsoft.EntityFrameworkCore.Design
+
+<span class="cmt"># Confirm the project builds and runs</span>
+dotnet run</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create and configure entity classes</h3>
+    <p class="scenario">Create a <code class="inline">Models</code> folder and define the
+      <code>Employee</code> and <code>Department</code> entity classes that represent the tables in your
+      database. <code>Employee</code> carries both the <code class="inline">DepartmentId</code> foreign key and a
+      <code class="inline">Department</code> navigation property.</p>
+    <h4>Models/Department.cs</h4>
+<pre class="code">namespace EFCoreModelApp.Models;
+
+public class Department
+{
+    public int DepartmentId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public ICollection&lt;Employee&gt; Employees { get; set; } = [];
+}</pre>
+    <h4>Models/Employee.cs</h4>
+<pre class="code">namespace EFCoreModelApp.Models;
+
+public class Employee
+{
+    public int EmployeeId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Position { get; set; } = string.Empty;
+    public int DepartmentId { get; set; }
+    public Department Department { get; set; } = null!;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Set up the DbContext</h3>
+    <p class="scenario">Create the <code class="inline">HRDbContext</code> class to manage the database connection
+      and the relationships between entities. It exposes a <code class="inline">DbSet</code> per entity, points to a
+      SQLite file in <code class="inline">OnConfiguring</code>, configures the one-to-many relationship in
+      <code class="inline">OnModelCreating</code>, and seeds initial data.</p>
+    <h4>Data/HRDbContext.cs</h4>
+<pre class="code">using Microsoft.EntityFrameworkCore;
+using EFCoreModelApp.Models;
+
+namespace EFCoreModelApp.Data;
+
+public class HRDbContext : DbContext
+{
+    public DbSet&lt;Employee&gt; Employees { get; set; } = null!;
+    public DbSet&lt;Department&gt; Departments { get; set; } = null!;
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.UseSqlite("Data Source=hr.db");
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        <span class="cmt">// One-to-many relationship</span>
+        modelBuilder.Entity&lt;Employee&gt;()
+            .HasOne(e =&gt; e.Department)
+            .WithMany(d =&gt; d.Employees)
+            .HasForeignKey(e =&gt; e.DepartmentId);
+
+        <span class="cmt">// Seed initial data</span>
+        modelBuilder.Entity&lt;Department&gt;().HasData(
+            new Department { DepartmentId = 1, Name = "HR" },
+            new Department { DepartmentId = 2, Name = "IT" }
+        );
+
+        modelBuilder.Entity&lt;Employee&gt;().HasData(
+            new Employee { EmployeeId = 1, Name = "Alice", Position = "HR Manager", DepartmentId = 1 },
+            new Employee { EmployeeId = 2, Name = "Bob", Position = "Developer", DepartmentId = 2 }
+        );
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Add and apply migrations</h3>
+    <p class="scenario">Generate the database schema from your model and apply it to SQLite. The first migration
+      captures the current model state (entities, relationship, and seed data); applying it creates
+      <code class="inline">hr.db</code> with the <code class="inline">Employees</code> and
+      <code class="inline">Departments</code> tables.</p>
+<pre class="code"><span class="cmt"># Capture the current model state as a migration</span>
+dotnet ef migrations add InitialCreate
+
+<span class="cmt"># Create the database and tables from the migration</span>
+dotnet ef database update</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Test the application</h3>
+    <p class="scenario">Replace <code class="inline">Program.cs</code> with a program that exercises CRUD: list all
+      employees with their department names, filter to HR, insert a new employee if one does not already exist, then
+      re-display the data. The <code class="inline">PrintTable</code> helper reflects over an object's properties so any
+      projection can be printed as a tidy table.</p>
+    <h4>Program.cs</h4>
+<pre class="code">using EFCoreModelApp.Data;
+using EFCoreModelApp.Models;
+
+using var context = new HRDbContext();
+context.Database.EnsureCreated();
+
+void PrintTable&lt;T&gt;(IEnumerable&lt;T&gt; items, string title)
+{
+    Console.WriteLine($"\n{title}");
+    Console.WriteLine(new string('-', 100));
+    var props = typeof(T).GetProperties();
+    foreach (var prop in props)
+        Console.Write($"{prop.Name,-30}");
+    Console.WriteLine();
+    Console.WriteLine(new string('-', 100));
+    foreach (var item in items)
+    {
+        foreach (var prop in props)
+        {
+            var value = prop.GetValue(item) ?? "";
+            Console.Write($"{value,-30}");
+        }
+        Console.WriteLine();
+    }
+    Console.WriteLine(new string('-', 100));
+}
+
+var employees = context.Employees
+    .Select(e =&gt; new { e.EmployeeId, e.Name, e.Position, Department = e.Department.Name })
+    .ToList();
+PrintTable(employees, "All Employees");
+
+var hrEmployees = context.Employees
+    .Where(e =&gt; e.Department.Name == "HR")
+    .Select(e =&gt; new { e.EmployeeId, e.Name, e.Position, Department = e.Department.Name })
+    .ToList();
+PrintTable(hrEmployees, "Employees in HR Department");
+
+if (!context.Employees.Any(e =&gt; e.Name == "Charlie"))
+{
+    var newEmployee = new Employee
+    {
+        Name = "Charlie",
+        Position = "System Administrator",
+        DepartmentId = 2
+    };
+    context.Employees.Add(newEmployee);
+    context.SaveChanges();
+    Console.WriteLine("\nAdded new employee: Charlie (System Administrator, IT).");
+}
+else
+{
+    Console.WriteLine("\nCharlie already exists. Skipping insert.");
+}
+
+var updatedEmployees = context.Employees
+    .Select(e =&gt; new { e.EmployeeId, e.Name, e.Position, Department = e.Department.Name })
+    .ToList();
+PrintTable(updatedEmployees, "Updated Employees List");
+
+var departments = context.Departments
+    .Select(d =&gt; new { d.DepartmentId, d.Name })
+    .ToList();
+PrintTable(departments, "Departments");</pre>
+    <p style="margin:12px 0 0">Run the application to verify the database operations work correctly:</p>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The app prints four tables: <strong>All Employees</strong> (Alice and Bob with their department names),
+    <strong>Employees in HR Department</strong> (just Alice), an <strong>Updated Employees List</strong> that now
+    includes <strong>Charlie</strong> in IT, and the <strong>Departments</strong> table (HR and IT). On the first run it
+    reports <code class="inline">Added new employee: Charlie (System Administrator, IT).</code>; on later runs,
+    <code class="inline">Charlie already exists. Skipping insert.</code>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">dotnet-ef</code> tools installed and the <code class="inline">EFCoreModelApp</code> console project created</li>
+      <li><code class="inline">Microsoft.EntityFrameworkCore.Sqlite</code> and <code class="inline">...Design</code> packages added</li>
+      <li><code class="inline">Department</code> and <code class="inline">Employee</code> entities defined, with <code class="inline">Employee</code> holding the <code class="inline">Department</code> navigation property</li>
+      <li><code class="inline">HRDbContext</code> exposes both <code class="inline">DbSet</code>s, the SQLite connection, the one-to-many relationship, and seed data</li>
+      <li><code class="inline">dotnet ef migrations add</code> and <code class="inline">dotnet ef database update</code> create <code class="inline">hr.db</code> with both tables</li>
+      <li><code class="inline">dotnet run</code> lists employees with departments, filters HR, and inserts Charlie</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Entities map to tables</strong> — each plain C# class (<code class="inline">Employee</code>,
+        <code class="inline">Department</code>) becomes a table and its properties become columns; the
+        <code class="inline">Id</code>-suffixed property is the convention-based primary key.</li>
+      <li><strong>One-to-many via navigation + FK</strong> — <code class="inline">HasOne().WithMany().HasForeignKey()</code>
+        models the relationship; <code class="inline">Employee.DepartmentId</code> is the foreign key and
+        <code class="inline">Employee.Department</code> / <code class="inline">Department.Employees</code> are the
+        navigation properties that let LINQ traverse it.</li>
+      <li><strong>Seeding with <code class="inline">HasData</code></strong> — seed data lives in the model, so it is baked
+        into the migration and inserted deterministically when the schema is created.</li>
+      <li><strong>Migrations are the schema source of truth</strong> — <code class="inline">migrations add</code> records
+        the model state and <code class="inline">database update</code> applies it, keeping the database in sync with the
+        code as the model evolves.</li>
+      <li><strong>LINQ to SQL translation</strong> — <code class="inline">Where</code>/<code class="inline">Select</code>
+        projections (e.g. filtering by <code class="inline">e.Department.Name</code>) are translated to SQL and run in the
+        database, so you query objects without writing SQL by hand.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

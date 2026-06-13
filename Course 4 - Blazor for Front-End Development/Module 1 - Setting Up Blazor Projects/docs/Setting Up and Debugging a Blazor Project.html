@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Setting Up and Debugging a Blazor Project — Course 4 · Module 1</title>
+<style>
+  :root {
+    --hdr: #6d28d9 ;
+    --pld: #4f46e5 ;
+    --sig: #8b5cf6 ;
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 4 — Blazor for Front-End Development · Module 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Setting Up and Debugging a Blazor Project</h1>
+    <p class="lead">
+      Scaffold a <strong>Blazor WebAssembly</strong> app in Visual Studio Code, then debug it three
+      different ways: <strong>Console.WriteLine print statements</strong>, the VS Code <strong>debugger</strong>
+      (breakpoints + the Watch window), and <strong>Hot Reload</strong> for instant UI updates — all on the
+      stock <code>Counter.razor</code> page.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity you will be able to <strong>run and debug Blazor
+      applications using Visual Studio Code</strong>. You will set up a project, use debugging tools like
+      <strong>breakpoints</strong>, the <strong>Watch window</strong>, and <strong>Hot Reload</strong>, and
+      identify issues in your code efficiently.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A Blazor WebAssembly project named <code class="inline">MyBlazorApp</code> that you debug with three techniques:</p>
+    <table>
+      <thead><tr><th>Technique</th><th>Tooling</th><th>What it shows you</th></tr></thead>
+      <tbody>
+        <tr><td>Print-statement debugging</td><td><code>Console.WriteLine</code> + VS Code terminal</td><td>The value of <code>currentCount</code> on each loop iteration</td></tr>
+        <tr><td>Interactive debugging</td><td>C# Dev Kit breakpoints + Watch window</td><td>Step through <code>IncrementCount</code>, inspect live state</td></tr>
+        <tr><td>Hot Reload</td><td><code>dotnet watch run</code></td><td>UI text changes reflected without a restart</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">dotnet new blazorwasm</span> <span class="ar">→</span>
+      <span class="t">code .</span> <span class="ar">→</span>
+      <span class="d">set breakpoints / WriteLine</span> <span class="ar">→</span>
+      <span class="c">dotnet watch run</span> <span class="ar">→</span>
+      <span class="ar">observe</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li><strong>.NET SDK</strong> — minimum version <strong>6.0</strong> (check with <code class="inline">dotnet --version</code>)</li>
+      <li><strong>Visual Studio Code</strong></li>
+      <li>The <strong>C# Dev Kit</strong> extension — required to debug Blazor applications</li>
+    </ul>
+    <div class="callout">
+      <strong>Note:</strong> The C# Dev Kit ships the debugger and launch-configuration support that the
+      built-in C# experience alone does not provide.
+    </div>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Install the C# Dev Kit extension first, then scaffold the project.</p>
+    <ul class="plain">
+      <li>Open Visual Studio Code.</li>
+      <li>Open the <strong>Extensions</strong> view (the Extensions icon in the Activity Bar).</li>
+      <li>Search for <strong>C# Dev Kit</strong> and click <strong>Install</strong>.</li>
+      <li><strong>Restart</strong> Visual Studio Code so the extension activates correctly.</li>
+    </ul>
+    <p>Create a project directory, scaffold a Blazor WebAssembly app, and open it:</p>
+<pre class="code">mkdir MyBlazorApp
+cd MyBlazorApp
+dotnet new blazorwasm -o MyBlazorApp
+code .</pre>
+    <p>Add a launch configuration so VS Code can start and attach the debugger. Create
+      <code class="inline">.vscode/launch.json</code>:</p>
+<pre class="code">{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch and Debug Blazor WebAssembly",
+      "type": "blazorwasm",
+      "request": "launch",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}</pre>
+    <ul class="plain">
+      <li>Press <strong>F5</strong> to build, launch the app in the browser, and attach the debugger.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Debug with print statements</h3>
+    <p class="scenario"><strong>Scenario:</strong> a <code>for</code> loop in your Blazor application isn't
+      iterating as expected. Use print statements to debug the issue.</p>
+    <ul class="plain">
+      <li>Open <code class="inline">Counter.razor</code> — find it in the <code class="inline">Pages</code> folder of your application.</li>
+      <li>Replace the body of the <code class="inline">IncrementCount</code> method with a <code>for</code> loop that increments the <code class="inline">currentCount</code> variable by one, <strong>5 times</strong>.</li>
+      <li>Add <code class="inline">Console.WriteLine</code> statements that print the variables to the console.</li>
+      <li>When the Blazor app launches, select the <strong>Counter</strong> page from the user interface.</li>
+      <li>Select the <strong>Click me</strong> button.</li>
+      <li>Inspect the variables from the <code class="inline">Console.WriteLine</code> statement in the <strong>VS Code terminal</strong>.</li>
+    </ul>
+    <p>The relevant section of <code class="inline">@code</code> looks like this:</p>
+<pre class="code">private int currentCount = 0;
+
+private void IncrementCount()
+{
+    for (int i = 0; i &lt; 5; i++)
+    {
+        currentCount++;
+        Console.WriteLine($"Loop iteration {i + 1}, currentCount = {currentCount}");
+    }
+}</pre>
+    <div class="callout">
+      <strong>Tip:</strong> to step through the same loop interactively, set a breakpoint on the
+      <code class="inline">currentCount++;</code> line and add <code class="inline">currentCount</code> and
+      <code class="inline">i</code> to the <strong>Watch</strong> window — you'll see both values update on every pass.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Use Hot Reload for instant updates</h3>
+    <p class="scenario"><strong>Scenario:</strong> you want to modify the UI text and see changes reflected
+      immediately without restarting the application.</p>
+    <p>Start the application with Hot Reload enabled:</p>
+<pre class="code">dotnet watch run</pre>
+    <ul class="plain">
+      <li>Modify the text displayed in <code class="inline">Counter.razor</code> — for example, change the button text or the title.</li>
+      <li><strong>Save</strong> the changes and observe the updated UI in the browser <strong>instantly</strong>, with no restart.</li>
+    </ul>
+    <p>Here is the complete <code class="inline">Counter.razor</code> after the edits in Steps 2–3:</p>
+<pre class="code">@page "/counter"
+
+&lt;PageTitle&gt;Counter&lt;/PageTitle&gt;
+
+&lt;h1&gt;Counter&lt;/h1&gt;
+
+&lt;p role="status"&gt;Current count: @currentCount&lt;/p&gt;
+
+&lt;button class="btn btn-primary" @onclick="IncrementCount"&gt;Click me&lt;/button&gt;
+
+@code {
+    private int currentCount = 0;
+
+    private void IncrementCount()
+    {
+        for (int i = 0; i &lt; 5; i++)
+        {
+            currentCount++;
+            Console.WriteLine($"Loop iteration {i + 1}, currentCount = {currentCount}");
+        }
+    }
+}</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Clicking <strong>Click me</strong> increases <strong>Current count</strong> by <strong>5</strong> each time
+    (the loop runs five iterations). The VS Code terminal prints one line per iteration, and editing text in
+    <code class="inline">Counter.razor</code> while <code class="inline">dotnet watch run</code> is active updates
+    the browser immediately — confirming Hot Reload is working.
+  </div>
+  <div class="card">
+<pre class="code"><span class="cmt">// VS Code terminal output after one click</span>
+Loop iteration 1, currentCount = 1
+Loop iteration 2, currentCount = 2
+Loop iteration 3, currentCount = 3
+Loop iteration 4, currentCount = 4
+Loop iteration 5, currentCount = 5</pre>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>C# Dev Kit installed and VS Code restarted</li>
+      <li><code class="inline">MyBlazorApp</code> Blazor WebAssembly project created with <code class="inline">dotnet new blazorwasm</code> and opened in VS Code</li>
+      <li><code class="inline">.vscode/launch.json</code> lets you launch and debug the app with <strong>F5</strong></li>
+      <li><code class="inline">IncrementCount</code> uses a 5-iteration <code>for</code> loop with <code class="inline">Console.WriteLine</code> output</li>
+      <li>Iteration values appear in the VS Code terminal when <strong>Click me</strong> is pressed</li>
+      <li><code class="inline">dotnet watch run</code> reflects a <code class="inline">Counter.razor</code> text edit in the browser without a restart</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Blazor WebAssembly scaffolding</strong> — <code class="inline">dotnet new blazorwasm</code>
+        produces a runnable single-page app; <code class="inline">code .</code> opens it where the C# Dev Kit can debug it.</li>
+      <li><strong>Three complementary debugging tools</strong> — print statements for a quick trace,
+        breakpoints + the Watch window for live inspection, and Hot Reload for fast UI iteration.</li>
+      <li><strong>Print-statement tracing</strong> — <code class="inline">Console.WriteLine</code> inside the loop
+        surfaces <code class="inline">currentCount</code> on every pass, making an unexpected iteration count obvious in the terminal.</li>
+      <li><strong>Hot Reload</strong> — <code class="inline">dotnet watch run</code> recompiles and applies edits on
+        save, so UI tweaks show up instantly without losing the running session.</li>
+      <li><strong>C# Dev Kit is the enabler</strong> — Blazor debugging (breakpoints, Watch, launch configs)
+        depends on the extension being installed and active.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

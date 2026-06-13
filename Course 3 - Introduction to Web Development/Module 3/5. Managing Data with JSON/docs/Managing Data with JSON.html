@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Managing Data with JSON — Course 3 · Module 3</title>
+<style>
+  :root {
+    --hdr: #ea580c ;     /* header / create  */
+    --pld: #f59e0b ;     /* payload / decode */
+    --sig: #f43f5e ;     /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 3 — Introduction to Web Development · Module 3 · Lesson 5
+      <span class="pill">You Try It!</span></p>
+    <h1>Managing Data with JSON</h1>
+    <p class="lead">
+      Build a small web page that <strong>fetches, parses, manipulates, and stores</strong> JSON data with
+      plain JavaScript. You will pull users from a public API, hand-parse a JSON string with
+      <code>JSON.parse()</code>, serialize an object with <code>JSON.stringify()</code>, and persist settings in
+      <code>localStorage</code> — the everyday JSON skills behind dynamic, data-driven web apps.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn to work with JSON end-to-end in the browser: fetch data from a REST API, convert
+      between JSON strings and JavaScript objects, render the results into the DOM, and use
+      <code class="inline">localStorage</code> for persistence across page loads.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single static page (<code class="inline">index.html</code> + <code class="inline">styles.css</code> +
+      <code class="inline">script.js</code>) with four sections, each populated by JavaScript:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>index.html</code></td><td>Page structure: a heading and four <code>&lt;div&gt;</code> containers by ID</td></tr>
+        <tr><td><code>styles.css</code></td><td>Dark-theme card styling for the sections</td></tr>
+        <tr><td><code>script.js</code></td><td>All JSON logic: parse, stringify, <code>fetch</code>, <code>localStorage</code>, DOM rendering</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="t">JSON string</span> <span class="ar">→</span>
+      <span class="c">JSON.parse()</span> <span class="ar">→</span>
+      <span class="d">objects</span> <span class="ar">→</span>
+      <span class="ar">DOM</span> &nbsp;·&nbsp;
+      <span class="d">object</span> <span class="ar">→</span>
+      <span class="c">JSON.stringify()</span> <span class="ar">→</span>
+      <span class="t">localStorage</span> &nbsp;·&nbsp;
+      <span class="c">fetch(API)</span> <span class="ar">→</span>
+      <span class="t">response.json()</span> <span class="ar">→</span>
+      <span class="ar">DOM</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>Visual Studio Code with the <strong>Live Server</strong> extension (the "Go Live" button)</li>
+      <li>A modern browser (the Fetch API and <code class="inline">localStorage</code> are built in)</li>
+      <li>Basic HTML/CSS/JavaScript familiarity — no packages to install</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Create a new HTML file</h3>
+    <p class="scenario">In the VS Code Explorer:</p>
+    <ul class="plain">
+      <li>Select <strong>File</strong></li>
+      <li>Select <strong>New File...</strong></li>
+      <li>Name it <code class="inline">index.html</code></li>
+      <li>Press <strong>Enter</strong>, then select <strong>OK</strong></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create the HTML structure</h3>
+    <p class="scenario">Use <code class="inline">&lt;!DOCTYPE html&gt;</code> for HTML5 and add
+      <code class="inline">&lt;html&gt;</code>, <code class="inline">&lt;head&gt;</code>, and
+      <code class="inline">&lt;body&gt;</code>. Inside <code class="inline">&lt;head&gt;</code> include a
+      <code class="inline">&lt;title&gt;</code> and a <code class="inline">&lt;meta charset="UTF-8"&gt;</code>.
+      Inside <code class="inline">&lt;body&gt;</code> add an <code class="inline">&lt;h1&gt;</code> titled
+      <strong>Users List</strong>, four section <code class="inline">&lt;div&gt;</code>s (including one with the ID
+      <code class="inline">users-container</code>), and a <code class="inline">&lt;script&gt;</code> linking
+      <code class="inline">script.js</code>.</p>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;Users Page&lt;/title&gt;
+  &lt;link rel="stylesheet" href="styles.css"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;Users List&lt;/h1&gt;
+
+  &lt;div class="section"&gt;
+    &lt;h2&gt;Local Users (Alice &amp;amp; Bob)&lt;/h2&gt;
+    &lt;div id="local-users"&gt;&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class="section"&gt;
+    &lt;h2&gt;Charlie (from Object)&lt;/h2&gt;
+    &lt;div id="charlie-data"&gt;&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class="section"&gt;
+    &lt;h2&gt;Settings&lt;/h2&gt;
+    &lt;div id="settings-data"&gt;&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class="section"&gt;
+    &lt;h2&gt;Fetched Users&lt;/h2&gt;
+    &lt;div id="users-container"&gt;&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;script src="script.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Add the styles (optional)</h3>
+    <p class="scenario">Create <code class="inline">styles.css</code> to give the page a dark theme with rounded section cards.</p>
+<pre class="code">body {
+  font-family: Arial, sans-serif;
+  background-color: #1e1e2f;
+  color: #f0f0f0;
+  margin: 0;
+  padding: 20px;
+}
+h1 {
+  color: #61dafb;
+  text-align: center;
+  margin-bottom: 30px;
+}
+.section {
+  background-color: #2a2a40;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+.section h2 {
+  color: #ffd700;
+  margin-top: 0;
+}
+p {
+  margin: 6px 0;
+}
+#users-container p,
+#local-users p,
+#charlie-data p,
+#settings-data p {
+  padding-left: 10px;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Create a new JavaScript file</h3>
+    <ul class="plain">
+      <li>Select <strong>File</strong></li>
+      <li>Select <strong>New File...</strong></li>
+      <li>Name it <code class="inline">script.js</code></li>
+      <li>Press <strong>Enter</strong>, then select <strong>OK</strong></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Select the DOM containers</h3>
+    <p class="scenario">At the top of <code class="inline">script.js</code>, grab the four
+      <code class="inline">&lt;div&gt;</code>s by ID so the rest of the code can render into them.</p>
+<pre class="code"><span class="cmt">// DOM element selection</span>
+const usersContainer = document.getElementById('users-container');
+const localUsersContainer = document.getElementById('local-users');
+const charlieContainer = document.getElementById('charlie-data');
+const settingsContainer = document.getElementById('settings-data');</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Simulate and parse JSON data</h3>
+    <p class="scenario">Create a JSON <strong>string</strong> with two users — <code class="inline">Alice</code>
+      (age 25) and <code class="inline">Bob</code> (age 30) — then turn it into an array of objects with
+      <code class="inline">JSON.parse()</code>. Log Alice's name and Bob's age, then render both users.</p>
+<pre class="code"><span class="cmt">// Local JSON string and parsing</span>
+const jsonString = `
+[
+  { "name": "Alice", "age": 25 },
+  { "name": "Bob", "age": 30 }
+]
+`;
+
+const localUsers = JSON.parse(jsonString);
+console.log("Alice's name:", localUsers[0].name);
+console.log("Bob's age:", localUsers[1].age);
+
+<span class="cmt">// Display Alice and Bob</span>
+localUsers.forEach(user =&gt; {
+  const p = document.createElement('p');
+  p.textContent = `${user.name}, Age: ${user.age}`;
+  localUsersContainer.appendChild(p);
+});</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Convert a JavaScript object to JSON</h3>
+    <p class="scenario">Create an object for <code class="inline">Charlie</code> (age 28,
+      <code class="inline">isActive: true</code>), serialize it with <code class="inline">JSON.stringify()</code>,
+      log the JSON string, then parse it back and render it.</p>
+<pre class="code"><span class="cmt">// Object creation and conversion to JSON</span>
+const userCharlie = {
+  name: "Charlie",
+  age: 28,
+  isActive: true
+};
+
+const charlieJSON = JSON.stringify(userCharlie);
+console.log("Charlie as JSON:", charlieJSON);
+
+<span class="cmt">// Display Charlie</span>
+const charlieData = JSON.parse(charlieJSON);
+const charlieInfo = document.createElement('p');
+charlieInfo.textContent = `${charlieData.name}, Age: ${charlieData.age}, Active: ${charlieData.isActive}`;
+charlieContainer.appendChild(charlieInfo);</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">8</span> Fetch and display data from an API</h3>
+    <p class="scenario">Call <code class="inline">fetch</code> on
+      <code class="inline">https://jsonplaceholder.typicode.com/users</code>. Check
+      <code class="inline">response.ok</code>, parse the body with <code class="inline">response.json()</code>,
+      then render each user's name and email into <code class="inline">users-container</code>. If the request
+      fails, log the error to the console.</p>
+<pre class="code"><span class="cmt">// Fetching and displaying external API data</span>
+fetch('https://jsonplaceholder.typicode.com/users')
+  .then(response =&gt; {
+    if (!response.ok) {
+      throw new Error('Network response was not OK');
+    }
+    return response.json();
+  })
+  .then(users =&gt; {
+    users.forEach(user =&gt; {
+      const userElement = document.createElement('p');
+      userElement.textContent = `${user.name} (${user.email})`;
+      usersContainer.appendChild(userElement);
+    });
+  })
+  .catch(error =&gt; {
+    console.error('Failed to fetch users:', error);
+  });</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">9</span> Store and retrieve data with localStorage</h3>
+    <p class="scenario">Create a <code class="inline">settings</code> object
+      (<code class="inline">theme: "dark"</code>, <code class="inline">language: "en"</code>), store it as a JSON
+      string with <code class="inline">localStorage.setItem</code>, then read it back with
+      <code class="inline">getItem</code> + <code class="inline">JSON.parse()</code> and render it.</p>
+<pre class="code"><span class="cmt">// LocalStorage: storing and retrieving settings</span>
+const settings = {
+  theme: "dark",
+  language: "en"
+};
+
+localStorage.setItem("settings", JSON.stringify(settings));
+const savedSettings = JSON.parse(localStorage.getItem("settings"));
+console.log("Theme:", savedSettings.theme);
+console.log("Language:", savedSettings.language);
+
+<span class="cmt">// Display settings</span>
+const themePara = document.createElement('p');
+themePara.textContent = `Theme: ${savedSettings.theme}`;
+settingsContainer.appendChild(themePara);
+
+const languagePara = document.createElement('p');
+languagePara.textContent = `Language: ${savedSettings.language}`;
+settingsContainer.appendChild(languagePara);</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">10</span> Run your code</h3>
+    <ul class="plain">
+      <li>Click <strong>Go Live</strong> (lower-right of the lab) to start Live Server.</li>
+      <li>A new tab opens and displays your webpage.</li>
+      <li>If the page does not behave as expected, compare against the complete code above.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The page shows four populated sections: <strong>Local Users</strong> (Alice and Bob),
+    <strong>Charlie</strong> with his active flag, <strong>Settings</strong> (theme and language read back from
+    <code class="inline">localStorage</code>), and <strong>Fetched Users</strong> — ten name/email lines pulled
+    live from the placeholder API. The console also logs Alice's name, Bob's age, Charlie's JSON, and the saved settings.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">index.html</code> has an <code class="inline">&lt;h1&gt;</code> and four section <code class="inline">&lt;div&gt;</code>s, including <code class="inline">users-container</code>, plus a <code class="inline">&lt;script&gt;</code> to <code class="inline">script.js</code></li>
+      <li><code class="inline">JSON.parse()</code> turns the Alice/Bob JSON string into objects, and both render in <strong>Local Users</strong></li>
+      <li><code class="inline">JSON.stringify()</code> serializes the Charlie object, and the round-tripped data renders</li>
+      <li><code class="inline">fetch</code> loads the API, checks <code class="inline">response.ok</code>, and renders each user's name and email</li>
+      <li>A failed fetch logs an error via <code class="inline">.catch</code></li>
+      <li><code class="inline">settings</code> is saved to <code class="inline">localStorage</code> as JSON, read back, parsed, and rendered</li>
+      <li>Clicking <strong>Go Live</strong> shows all four sections populated</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>JSON is text, objects are live</strong> — <code class="inline">JSON.parse()</code> deserializes a
+        string into JavaScript values; <code class="inline">JSON.stringify()</code> does the reverse. The network
+        and <code class="inline">localStorage</code> only move strings.</li>
+      <li><strong><code class="inline">fetch</code> returns promises</strong> — chain
+        <code class="inline">.then(response =&gt; response.json())</code> to read the body, guard with
+        <code class="inline">response.ok</code>, and always add <code class="inline">.catch</code> so network
+        errors surface instead of failing silently.</li>
+      <li><strong><code class="inline">localStorage</code> stores strings only</strong> — stringify before
+        <code class="inline">setItem</code>, parse after <code class="inline">getItem</code>; the data survives
+        page reloads, making it ideal for user settings.</li>
+      <li><strong>Render from data, not by hand</strong> — building DOM nodes in a
+        <code class="inline">forEach</code> over parsed data keeps the UI in sync with the underlying objects and
+        scales to any list length.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

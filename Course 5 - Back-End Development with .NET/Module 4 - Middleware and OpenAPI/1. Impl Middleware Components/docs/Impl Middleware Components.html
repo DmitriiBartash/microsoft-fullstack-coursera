@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Impl Middleware Components — Course 5 · Module 4</title>
+<style>
+  :root {
+    --hdr: #2563eb ;      /* header / create  */
+    --pld: #0891b2 ;      /* payload / decode */
+    --sig: #3b82f6 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 5 — Back-End Development with .NET · Module 4 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Implement Middleware Components</h1>
+    <p class="lead">
+      Build a small ASP.NET Core app and wire up its <strong>middleware pipeline</strong> end to end.
+      You'll register built-in middleware (exception handling, authentication, authorization, HTTP logging),
+      then write <strong>custom middleware</strong> that logs each request's path/status and measures its
+      duration — and watch requests flow through the pipeline in order.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Set up and configure middleware components in an ASP.NET Core project: scaffold a new
+      empty app, plug in the essential <strong>built-in</strong> middleware, add your own <strong>custom</strong>
+      middleware for request logging and timing, and test the pipeline to see how requests and responses are
+      processed in sequence.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>An ASP.NET Core empty web app named <code class="inline">MyAspNetCoreApp</code> whose entire pipeline
+      lives in <code class="inline">Program.cs</code>. The middleware is registered in a deliberate order —
+      order is what defines the pipeline.</p>
+    <table>
+      <thead><tr><th>Stage</th><th>Middleware</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Exception handling</td><td><code>UseDeveloperExceptionPage()</code> in Development, <code>UseExceptionHandler("/error")</code> in Production</td></tr>
+        <tr><td>2</td><td>HTTP logging</td><td><code>UseHttpLogging()</code> — captures request/response details</td></tr>
+        <tr><td>3</td><td>Authentication</td><td><code>UseAuthentication()</code> — establishes the user's identity from the cookie</td></tr>
+        <tr><td>4</td><td>Authorization</td><td><code>UseAuthorization()</code> — enforces policies such as <code>AdminsOnly</code></td></tr>
+        <tr><td>5</td><td>Custom: request log</td><td>Logs <code>path</code>, <code>method</code>, and final <code>StatusCode</code> (colored output)</td></tr>
+        <tr><td>6</td><td>Custom: timing</td><td>A <code>Stopwatch</code> that reports request <code>Duration</code> in ms</td></tr>
+        <tr><td>7</td><td>Endpoints</td><td><code>/</code>, <code>/login</code>, <code>/logout</code>, <code>/admin</code>, <code>/error</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Request</span> <span class="ar">→</span>
+      <span class="c">Exception handler</span> <span class="ar">→</span>
+      <span class="t">HTTP logging</span> <span class="ar">→</span>
+      <span class="d">Authentication</span> <span class="ar">→</span>
+      <span class="d">Authorization</span> <span class="ar">→</span>
+      <span class="c">Custom log</span> <span class="ar">→</span>
+      <span class="t">Custom timing</span> <span class="ar">→</span>
+      <span class="ar">Endpoint</span> <span class="ar">→</span>
+      <span class="ar">Response</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>A code editor such as Visual Studio Code (<code class="inline">code .</code>)</li>
+      <li>A terminal and a web browser for testing</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Create a new ASP.NET Core <strong>empty</strong> project from the command line, move into
+      it, and open it in your editor.</p>
+<pre class="code">dotnet new web -o MyAspNetCoreApp
+cd MyAspNetCoreApp
+code .</pre>
+    <ul class="plain">
+      <li>In the project root, locate <code class="inline">Program.cs</code> — this single file is where every
+        middleware component will be configured.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Configure built-in middleware components</h3>
+    <p class="scenario">Register <strong>exception handling</strong>, <strong>authentication</strong>,
+      <strong>authorization</strong>, and <strong>HTTP logging</strong>. You don't have to fully implement auth —
+      just include the middleware. Add the HTTP logging <em>service</em> in <code class="inline">builder.Services</code>,
+      then apply each piece after <code class="inline">builder.Build()</code>.</p>
+<pre class="code">using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+
+var builder = WebApplication.CreateBuilder(args);
+
+<span class="cmt">// Built-in services</span>
+builder.Services.AddHttpLogging(o =&gt; { });
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(o =&gt;
+    {
+        o.LoginPath = null;
+        o.AccessDeniedPath = null;
+        <span class="cmt">// Return 403 instead of redirecting to a login page (this is an API-style app)</span>
+        o.Events.OnRedirectToLogin = ctx =&gt;
+        {
+            ctx.Response.StatusCode = 403;
+            return Task.CompletedTask;
+        };
+        o.Events.OnRedirectToAccessDenied = ctx =&gt;
+        {
+            ctx.Response.StatusCode = 403;
+            return Task.CompletedTask;
+        };
+    });
+
+builder.Services.AddAuthorization(o =&gt;
+{
+    o.AddPolicy("AdminsOnly", p =&gt; p.RequireRole("Admin"));
+});
+
+var app = builder.Build();
+
+<span class="cmt">// Exception handling — environment dependent</span>
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    app.UseExceptionHandler("/error");
+}
+
+app.UseHttpLogging();
+app.UseAuthentication();
+app.UseAuthorization();</pre>
+    <ul class="plain">
+      <li>Save your changes after each configuration so you can verify everything is set up correctly.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Develop custom middleware</h3>
+    <p class="scenario">Add two pieces of custom middleware with <code class="inline">app.Use(...)</code>. The
+      first logs the request path and final response status; the second wraps the rest of the pipeline in a
+      <code class="inline">Stopwatch</code> to record how long the request took.</p>
+<pre class="code"><span class="cmt">// Custom middleware #1 — log request path + response status</span>
+app.Use(async (context, next) =&gt;
+{
+    var path = context.Request.Path;
+    var method = context.Request.Method;
+    var time = DateTime.Now.ToString("HH:mm:ss.fff");
+
+    await next.Invoke();
+
+    var status = context.Response.StatusCode;
+    Console.ForegroundColor = ConsoleColor.Cyan;
+    Console.WriteLine("──────────────────────────────");
+    Console.ForegroundColor = ConsoleColor.Green;
+    Console.WriteLine($"[{time}] {method} {path}");
+    Console.ForegroundColor = status &gt;= 400 ? ConsoleColor.Red : ConsoleColor.Yellow;
+    Console.WriteLine($"Status: {status}");
+    Console.ResetColor();
+
+    if (path == "/admin" &amp;&amp; status == 200)
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("Conclusion: Admin access granted.");
+        Console.ResetColor();
+    }
+    else if ((path == "/admin" || path == "/logout") &amp;&amp; status == 403)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine("Conclusion: Access denied. User not authorized.");
+        Console.ResetColor();
+    }
+});
+
+<span class="cmt">// Custom middleware #2 — measure request duration</span>
+app.Use(async (context, next) =&gt;
+{
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    await next.Invoke();
+    watch.Stop();
+    Console.ForegroundColor = ConsoleColor.Magenta;
+    Console.WriteLine($"Duration: {watch.ElapsedMilliseconds} ms");
+    Console.WriteLine("──────────────────────────────\n");
+    Console.ResetColor();
+});</pre>
+    <ul class="plain">
+      <li>Save the changes once you've completed all the configurations.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Map the endpoints</h3>
+    <p class="scenario">Map the routes that exercise the pipeline. <code class="inline">/login</code> signs in a
+      <code class="inline">ClaimsPrincipal</code> with the <strong>Admin</strong> role;
+      <code class="inline">/logout</code> and <code class="inline">/admin</code> are guarded by the
+      <code class="inline">AdminsOnly</code> policy; <code class="inline">/error</code> is the production
+      exception-handler target.</p>
+<pre class="code">app.MapGet("/", () =&gt; "Hello World");
+
+<span class="cmt">// In practice this should be POST (but GET is used here for easy browser testing)</span>
+app.MapGet("/login", async (HttpContext ctx) =&gt;
+{
+    var claims = new List&lt;System.Security.Claims.Claim&gt;
+    {
+        new(System.Security.Claims.ClaimTypes.Name, "TestUser"),
+        new(System.Security.Claims.ClaimTypes.Role, "Admin")
+    };
+    var identity = new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+    var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+    await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+    return Results.Ok("You are logged in as Admin.");
+});
+
+<span class="cmt">// In practice this should be POST (but GET is used here for easy browser testing)</span>
+app.MapGet("/logout", async (HttpContext ctx) =&gt;
+{
+    await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.Ok("You are logged out.");
+}).RequireAuthorization("AdminsOnly");
+
+app.MapGet("/admin", () =&gt; "Welcome, Admin!").RequireAuthorization("AdminsOnly");
+app.MapGet("/error", () =&gt; Results.Problem("An error occurred"));
+
+app.Run();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Test the middleware pipeline</h3>
+    <p class="scenario">With all middleware in place, run the app and watch the pipeline process each request.</p>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Open a browser and make requests to the app, e.g. <code class="inline">http://localhost:5000</code>.</li>
+      <li>Observe the terminal logs to confirm the output of the custom middleware, the request timing, and the
+        built-in middleware.</li>
+      <li>Try the secured routes: hit <code class="inline">/admin</code> <strong>before</strong> logging in
+        (expect <code class="inline">403</code>), then visit <code class="inline">/login</code>, then
+        <code class="inline">/admin</code> again (expect <code class="inline">200</code>).</li>
+      <li>Verify that error handling redirects to <code class="inline">/error</code> in Production and shows
+        detailed errors in Development.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Each request produces a colored block in the terminal showing the path, method, final status code, and
+    elapsed time — for example a <strong>200</strong> for <code class="inline">/</code> and a <strong>404</strong>
+    for <code class="inline">/favicon.ico</code>. Hitting <code class="inline">/admin</code> while signed in adds
+    <strong>Conclusion: Admin access granted.</strong>; hitting it while unauthorized returns
+    <strong>403</strong> and <strong>Conclusion: Access denied. User not authorized.</strong>
+  </div>
+<pre class="code">──────────────────────────────
+[14:32:10.501] GET /
+Status: 200
+Duration: 8 ms
+──────────────────────────────
+
+──────────────────────────────
+[14:32:10.585] GET /favicon.ico
+Status: 404
+Duration: 0 ms
+──────────────────────────────</pre>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">MyAspNetCoreApp</code> empty project created with <code class="inline">dotnet new web</code></li>
+      <li>Built-in middleware configured: exception handling (dev/prod), <code class="inline">UseHttpLogging</code>, <code class="inline">UseAuthentication</code>, <code class="inline">UseAuthorization</code></li>
+      <li>HTTP logging service registered via <code class="inline">builder.Services.AddHttpLogging</code></li>
+      <li>Custom middleware logs request <code class="inline">path</code>, <code class="inline">method</code>, and response <code class="inline">StatusCode</code></li>
+      <li>Custom middleware reports request <code class="inline">Duration</code> using a <code class="inline">Stopwatch</code></li>
+      <li>Endpoints <code class="inline">/</code>, <code class="inline">/login</code>, <code class="inline">/logout</code>, <code class="inline">/admin</code>, <code class="inline">/error</code> mapped, with <code class="inline">/logout</code> and <code class="inline">/admin</code> guarded by <code class="inline">AdminsOnly</code></li>
+      <li><code class="inline">dotnet run</code> succeeds and the terminal shows per-request logs and timing</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Order is the pipeline</strong> — middleware runs in the order it's registered with
+        <code class="inline">app.Use*</code>. Authentication must come before authorization, and your custom
+        loggers sit after them so they can observe the final status code.</li>
+      <li><strong><code class="inline">next.Invoke()</code> splits before/after</strong> — code before
+        <code class="inline">await next()</code> runs on the way <em>in</em>; code after it runs on the way
+        <em>out</em>. That's how the timing middleware brackets the whole downstream pipeline with a
+        <code class="inline">Stopwatch</code>.</li>
+      <li><strong>Built-in vs. custom middleware</strong> — <code class="inline">UseHttpLogging</code>,
+        <code class="inline">UseAuthentication</code>, and <code class="inline">UseAuthorization</code> are
+        framework components you register once; <code class="inline">app.Use(...)</code> injects arbitrary
+        per-request logic without writing a full middleware class.</li>
+      <li><strong>Environment-aware error handling</strong> — <code class="inline">UseDeveloperExceptionPage()</code>
+        surfaces stack traces in Development, while <code class="inline">UseExceptionHandler("/error")</code>
+        returns a clean response in Production.</li>
+      <li><strong>Policy-based authorization</strong> — <code class="inline">RequireAuthorization("AdminsOnly")</code>
+        ties an endpoint to the <code class="inline">RequireRole("Admin")</code> policy; unauthorized requests are
+        short-circuited to <code class="inline">403</code> before the endpoint ever runs.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

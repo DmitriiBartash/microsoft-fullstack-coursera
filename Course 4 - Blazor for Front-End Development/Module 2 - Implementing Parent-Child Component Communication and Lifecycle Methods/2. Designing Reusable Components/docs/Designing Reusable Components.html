@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Designing Reusable Components — Course 4 · Module 2</title>
+<style>
+  :root {
+    --hdr: #6d28d9 ;
+    --pld: #4f46e5 ;
+    --sig: #8b5cf6 ;
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 4 — Blazor for Front-End Development · Module 2 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Designing Reusable Components</h1>
+    <p class="lead">
+      Build a Blazor WebAssembly app named <code>AdvancedBlazorComponents</code> that combines three
+      advanced features into one reusable component: <strong>Dependency Injection</strong> (a service
+      that supplies data), <strong>Cascading Parameters</strong> (a theme color flowing down the tree),
+      and <strong>Component References</strong> (a parent driving a child via <code>@ref</code>). The goal
+      is a flexible, drop-in component that owns its data and behavior.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity, you will implement advanced Blazor component features —
+      <strong>Dependency Injection</strong>, <strong>Cascading Parameters</strong>, and
+      <strong>Component References</strong> — to create reusable and flexible components.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A Blazor WebAssembly project named <code class="inline">AdvancedBlazorComponents</code> with these pieces:</p>
+    <table>
+      <thead><tr><th>File / Folder</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Services/IDataService.cs</code></td><td>Contract for fetching data</td></tr>
+        <tr><td><code>Services/DataService.cs</code></td><td>Mock data source — returns a shuffled list of tag strings</td></tr>
+        <tr><td><code>Components/ReusableComponent.razor</code></td><td>The reusable component: injects the service, reads a cascading theme, holds a child via <code>@ref</code></td></tr>
+        <tr><td><code>Components/ChildComponent.razor</code></td><td>Child counter the parent controls (<code>IncrementBy</code>, <code>Reset</code>, read <code>Count</code>)</td></tr>
+        <tr><td><code>Layout/MainLayout.razor</code></td><td>Wraps content in a <code>CascadingValue</code> named <code>ThemeColor</code></td></tr>
+        <tr><td><code>Pages/Index.razor</code></td><td>Hosts the reusable component at route <code>/</code></td></tr>
+        <tr><td><code>Program.cs</code></td><td>Registers <code>IDataService</code> in DI</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="t">DataService</span> <span class="ar">→ (DI) →</span> <span class="d">ReusableComponent</span>
+      <span class="ar"> · </span>
+      <span class="c">MainLayout</span> <span class="ar">→ (CascadingValue) →</span> <span class="t">ThemeColor</span>
+      <span class="ar"> · </span>
+      <span class="d">ReusableComponent</span> <span class="ar">→ (@ref) →</span> <span class="c">ChildComponent</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK <strong>6.0 or later</strong> installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>A terminal (VS Code: <strong>View &gt; Terminal</strong> or <code class="inline">Ctrl + ~</code>)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Create a new Blazor WebAssembly app, open it, and confirm it runs.</p>
+<pre class="code">dotnet new blazorwasm -o AdvancedBlazorComponents
+cd AdvancedBlazorComponents
+code .
+dotnet run</pre>
+    <p>You should see <code class="inline">Now listening on: http://localhost:5000</code> (your port number may
+      differ). Stop the app with <code class="inline">Ctrl + C</code> when you are ready to edit.</p>
+    <ul class="plain">
+      <li>In the <code class="inline">Pages</code> folder, make sure there is an <code class="inline">Index.razor</code>
+        with a routing directive so it is loadable at <code class="inline">/</code>.</li>
+      <li>Remove the default content and host the reusable component there.</li>
+    </ul>
+<pre class="code"><span class="cmt">@* Pages/Index.razor *@</span>
+@page "/"
+@using AdvancedBlazorComponents.Components
+
+&lt;h1 class="mb-4"&gt;Welcome to the Lab&lt;/h1&gt;
+&lt;p&gt;This page shows &lt;strong&gt;Dependency Injection&lt;/strong&gt;, &lt;strong&gt;Cascading Parameters&lt;/strong&gt;, and &lt;strong&gt;Parent→Child&lt;/strong&gt; communication.&lt;/p&gt;
+
+&lt;ReusableComponent /&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Implement Dependency Injection</h3>
+    <p class="scenario">Create a service that supplies data, register it, and inject it into the component.</p>
+    <ul class="plain">
+      <li>Create a <code class="inline">Services</code> folder.</li>
+      <li>Add the service contract and a mock implementation. <code class="inline">GetData</code> returns a
+        shuffled list of strings.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Services/IDataService.cs</span>
+namespace AdvancedBlazorComponents.Services;
+
+public interface IDataService
+{
+    Task&lt;List&lt;string&gt;&gt; GetData();
+}</pre>
+<pre class="code"><span class="cmt">// Services/DataService.cs</span>
+namespace AdvancedBlazorComponents.Services;
+
+public class DataService : IDataService
+{
+    private readonly Random _rng = new();
+
+    public Task&lt;List&lt;string&gt;&gt; GetData()
+    {
+        var techs = new List&lt;string&gt;
+        {
+            "Blazor", "C#", "Dependency Injection", ".NET 9", "WebAssembly",
+            "Reusable UI", "Razor Components", "CSS Animations",
+            "Parent-Child Communication", "Bootstrap 5"
+        };
+        return Task.FromResult(techs.OrderBy(_ =&gt; _rng.Next()).ToList());
+    }
+}</pre>
+    <p>Register the service in <code class="inline">Program.cs</code> so Blazor can inject it:</p>
+<pre class="code"><span class="cmt">// Program.cs</span>
+using AdvancedBlazorComponents;
+using AdvancedBlazorComponents.Services;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add&lt;App&gt;("#app");
+builder.RootComponents.Add&lt;HeadOutlet&gt;("head::after");
+
+builder.Services.AddScoped(sp =&gt; new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+builder.Services.AddScoped&lt;IDataService, DataService&gt;();   <span class="cmt">// &lt;-- register the service</span>
+
+await builder.Build().RunAsync();</pre>
+    <ul class="plain">
+      <li>Create the reusable component (a <code class="inline">Components</code> folder is used here) and
+        <strong>inject</strong> the service. The full component appears in Step 4; for now, inject and render
+        the data:</li>
+    </ul>
+<pre class="code">@inject IDataService DataService
+@code {
+    private List&lt;string&gt;? items;
+    protected override async Task OnInitializedAsync() =&gt; items = await DataService.GetData();
+}</pre>
+    <p>Test it with <code class="inline">dotnet run</code> and browse to
+      <code class="inline">http://localhost:5000/</code> to see the reusable component.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Utilize Cascading Parameters</h3>
+    <p class="scenario">Share a <code>ThemeColor</code> from the layout down to the component without passing it
+      through every parameter.</p>
+    <ul class="plain">
+      <li>Open <code class="inline">Layout/MainLayout.razor</code> and wrap the layout body in a
+        <code class="inline">CascadingValue</code> named <code class="inline">ThemeColor</code>.</li>
+    </ul>
+<pre class="code"><span class="cmt">@* Layout/MainLayout.razor *@</span>
+@inherits LayoutComponentBase
+
+&lt;div class="page"&gt;
+    &lt;main&gt;
+        &lt;CascadingValue Name="ThemeColor" Value="@_themeColor"&gt;
+            &lt;article class="content px-4"&gt;
+                @Body
+            &lt;/article&gt;
+        &lt;/CascadingValue&gt;
+    &lt;/main&gt;
+&lt;/div&gt;
+
+@code {
+    private string _themeColor = "#6d28d9";
+}</pre>
+    <ul class="plain">
+      <li>In the component, receive it with <code class="inline">[CascadingParameter(Name = "ThemeColor")]</code>
+        and render a <code class="inline">&lt;p&gt;</code> whose <code class="inline">color</code> is set to the
+        cascaded value (see Step 4).</li>
+    </ul>
+    <p>Stop and restart the application, then re-test <code class="inline">Index.razor</code>.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Leverage Component References</h3>
+    <p class="scenario">Add a child component and let the parent drive it through a <code>@ref</code>.</p>
+    <ul class="plain">
+      <li>Create <code class="inline">Components/ChildComponent.razor</code> — a small counter the parent can
+        control.</li>
+    </ul>
+<pre class="code"><span class="cmt">@* Components/ChildComponent.razor *@</span>
+@using Microsoft.AspNetCore.Components
+@namespace AdvancedBlazorComponents.Components
+
+&lt;div class="p-3 border rounded" style="border-color:@(AccentColor ?? "#d0d7de"); max-width:420px; margin:auto;"&gt;
+    &lt;h5 style="color:@(AccentColor ?? "inherit")"&gt;🧒 Child Counter&lt;/h5&gt;
+    &lt;p&gt;Count: &lt;strong&gt;@Count&lt;/strong&gt;&lt;/p&gt;
+    &lt;div class="d-flex gap-2"&gt;
+        &lt;button class="btn btn-success btn-animate flex-fill" @onclick="() =&gt; IncrementBy(1)"&gt;+1&lt;/button&gt;
+        &lt;button class="btn btn-danger  btn-animate flex-fill" @onclick="Reset"&gt;Reset&lt;/button&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+@code {
+    [Parameter] public string? AccentColor { get; set; }
+    public int Count { get; private set; }
+
+    public void IncrementBy(int n)
+    {
+        Count += n;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Reset()
+    {
+        Count = 0;
+        _ = InvokeAsync(StateHasChanged);
+    }
+}</pre>
+    <ul class="plain">
+      <li>Include <code class="inline">ChildComponent</code> inside <code class="inline">ReusableComponent.razor</code>,
+        capture it with <code class="inline">@ref="child"</code>, and call its public methods
+        (<code class="inline">IncrementBy</code>, <code class="inline">Reset</code>) and read its
+        <code class="inline">Count</code> from the parent.</li>
+    </ul>
+    <p>Here is the complete <code class="inline">ReusableComponent.razor</code> bringing DI, the cascading theme,
+      and the child reference together:</p>
+<pre class="code"><span class="cmt">@* Components/ReusableComponent.razor *@</span>
+@using AdvancedBlazorComponents.Services
+@inject IDataService DataService
+@using AdvancedBlazorComponents.Components
+
+&lt;div class="card p-3 my-3 shadow-sm border rounded" style="max-width:900px;"&gt;
+    &lt;h3&gt;🎨 Tag Cloud (DI + Theme)&lt;/h3&gt;
+    &lt;p style="color:@(ThemeColor ?? "inherit")"&gt;
+        Theme color preview (current: @(ThemeColor ?? "default"))
+    &lt;/p&gt;
+
+    @if (items is null)
+    {
+        &lt;p&gt;Loading...&lt;/p&gt;
+    }
+    else
+    {
+        &lt;div class="tag-cloud mb-3"&gt;
+            @foreach (var tag in items)
+            {
+                var h = HueFrom(tag);
+                &lt;span class="badge me-1" style="background-color:hsl(@(h), 70%, 80%)"&gt;@tag&lt;/span&gt;
+            }
+        &lt;/div&gt;
+    }
+
+    &lt;button class="btn btn-outline-secondary mb-4" @onclick="Reload"&gt;🔄 Reload Tags&lt;/button&gt;
+    &lt;hr /&gt;
+
+    &lt;h4&gt;Parent → Child (via @@ref)&lt;/h4&gt;
+    &lt;ChildComponent @ref="child" AccentColor="@(ThemeColor)" /&gt;
+    &lt;div class="d-flex gap-2 mt-2" style="max-width:420px; margin:auto;"&gt;
+        &lt;button class="btn btn-primary flex-fill" @onclick="() =&gt; child?.IncrementBy(5)"&gt;Child +5&lt;/button&gt;
+        &lt;button class="btn btn-warning flex-fill" @onclick="() =&gt; child?.Reset()"&gt;Reset Child&lt;/button&gt;
+        &lt;button class="btn btn-outline-dark flex-fill" @onclick="ReadChildCount"&gt;Read Count&lt;/button&gt;
+    &lt;/div&gt;
+
+    @if (lastRead.HasValue)
+    {
+        &lt;p class="text-center mt-2"&gt;Parent read: Child.Count = &lt;strong&gt;@lastRead&lt;/strong&gt;&lt;/p&gt;
+    }
+&lt;/div&gt;
+
+@code {
+    [CascadingParameter(Name = "ThemeColor")] public string? ThemeColor { get; set; }
+    private List&lt;string&gt;? items;
+    private ChildComponent? child;
+    private int? lastRead;
+
+    protected override async Task OnInitializedAsync()
+        =&gt; items = await DataService.GetData();
+
+    private async Task Reload() =&gt;
+        items = await DataService.GetData();
+
+    private void ReadChildCount() =&gt;
+        lastRead = child?.Count;
+
+    private int HueFrom(string s)
+    {
+        unchecked
+        {
+            int hash = 0;
+            foreach (var c in s) hash = (hash * 31) + c;
+            return Math.Abs(hash % 360);
+        }
+    }
+}</pre>
+    <p>Test <code class="inline">Index.razor</code> once more with the changes in place.</p>
+    <div class="callout">
+      <strong>Note:</strong> the component places <code class="inline">ReusableComponent.razor</code> /
+      <code class="inline">ChildComponent.razor</code> under a <code class="inline">Components</code> folder
+      (matching the <code class="inline">@using AdvancedBlazorComponents.Components</code> namespace). The activity
+      wording mentions the <code class="inline">Pages</code> folder — either works, as long as the folder and the
+      <code class="inline">@using</code> / <code class="inline">@namespace</code> directives agree.
+    </div>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Browsing to <code class="inline">http://localhost:5000/</code> shows the reusable <strong>Tag Cloud</strong> card:
+    a shuffled set of colored technology <strong>badges</strong> supplied by the injected
+    <code class="inline">DataService</code> (with a <strong>🔄 Reload Tags</strong> button that re-shuffles them);
+    a theme-colored preview line driven by the cascaded <strong><code class="inline">ThemeColor</code></strong>;
+    and a <strong>🧒 Child Counter</strong> whose buttons (<strong>Child +5</strong>, <strong>Reset Child</strong>,
+    <strong>Read Count</strong>) are all invoked by the parent through the <code class="inline">@ref</code>, with the
+    last read count echoed back in the parent.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">AdvancedBlazorComponents</code> Blazor WebAssembly project created and running on <code class="inline">http://localhost:5000</code></li>
+      <li><code class="inline">IDataService</code> + <code class="inline">DataService</code> implemented and registered with <code class="inline">AddScoped&lt;IDataService, DataService&gt;()</code> in <code class="inline">Program.cs</code></li>
+      <li><code class="inline">ReusableComponent.razor</code> injects <code class="inline">IDataService</code> and renders the tag cloud from <code class="inline">GetData()</code></li>
+      <li><code class="inline">MainLayout.razor</code> provides a <code class="inline">CascadingValue</code> named <code class="inline">ThemeColor</code>, consumed via <code class="inline">[CascadingParameter]</code></li>
+      <li><code class="inline">ChildComponent.razor</code> is captured with <code class="inline">@ref</code> and driven from the parent (<code class="inline">IncrementBy</code>, <code class="inline">Reset</code>, read <code class="inline">Count</code>)</li>
+      <li><code class="inline">Index.razor</code> routes at <code class="inline">/</code> and hosts <code class="inline">ReusableComponent</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Dependency Injection</strong> — components depend on the <code class="inline">IDataService</code>
+        <em>interface</em>, not a concrete class; registering it in <code class="inline">Program.cs</code> lets Blazor
+        supply it (and lets you swap in a real data source or a test double without touching the UI).</li>
+      <li><strong>Cascading Parameters</strong> — a <code class="inline">CascadingValue</code> in
+        <code class="inline">MainLayout</code> flows <code class="inline">ThemeColor</code> down to any descendant that
+        declares <code class="inline">[CascadingParameter(Name = "ThemeColor")]</code>, avoiding "prop drilling"
+        through every intermediate component.</li>
+      <li><strong>Component References (<code class="inline">@ref</code>)</strong> — capturing a child instance lets
+        the parent call its public methods (<code class="inline">IncrementBy</code>, <code class="inline">Reset</code>)
+        and read its state (<code class="inline">Count</code>) directly — imperative control on top of declarative
+        rendering.</li>
+      <li><strong>Reusability through composition</strong> — combining an injected service, a cascaded value, and a
+        referenced child yields a flexible, drop-in component that owns its data and behavior.</li>
+      <li><strong><code class="inline">StateHasChanged</code> / <code class="inline">InvokeAsync</code></strong> — when
+        state changes outside the normal event flow, the child re-renders by queuing
+        <code class="inline">StateHasChanged</code> via <code class="inline">InvokeAsync</code> to stay on the UI thread.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

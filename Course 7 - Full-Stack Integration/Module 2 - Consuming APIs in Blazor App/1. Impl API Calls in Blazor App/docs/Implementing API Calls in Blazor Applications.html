@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing API Calls in Blazor Applications — Course 7 · Module 2</title>
+<style>
+  :root {
+    --hdr: #db2777 ;      /* header / create  */
+    --pld: #9333ea ;      /* payload / decode */
+    --sig: #ec4899 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 2 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing API Calls in Blazor Applications</h1>
+    <p class="lead">
+      Build a <strong>Blazor WebAssembly</strong> app that fetches live weather data from a public REST
+      API with <code>HttpClient</code>. You'll bind the JSON response to a typed model, render it in a
+      Razor component, and handle failures gracefully with a <code>try</code>/<code>catch</code> and fallback UI.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn how to consume an external HTTP API from a Blazor WebAssembly component —
+      injecting <code class="inline">HttpClient</code>, deserializing the JSON response into a strongly-typed
+      model inside <code class="inline">OnInitializedAsync</code>, and <strong>handling errors</strong> so the
+      UI never breaks when the call fails.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A Blazor WebAssembly project named <code class="inline">WeatherApp</code> with a single weather component:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Pages/WeatherFetch.razor</code></td><td>Inject <code>HttpClient</code>, call the API, bind the model, show errors</td></tr>
+        <tr><td><code>Models/WeatherData.cs</code></td><td>Typed model matching the WeatherAPI <code>current.json</code> response</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Register <code>HttpClient</code> for dependency injection</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">WeatherFetch</span> <span class="ar">→</span>
+      <span class="c">HttpClient.GetFromJsonAsync()</span> <span class="ar">→</span>
+      <span class="t">WeatherData</span> <span class="ar">→</span>
+      <span class="d">rendered UI (or fallback)</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>A free <strong>WeatherAPI</strong> account and <strong>API key</strong> from <a href="https://www.weatherapi.com">weatherapi.com</a></li>
+      <li>Internet access from the dev machine to reach <code class="inline">api.weatherapi.com</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Scaffold a new Blazor WebAssembly project, move into it, and run it once to confirm it boots.</p>
+<pre class="code">dotnet new blazorwasm -o WeatherApp
+cd WeatherApp
+dotnet run</pre>
+    <p>Open the URL printed in the terminal and confirm the app loads. <strong>Note the port</strong> after
+      <code class="inline">localhost:</code> — you'll navigate to the weather page on that same port later.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Sign up for a weather API and get an API key</h3>
+    <p class="scenario">You need an API key to fetch weather data from a public provider such as <strong>WeatherAPI</strong>.</p>
+    <ul class="plain">
+      <li>Go to the <a href="https://www.weatherapi.com">WeatherAPI website</a>.</li>
+      <li>Create a free account by signing up with your email address.</li>
+      <li>After signing in, open the <strong>API Keys</strong> section of your account dashboard.</li>
+      <li><strong>Copy the API key</strong> — you'll paste it into the request URL in Step 3.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Configure <code>HttpClient</code> to make a GET request</h3>
+    <p class="scenario">Set up <code class="inline">HttpClient</code> to fetch weather data and bind it to a typed model.</p>
+    <p>First, register <code class="inline">HttpClient</code> for DI. In a default <code class="inline">blazorwasm</code>
+      template this is already in <code class="inline">Program.cs</code>; confirm the registration points at the app's base address:</p>
+<pre class="code"><span class="cmt">// Program.cs</span>
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using WeatherApp;
+
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add&lt;App&gt;("#app");
+builder.RootComponents.Add&lt;HeadOutlet&gt;("head::after");
+
+<span class="cmt">// HttpClient for outbound API calls</span>
+builder.Services.AddScoped(sp =&gt; new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+
+await builder.Build().RunAsync();</pre>
+    <p>Next, define a data model that matches the structure of the WeatherAPI <code class="inline">current.json</code>
+      response. Create <code class="inline">Models/WeatherData.cs</code>:</p>
+<pre class="code"><span class="cmt">// Models/WeatherData.cs</span>
+using System.Text.Json.Serialization;
+
+namespace WeatherApp.Models;
+
+public class WeatherData
+{
+    [JsonPropertyName("location")]
+    public Location? Location { get; set; }
+
+    [JsonPropertyName("current")]
+    public Current? Current { get; set; }
+}
+
+public class Location
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("country")]
+    public string? Country { get; set; }
+}
+
+public class Current
+{
+    [JsonPropertyName("temp_c")]
+    public double TempC { get; set; }
+
+    [JsonPropertyName("condition")]
+    public Condition? Condition { get; set; }
+}
+
+public class Condition
+{
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+}</pre>
+    <p>Now create the Razor component <code class="inline">Pages/WeatherFetch.razor</code>. Inject
+      <code class="inline">HttpClient</code>, then fetch the data from the API endpoint in
+      <code class="inline">OnInitializedAsync</code>. Use the following API URL, replacing
+      <code class="inline">YOUR_API_KEY</code> with the key you copied in Step 2:</p>
+<pre class="code">https://api.weatherapi.com/v1/current.json?key=YOUR_API_KEY&amp;q=London</pre>
+<pre class="code"><span class="cmt">@* Pages/WeatherFetch.razor *@</span>
+@page "/weatherfetch"
+@using WeatherApp.Models
+@inject HttpClient Http
+
+&lt;h1&gt;Current Weather&lt;/h1&gt;
+
+@if (weather is not null)
+{
+    &lt;p&gt;&lt;strong&gt;@weather.Location?.Name, @weather.Location?.Country&lt;/strong&gt;&lt;/p&gt;
+    &lt;p&gt;Temperature: @weather.Current?.TempC °C&lt;/p&gt;
+    &lt;p&gt;Condition: @weather.Current?.Condition?.Text&lt;/p&gt;
+}
+else
+{
+    &lt;p&gt;Loading…&lt;/p&gt;
+}
+
+@code {
+    private WeatherData? weather;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var url = "https://api.weatherapi.com/v1/current.json?key=YOUR_API_KEY&amp;q=London";
+        weather = await Http.GetFromJsonAsync&lt;WeatherData&gt;(url);
+    }
+}</pre>
+    <p><code class="inline">GetFromJsonAsync&lt;T&gt;</code> lives in <code class="inline">System.Net.Http.Json</code>,
+      which ships with Blazor WebAssembly — no extra package needed.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Implement error handling</h3>
+    <p class="scenario">Make sure the app handles errors during the API call instead of crashing.</p>
+    <ul class="plain">
+      <li>Wrap the API call in a <code class="inline">try</code>/<code class="inline">catch</code> block.</li>
+      <li>In the <code class="inline">catch</code> block, <strong>log the error</strong> to the console and <strong>show a user-friendly message</strong>.</li>
+      <li>Use a <strong>fallback strategy</strong> — keep the UI usable (placeholder text) when the call fails.</li>
+    </ul>
+<pre class="code"><span class="cmt">@* Pages/WeatherFetch.razor — error-handling version *@</span>
+@page "/weatherfetch"
+@using WeatherApp.Models
+@inject HttpClient Http
+
+&lt;h1&gt;Current Weather&lt;/h1&gt;
+
+@if (errorMessage is not null)
+{
+    &lt;p style="color:red"&gt;@errorMessage&lt;/p&gt;
+    &lt;p&gt;Showing placeholder data while the weather service is unavailable.&lt;/p&gt;
+    &lt;p&gt;Temperature: -- °C&lt;/p&gt;
+}
+else if (weather is not null)
+{
+    &lt;p&gt;&lt;strong&gt;@weather.Location?.Name, @weather.Location?.Country&lt;/strong&gt;&lt;/p&gt;
+    &lt;p&gt;Temperature: @weather.Current?.TempC °C&lt;/p&gt;
+    &lt;p&gt;Condition: @weather.Current?.Condition?.Text&lt;/p&gt;
+}
+else
+{
+    &lt;p&gt;Loading…&lt;/p&gt;
+}
+
+@code {
+    private WeatherData? weather;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var url = "https://api.weatherapi.com/v1/current.json?key=YOUR_API_KEY&amp;q=London";
+        try
+        {
+            weather = await Http.GetFromJsonAsync&lt;WeatherData&gt;(url);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Weather API error: {ex.Message}");
+            errorMessage = "Unable to load weather data. Please try again later.";
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Test the API call</h3>
+    <p class="scenario">Test both the happy path and the error-handling path.</p>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Navigate to <code class="inline">http://localhost:5000/weatherfetch</code> in your browser. If needed, change
+        <code class="inline">5000</code> to the correct port from Step 1.</li>
+      <li>Test the app with a <strong>valid</strong> endpoint — confirm the location, temperature, and condition appear.</li>
+      <li>Change the query to an <strong>invalid</strong> value (for example <code class="inline">q=New York</code> against a
+        broken URL, or a bad key) and verify the <strong>error message and fallback data</strong> display instead of a crash.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    At <code class="inline">/weatherfetch</code> the page shows London's name, country, current temperature in °C, and the
+    condition text fetched live from WeatherAPI. When the request fails, the page shows a friendly error message plus
+    placeholder data — <strong>never a broken screen</strong>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">WeatherApp</code> Blazor WebAssembly project created and runs with <code class="inline">dotnet run</code></li>
+      <li>A WeatherAPI key obtained and placed in the request URL</li>
+      <li><code class="inline">HttpClient</code> registered in <code class="inline">Program.cs</code> and injected into the component</li>
+      <li><code class="inline">WeatherData</code> model matches the <code class="inline">current.json</code> response shape</li>
+      <li><code class="inline">Pages/WeatherFetch.razor</code> fetches data in <code class="inline">OnInitializedAsync</code> and renders it</li>
+      <li><code class="inline">try</code>/<code class="inline">catch</code> logs the error and shows a friendly message with fallback data</li>
+      <li>Valid and invalid endpoints both behave correctly at <code class="inline">/weatherfetch</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong><code class="inline">HttpClient</code> via DI</strong> — Blazor WebAssembly registers
+        <code class="inline">HttpClient</code> in <code class="inline">Program.cs</code>; inject it into components with
+        <code class="inline">@inject</code> rather than <code class="inline">new</code>-ing one up, so it's managed and reusable.</li>
+      <li><strong>Typed JSON binding</strong> — <code class="inline">GetFromJsonAsync&lt;T&gt;</code> deserializes the response
+        straight into a model; <code class="inline">[JsonPropertyName]</code> maps snake_case API fields
+        (<code class="inline">temp_c</code>) onto C# properties.</li>
+      <li><strong><code class="inline">OnInitializedAsync</code></strong> — the right lifecycle hook for first-load async data;
+        the UI shows a loading state until the awaited call returns and re-renders.</li>
+      <li><strong>Graceful degradation</strong> — wrapping the call in <code class="inline">try</code>/<code class="inline">catch</code>
+        and rendering fallback UI keeps the page usable when the network or the upstream API fails.</li>
+      <li><strong>Keys are secrets</strong> — an API key in the URL is fine for a learning lab, but in production it belongs in
+        configuration or a backend proxy, never committed to source control.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

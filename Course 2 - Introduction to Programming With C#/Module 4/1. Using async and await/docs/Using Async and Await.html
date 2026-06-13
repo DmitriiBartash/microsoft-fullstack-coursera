@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Using Async and Await — Course 2 · Module 4</title>
+<style>
+  :root {
+    --hdr: #7c3aed ;      /* header / create  */
+    --pld: #c026d3 ;      /* payload / decode */
+    --sig: #6366f1 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 2 — Introduction to Programming With C# · Module 4 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Using Async and Await</h1>
+    <p class="lead">
+      Build a small C# console app that runs several <strong>asynchronous</strong> methods.
+      You'll write <code>async</code> methods that <code>await Task.Delay</code> to simulate slow work
+      (like downloading data), run two of them <strong>in parallel</strong> with <code>Task.WhenAll</code>,
+      and add <strong>exception handling</strong> with <code>try</code>/<code>catch</code> — all inside the
+      console project you created at the start of the course.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn how to use the <code class="inline">async</code> and <code class="inline">await</code>
+      keywords in C# to keep an application responsive while it performs time-consuming work, run multiple
+      asynchronous tasks concurrently, and handle errors that occur inside asynchronous methods.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single-file console program in <code class="inline">Program.cs</code>
+      (namespace <code class="inline">UsingAsyncAwait</code>) containing:</p>
+    <table>
+      <thead><tr><th>Member</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>DownloadDataAsync()</code></td><td>First async method — simulates a 3-second download, wrapped in <code>try</code>/<code>catch</code></td></tr>
+        <tr><td><code>DownloadDataAsync2()</code></td><td>Second async method — simulates a 2-second download</td></tr>
+        <tr><td><code>Main(string[] args)</code></td><td><code>async</code> entry point — starts both tasks and <code>await</code>s <code>Task.WhenAll</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Main</span> <span class="ar">→</span>
+      <span class="c">DownloadDataAsync</span> <span class="ar">+</span>
+      <span class="d">DownloadDataAsync2</span> <span class="ar">→</span>
+      <span class="t">Task.WhenAll</span> <span class="ar">→</span>
+      <span class="ar">"All downloads completed."</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>The console application you created at the start of the course (or scaffold a new one with <code class="inline">dotnet new console</code>)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="callout">
+    <strong>Before you start:</strong> Remove any existing code in the <code class="inline">Program.cs</code>
+    file of your console application and build up the code from each step in that single file.
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Understand asynchronous programming</h3>
+    <p class="scenario">Asynchronous programming lets your application start a long-running task and continue
+      doing other work instead of blocking until that task finishes — which keeps the program responsive.
+      The building blocks are:</p>
+    <ul class="plain">
+      <li><code class="inline">async</code> — marks a method as asynchronous so it can use <code class="inline">await</code>.</li>
+      <li><code class="inline">await</code> — pauses the method (without blocking the thread) until an awaited <code class="inline">Task</code> completes.</li>
+      <li><code class="inline">Task</code> / <code class="inline">Task.Delay</code> — represent work in progress; <code class="inline">Task.Delay</code> simulates work that takes time.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create an asynchronous method</h3>
+    <p class="scenario">Create a simple asynchronous method that simulates a task taking time to complete, like downloading data.</p>
+    <ul class="plain">
+      <li>In <code class="inline">Program.cs</code>, create a class called <code class="inline">Program</code>.</li>
+      <li>Inside it, create a method named <code class="inline">DownloadDataAsync</code> and mark it with the <code class="inline">async</code> keyword.</li>
+      <li>Inside the method, use <code class="inline">await Task.Delay</code> to simulate a delay.</li>
+      <li>Print a message before and after the delay to show when the method starts and ends.</li>
+    </ul>
+<pre class="code">namespace UsingAsyncAwait
+{
+    class Program
+    {
+        <span class="cmt">// Step 2: First asynchronous method</span>
+        public async Task DownloadDataAsync()
+        {
+            Console.WriteLine("DownloadDataAsync started ...");
+            await Task.Delay(3000); <span class="cmt">// Simulate 3-second delay</span>
+            Console.WriteLine("DownloadDataAsync completed.");
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Run an asynchronous method from <code>Main</code></h3>
+    <p class="scenario">Create a <code class="inline">Main</code> method and call the async method, awaiting the simulated download delay.</p>
+    <ul class="plain">
+      <li>Below the <code class="inline">DownloadDataAsync</code> method, create a <code class="inline">Main</code> method (make it <code class="inline">async Task</code> so it can <code class="inline">await</code>).</li>
+      <li>In <code class="inline">Main</code>, create an instance of the <code class="inline">Program</code> class.</li>
+      <li>Call <code class="inline">DownloadDataAsync</code> using <code class="inline">await</code>.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Step 3: Main method (entry point)</span>
+static async Task Main(string[] args)
+{
+    Program program = new();
+    await program.DownloadDataAsync();
+}</pre>
+    <div class="callout ok">
+      To check your answer, run the Visual Studio Code console application. If you receive an error when you run
+      the code, go to the reading on the next page to compare your code to the correct answer.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Run multiple asynchronous methods in parallel</h3>
+    <p class="scenario">Run multiple asynchronous methods at once to see how they can execute simultaneously.</p>
+    <ul class="plain">
+      <li>Below the <code class="inline">DownloadDataAsync</code> method, create a second method named <code class="inline">DownloadDataAsync2</code>.</li>
+      <li>Update <code class="inline">Main</code> to use <code class="inline">Task.WhenAll</code> to run <code class="inline">DownloadDataAsync</code> and <code class="inline">DownloadDataAsync2</code> in parallel.</li>
+      <li>Observe how both methods run at the same time — by starting each task <em>before</em> awaiting, the 2-second and 3-second delays overlap instead of adding up.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Step 4: Second asynchronous method</span>
+public async Task DownloadDataAsync2()
+{
+    Console.WriteLine("DownloadDataAsync2 started...");
+    await Task.Delay(2000); <span class="cmt">// Simulate 2-second delay</span>
+    Console.WriteLine("DownloadDataAsync2 completed");
+}
+
+<span class="cmt">// Step 3 + 4: Main method (entry point)</span>
+static async Task Main(string[] args)
+{
+    Program program = new();
+
+    <span class="cmt">// Step 4: Run both async methods in parallel</span>
+    Task task1 = program.DownloadDataAsync();
+    Task task2 = program.DownloadDataAsync2();
+    await Task.WhenAll(task1, task2);
+
+    Console.WriteLine("All downloads completed.");
+}</pre>
+    <div class="callout ok">
+      To check your answer, run the Visual Studio Code console application. If you receive an error when you run
+      the code, compare your code to the correct answer on the next page.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Handle exceptions in asynchronous methods</h3>
+    <p class="scenario">Add error handling to an asynchronous method using a <code class="inline">try</code>/<code class="inline">catch</code> block.</p>
+    <ul class="plain">
+      <li>Modify <code class="inline">DownloadDataAsync</code> to wrap its body in a <code class="inline">try</code>/<code class="inline">catch</code> block.</li>
+      <li>Simulate an error by throwing an exception inside the <code class="inline">try</code>.</li>
+      <li>Catch the exception and display an error message.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Step 2 + 5: First asynchronous method with error handling</span>
+public async Task DownloadDataAsync()
+{
+    try
+    {
+        Console.WriteLine("DownloadDataAsync started ...");
+        await Task.Delay(3000); <span class="cmt">// Simulate 3-second delay</span>
+        throw new Exception("Simulated download error.");
+        Console.WriteLine("DownloadDataAsync completed.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in DownloadDataAsync: {ex.Message}");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h4>Full program</h4>
+    <p>Putting every step together, <code class="inline">Program.cs</code> looks like this:</p>
+<pre class="code">namespace UsingAsyncAwait
+{
+    class Program
+    {
+        <span class="cmt">// Step 2: First asynchronous method</span>
+        public async Task DownloadDataAsync()
+        {
+            try
+            {
+                Console.WriteLine("DownloadDataAsync started ...");
+                await Task.Delay(3000); <span class="cmt">// Simulate 3-second delay</span>
+                throw new Exception("Simulated download error.");
+                Console.WriteLine("DownloadDataAsync completed.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in DownloadDataAsync: {ex.Message}");
+            }
+        }
+
+        <span class="cmt">// Step 4: Second asynchronous method</span>
+        public async Task DownloadDataAsync2()
+        {
+            Console.WriteLine("DownloadDataAsync2 started...");
+            await Task.Delay(2000); <span class="cmt">// Simulate 2-second delay</span>
+            Console.WriteLine("DownloadDataAsync2 completed");
+        }
+
+        <span class="cmt">// Step 3 + 4: Main method (entry point)</span>
+        static async Task Main(string[] args)
+        {
+            Program program = new();
+
+            <span class="cmt">// Step 4: Run both async methods in parallel</span>
+            Task task1 = program.DownloadDataAsync();
+            Task task2 = program.DownloadDataAsync2();
+            await Task.WhenAll(task1, task2);
+
+            Console.WriteLine("All downloads completed.");
+        }
+    }
+}</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="card">
+    <p>Run the app with <code class="inline">dotnet run</code>. Both methods start almost immediately (parallel), and
+      because <code class="inline">DownloadDataAsync2</code> finishes its 2-second delay before
+      <code class="inline">DownloadDataAsync</code> finishes its 3-second delay, the output looks like:</p>
+<pre class="code">DownloadDataAsync started ...
+DownloadDataAsync2 started...
+DownloadDataAsync2 completed
+Error in DownloadDataAsync: Simulated download error.
+All downloads completed.</pre>
+    <p style="margin:12px 0 0"><code class="inline">DownloadDataAsync</code> reports the simulated error (instead of crashing)
+      because the exception is caught inside its <code class="inline">try</code>/<code class="inline">catch</code>, and
+      <code class="inline">"All downloads completed."</code> prints only after <code class="inline">Task.WhenAll</code>
+      confirms both tasks are done.</p>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Existing code cleared from <code class="inline">Program.cs</code> and a <code class="inline">Program</code> class created in namespace <code class="inline">UsingAsyncAwait</code></li>
+      <li><code class="inline">DownloadDataAsync</code> is <code class="inline">async</code>, uses <code class="inline">await Task.Delay(3000)</code>, and prints start/end messages</li>
+      <li><code class="inline">Main</code> is <code class="inline">async Task</code>, instantiates <code class="inline">Program</code>, and awaits the async method</li>
+      <li><code class="inline">DownloadDataAsync2</code> added and both tasks run in parallel via <code class="inline">Task.WhenAll</code></li>
+      <li><code class="inline">DownloadDataAsync</code> wraps its body in <code class="inline">try</code>/<code class="inline">catch</code> and reports the simulated exception</li>
+      <li><code class="inline">dotnet run</code> shows both methods overlapping and <code class="inline">"All downloads completed."</code> printed last</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong><code class="inline">async</code> + <code class="inline">await</code> keep work non-blocking</strong> —
+        <code class="inline">await</code> suspends the method until a <code class="inline">Task</code> completes without
+        freezing the thread, so the application stays responsive during slow work.</li>
+      <li><strong>Start tasks, then await for concurrency</strong> — assigning the calls to <code class="inline">Task</code>
+        variables <em>before</em> awaiting lets them run together; <code class="inline">Task.WhenAll</code> then waits for
+        all of them, so a 2s and a 3s delay overlap (~3s total) instead of adding up (~5s).</li>
+      <li><strong>An async entry point</strong> — making <code class="inline">Main</code> return
+        <code class="inline">async Task</code> is what allows you to <code class="inline">await</code> directly inside it.</li>
+      <li><strong>Handle exceptions where they occur</strong> — a <code class="inline">try</code>/<code class="inline">catch</code>
+        <em>inside</em> an async method catches failures from awaited work, letting one task fail gracefully without
+        bringing down the others.</li>
+      <li><strong><code class="inline">Task.Delay</code> simulates real async I/O</strong> — it stands in for genuinely slow
+        operations (network, disk, database) so you can practice the pattern without external dependencies.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Problem Decomposotion Using Top-Down Approach and Modularization — Course 1 · Module 2</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 2 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Problem Decomposition Using a Top-Down Approach and Modularization</h1>
+    <p class="lead">
+      Take two real-world systems — a <strong>fitness tracking app</strong> and an
+      <strong>online learning platform</strong> — and break each one down with the
+      <strong>top-down approach</strong>: start from a single goal, split it into major
+      features, decompose those into concrete tasks, then map the result onto independent
+      <em>modules</em>. The point is the <code>method</code>, not the apps themselves.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Practice <strong>decomposing a large problem</strong> into manageable pieces using
+      top-down design, and then <strong>modularizing</strong> the result so each logical area becomes a
+      standalone unit that can be built, tested, and reused independently.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">🧩</span> What you will produce</h2>
+  <div class="card">
+    <p>For <strong>each</strong> of the two problems below, a four-part decomposition:</p>
+    <table>
+      <thead><tr><th>Artifact</th><th>What it captures</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Main goal</strong></td><td>One sentence stating what the system is for</td></tr>
+        <tr><td><strong>Major features</strong></td><td>The top-level functional areas (the first top-down split)</td></tr>
+        <tr><td><strong>Decomposed tasks</strong></td><td>Each feature broken into concrete, manageable sub-tasks</td></tr>
+        <tr><td><strong>Module map</strong></td><td>A table assigning each area to an independent module + its responsibility</td></tr>
+      </tbody>
+    </table>
+    <h4>Method</h4>
+    <div class="flow">
+      <span class="ar">Goal</span> <span class="ar">→</span>
+      <span class="c">Major features</span> <span class="ar">→</span>
+      <span class="t">Sub-tasks per feature</span> <span class="ar">→</span>
+      <span class="d">Modules</span>
+    </div>
+  </div>
+
+  <!-- ===================== WALKTHROUGH 1 ===================== -->
+  <h2 class="section"><span class="em">🚶</span> Walkthrough — Problem 1: Fitness Tracking App</h2>
+
+  <div class="card">
+    <p class="scenario"><strong>Statement:</strong> Decompose the development of a fitness tracking app that
+      can track users' workouts, monitor their diet, and provide health insights.</p>
+
+    <h3><span class="step-badge">1</span> Define the main goal</h3>
+    <div class="callout">
+      Build a fitness tracking app that helps users <strong>log and monitor workouts</strong>,
+      <strong>track diet and nutrition</strong>, and <strong>receive personalized health insights</strong>.
+    </div>
+
+    <h3><span class="step-badge">2</span> Identify the major features <span style="font-weight:400;color:var(--muted);font-size:.9rem;margin-left:8px;">(top-down, level 1)</span></h3>
+    <p class="scenario">Break the app into its main functional areas:</p>
+    <ul class="plain">
+      <li><strong>Workout Tracking</strong></li>
+      <li><strong>Diet Monitoring</strong></li>
+      <li><strong>Health Insights</strong></li>
+      <li><strong>User Management</strong></li>
+    </ul>
+
+    <h3><span class="step-badge">3</span> Decompose each feature <span style="font-weight:400;color:var(--muted);font-size:.9rem;margin-left:8px;">(top-down, level 2)</span></h3>
+    <h4>1. Workout Tracking</h4>
+    <ul class="plain">
+      <li>Add a new workout (type, duration, calories)</li>
+      <li>View workout history</li>
+      <li>Plan future workouts (calendar, goals)</li>
+      <li>Display workout progress (charts, summaries)</li>
+    </ul>
+    <h4>2. Diet Monitoring</h4>
+    <ul class="plain">
+      <li>Log daily meals and snacks</li>
+      <li>Search food database (name, brand, macros)</li>
+      <li>Track calories and macronutrients (carbs, proteins, fats)</li>
+      <li>Monitor water intake</li>
+    </ul>
+    <h4>3. Health Insights</h4>
+    <ul class="plain">
+      <li>Generate weekly/monthly reports</li>
+      <li>Suggest personalized recommendations (e.g., increase protein intake, reduce sugar)</li>
+      <li>Set and track health goals (weight loss, muscle gain, maintenance)</li>
+      <li>Integrate with fitness wearables (e.g., Fitbit, Apple Watch)</li>
+    </ul>
+    <h4>4. User Management</h4>
+    <ul class="plain">
+      <li>User registration and login</li>
+      <li>Store personal data (age, height, weight, activity level)</li>
+      <li>Set personal preferences and goals</li>
+      <li>Manage app settings and notifications</li>
+    </ul>
+
+    <h3><span class="step-badge">4</span> Modularize</h3>
+    <p class="scenario">Each core feature becomes a separate module, enabling independent development and testing:</p>
+    <table>
+      <thead><tr><th>Module</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>WorkoutModule</code></td><td>Add, view, plan, and analyze workouts</td></tr>
+        <tr><td><code>NutritionModule</code></td><td>Log meals, calculate calories/macros, manage food database</td></tr>
+        <tr><td><code>HealthInsightsModule</code></td><td>Generate reports, offer health recommendations</td></tr>
+        <tr><td><code>UserModule</code></td><td>Handle login, profile, preferences</td></tr>
+        <tr><td><code>DataStorageModule</code></td><td>Store and retrieve workout/diet/user data</td></tr>
+        <tr><td><code>AnalyticsModule</code></td><td>Produce graphs, summaries, and track progress</td></tr>
+        <tr><td><code>IntegrationModule</code></td><td><em>Optional:</em> sync with external APIs and wearables</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:14px 0 0"><strong>In short:</strong> define the broad goal → use top-down design to find
+      functional areas → decompose each into sub-tasks → modularize each part into an independent unit for
+      clean, maintainable, scalable code.</p>
+  </div>
+
+  <!-- ===================== WALKTHROUGH 2 ===================== -->
+  <h2 class="section"><span class="em">🚶</span> Walkthrough — Problem 2: Online Learning Platform</h2>
+
+  <div class="card">
+    <p class="scenario"><strong>Statement:</strong> Decompose the creation of an online learning platform that
+      supports course creation, user enrollment, content delivery, and progress tracking.</p>
+
+    <h3><span class="step-badge">1</span> Define the main goal</h3>
+    <div class="callout">
+      Build an online learning platform where <strong>instructors create and manage courses</strong>,
+      <strong>students enroll and access content</strong>, and <strong>the system delivers content, tracks
+      progress, and supports learning</strong>.
+    </div>
+
+    <h3><span class="step-badge">2</span> Identify the major features <span style="font-weight:400;color:var(--muted);font-size:.9rem;margin-left:8px;">(top-down, level 1)</span></h3>
+    <p class="scenario">Divide the platform into key functional components:</p>
+    <ul class="plain">
+      <li><strong>Course Management</strong></li>
+      <li><strong>User Enrollment &amp; Authentication</strong></li>
+      <li><strong>Content Delivery</strong></li>
+      <li><strong>Progress Tracking</strong></li>
+      <li><strong>Communication &amp; Interaction</strong> <em>(optional)</em></li>
+      <li><strong>Admin Panel</strong> <em>(optional)</em></li>
+    </ul>
+
+    <h3><span class="step-badge">3</span> Decompose each feature <span style="font-weight:400;color:var(--muted);font-size:.9rem;margin-left:8px;">(top-down, level 2)</span></h3>
+    <h4>1. Course Management (for instructors)</h4>
+    <ul class="plain">
+      <li>Create / edit / delete courses</li>
+      <li>Add modules, lessons, and quizzes</li>
+      <li>Upload files (PDFs, videos, slides)</li>
+      <li>Set course requirements and schedules</li>
+    </ul>
+    <h4>2. User Enrollment &amp; Authentication</h4>
+    <ul class="plain">
+      <li>User registration (students &amp; instructors)</li>
+      <li>Login / logout and role-based access</li>
+      <li>Enroll or unenroll from courses</li>
+      <li>View enrolled-courses dashboard</li>
+    </ul>
+    <h4>3. Content Delivery</h4>
+    <ul class="plain">
+      <li>Stream video lessons</li>
+      <li>Display text materials and resources</li>
+      <li>Provide download links for files</li>
+      <li>Structure content by modules or sections</li>
+    </ul>
+    <h4>4. Progress Tracking</h4>
+    <ul class="plain">
+      <li>Track completed lessons/modules</li>
+      <li>Display course progress bar</li>
+      <li>Show quiz results or scores</li>
+      <li>Provide certificates <em>(optional)</em></li>
+    </ul>
+    <h4>5. Communication &amp; Interaction (optional)</h4>
+    <ul class="plain">
+      <li>Discussion forums per course</li>
+      <li>Live Q&amp;A or chat functionality</li>
+      <li>Instructor feedback on assignments</li>
+    </ul>
+    <h4>6. Admin Panel (optional)</h4>
+    <ul class="plain">
+      <li>Manage users and permissions</li>
+      <li>Monitor course statistics and activity</li>
+      <li>Moderate content and discussions</li>
+    </ul>
+
+    <h3><span class="step-badge">4</span> Modularize</h3>
+    <p class="scenario">Each major feature is built as a standalone module, letting developers work
+      independently and reuse components:</p>
+    <table>
+      <thead><tr><th>Module</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>CourseModule</code></td><td>Handles course creation, structure, content upload</td></tr>
+        <tr><td><code>UserModule</code></td><td>Registration, authentication, and user roles</td></tr>
+        <tr><td><code>EnrollmentModule</code></td><td>Course enrollment management</td></tr>
+        <tr><td><code>ContentDeliveryModule</code></td><td>Streaming, displaying, and organizing course materials</td></tr>
+        <tr><td><code>ProgressModule</code></td><td>Tracks student progress and quiz performance</td></tr>
+        <tr><td><code>CommunicationModule</code></td><td>Forums, messaging, and feedback systems <em>(optional)</em></td></tr>
+        <tr><td><code>AdminModule</code></td><td>Platform-wide settings, user/course moderation <em>(optional)</em></td></tr>
+        <tr><td><code>StorageModule</code></td><td>Handles file uploads and downloads</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:14px 0 0"><strong>In short:</strong> define the main goal → top-down split into broad
+      feature areas → decompose features into detailed tasks (e.g., lessons under courses, registration under
+      user management) → modularize each logical area for cleaner architecture, scalability, and parallel
+      development.</p>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">✍️</span> Your turn</h2>
+  <div class="card">
+    <p>Apply the same four-step method to a system of your own. Pick a domain (e.g., a recipe manager, an
+      expense tracker, a ride-sharing app) and produce:</p>
+    <ul class="plain">
+      <li>A one-sentence <strong>main goal</strong>.</li>
+      <li>The <strong>major features</strong> from a top-down split.</li>
+      <li>Each feature <strong>decomposed</strong> into concrete sub-tasks.</li>
+      <li>A <strong>module map</strong> table (<code class="inline">Module</code> → <code class="inline">Responsibility</code>),
+        including any cross-cutting modules (storage, analytics, integrations) that several features share.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">🌟</span> What good looks like</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Every system starts from a single, clearly stated <strong>goal</strong>.</li>
+      <li>The first split is <strong>top-down</strong>: a few coarse feature areas, not a flat list of tasks.</li>
+      <li>Each feature is <strong>decomposed</strong> into small, concrete, actionable sub-tasks.</li>
+      <li>A <strong>module map</strong> assigns each area to an independent module with a one-line responsibility.</li>
+      <li><strong>Cross-cutting concerns</strong> (storage, analytics, integrations) are pulled out into their
+        own shared modules instead of being duplicated per feature.</li>
+      <li>Modules have <strong>single, non-overlapping responsibilities</strong> so they can be developed,
+        tested, and reused independently.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Top-down decomposition</strong> — start from the whole, then progressively split it into
+        smaller parts (goal → features → tasks). You stop refining when each leaf is small enough to build directly.</li>
+      <li><strong>Modularization</strong> — group related tasks into a module with one clear responsibility, so
+        the system becomes a set of loosely coupled, independently testable units.</li>
+      <li><strong>Single responsibility</strong> — a well-named module (<code class="inline">WorkoutModule</code>,
+        <code class="inline">EnrollmentModule</code>) should have exactly one reason to change; overlapping
+        responsibilities are a smell.</li>
+      <li><strong>Cross-cutting modules</strong> — concerns shared across features (storage, analytics,
+        third-party integrations) become their own modules so logic isn't duplicated.</li>
+      <li><strong>Parallel, scalable development</strong> — clean module boundaries let different developers work
+        in parallel and let the system grow without the codebase becoming tangled.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

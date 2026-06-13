@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create a Web Page with HTML — Course 3 · Module 1</title>
+<style>
+  :root {
+    --hdr: #ea580c;      /* header / create  */
+    --pld: #f59e0b;      /* payload / decode */
+    --sig: #f43f5e;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 3 — Introduction to Web Development · Module 1 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Create a Web Page with HTML</h1>
+    <p class="lead">
+      Build a simple <strong>Personal Web Page</strong> from scratch using only HTML. You'll combine
+      headings, paragraphs, ordered and unordered <strong>lists</strong>, an external <strong>link</strong>,
+      and embedded <strong>media</strong> (image, video, and audio) into one well-structured document
+      that opens in any browser — no frameworks, no build tools, just <code>.html</code>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Practice the core building blocks of HTML by authoring a single, valid web page that
+      demonstrates document structure, text content, lists, hyperlinks, and embedded media — the foundation
+      every web developer builds on.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🧱</span> What you will build</h2>
+  <div class="card">
+    <p>A single file named <code class="inline">index.html</code> describing a personal homepage with these sections:</p>
+    <table>
+      <thead><tr><th>Section</th><th>HTML used</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>Page shell</td><td><code>&lt;!DOCTYPE html&gt;</code>, <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, <code>&lt;body&gt;</code></td><td>Valid document skeleton + metadata</td></tr>
+        <tr><td>About Me</td><td><code>&lt;h1&gt;</code>, <code>&lt;h2&gt;</code>, <code>&lt;p&gt;</code></td><td>Headings and a paragraph of text</td></tr>
+        <tr><td>My Hobbies</td><td><code>&lt;ul&gt;</code> / <code>&lt;li&gt;</code></td><td><strong>Unordered</strong> (bulleted) list</td></tr>
+        <tr><td>My Goals</td><td><code>&lt;ol&gt;</code> / <code>&lt;li&gt;</code></td><td><strong>Ordered</strong> (numbered) list</td></tr>
+        <tr><td>Learn More</td><td><code>&lt;a href&gt;</code></td><td>External hyperlink (opens in a new tab)</td></tr>
+        <tr><td>Favorite Board Game</td><td><code>&lt;img&gt;</code></td><td>Embedded image</td></tr>
+        <tr><td>Demo Video</td><td><code>&lt;video&gt;</code> + <code>&lt;source&gt;</code></td><td>Embedded video with controls</td></tr>
+        <tr><td>Favorite Track</td><td><code>&lt;audio&gt;</code> + <code>&lt;source&gt;</code></td><td>Embedded audio with controls</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>A plain-text or code editor (Visual Studio Code recommended)</li>
+      <li>Any modern web browser (Chrome, Edge, Firefox, Safari)</li>
+      <li>A project folder to hold your files, with two subfolders for assets:
+        <ul class="plain">
+          <li><code class="inline">images/</code> — for your picture (e.g. <code class="inline">boardgame.jpg</code>)</li>
+          <li><code class="inline">media/</code> — for your video and audio (e.g. <code class="inline">demo.mp4</code>, <code class="inline">music.mp3</code>)</li>
+        </ul>
+      </li>
+    </ul>
+    <div class="callout">
+      <strong>Note:</strong> No internet connection or installation is required — HTML runs directly in the browser.
+    </div>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Set up the document skeleton</h3>
+    <p class="scenario">Create a file called <code class="inline">index.html</code> and start with the standard HTML5
+      boilerplate. The <code class="inline">&lt;!DOCTYPE html&gt;</code> declaration tells the browser to use modern
+      (standards) rendering, and the two <code class="inline">&lt;meta&gt;</code> tags set the character encoding and
+      make the page responsive on mobile devices.</p>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;Dima's Webpage&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    <span class="cmt">&lt;!-- Page content goes here --&gt;</span>
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Add headings and an introductory paragraph</h3>
+    <p class="scenario">Inside <code class="inline">&lt;body&gt;</code>, add a top-level heading
+      (<code class="inline">&lt;h1&gt;</code>) for the page title, a section heading (<code class="inline">&lt;h2&gt;</code>),
+      and a <code class="inline">&lt;p&gt;</code> paragraph introducing yourself. Use exactly one
+      <code class="inline">&lt;h1&gt;</code> per page and keep the heading levels in order
+      (<code class="inline">h1</code> → <code class="inline">h2</code> → <code class="inline">h3</code>).</p>
+<pre class="code"><span class="cmt">&lt;!-- Headings and Paragraph --&gt;</span>
+&lt;h1&gt;Dima's Webpage&lt;/h1&gt;
+&lt;h2&gt;About Me&lt;/h2&gt;
+&lt;p&gt;
+    Hello! I'm Dima, a passionate learner and aspiring web developer.
+    I enjoy building websites, learning new technologies, and exploring the world of programming.
+&lt;/p&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Add an unordered list of hobbies</h3>
+    <p class="scenario">An <strong>unordered list</strong> (<code class="inline">&lt;ul&gt;</code>) renders bullet points.
+      Each item is a list item (<code class="inline">&lt;li&gt;</code>).</p>
+<pre class="code"><span class="cmt">&lt;!-- Unordered List: Hobbies --&gt;</span>
+&lt;h3&gt;My Hobbies&lt;/h3&gt;
+&lt;ul&gt;
+    &lt;li&gt;Programming&lt;/li&gt;
+    &lt;li&gt;Reading tech articles&lt;/li&gt;
+    &lt;li&gt;Playing video games&lt;/li&gt;
+    &lt;li&gt;Traveling&lt;/li&gt;
+    &lt;li&gt;Playing board games&lt;/li&gt;
+&lt;/ul&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Add an ordered list of goals</h3>
+    <p class="scenario">An <strong>ordered list</strong> (<code class="inline">&lt;ol&gt;</code>) numbers its items
+      automatically — perfect for ranked or sequential content.</p>
+<pre class="code"><span class="cmt">&lt;!-- Ordered List: Goals --&gt;</span>
+&lt;h3&gt;My Goals&lt;/h3&gt;
+&lt;ol&gt;
+    &lt;li&gt;Become a full-stack developer&lt;/li&gt;
+    &lt;li&gt;Create a personal portfolio website&lt;/li&gt;
+    &lt;li&gt;Contribute to open-source projects&lt;/li&gt;
+    &lt;li&gt;Work at a leading tech company&lt;/li&gt;
+&lt;/ol&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Add an external link</h3>
+    <p class="scenario">The anchor element (<code class="inline">&lt;a&gt;</code>) creates a hyperlink. The
+      <code class="inline">href</code> attribute is the destination, and <code class="inline">target="_blank"</code>
+      opens it in a new browser tab.</p>
+<pre class="code"><span class="cmt">&lt;!-- External Link --&gt;</span>
+&lt;h3&gt;Learn More&lt;/h3&gt;
+&lt;p&gt;
+    Visit &lt;a href="https://developer.mozilla.org/" target="_blank"&gt;MDN Web Docs&lt;/a&gt; to learn more about HTML and web
+    development.
+&lt;/p&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Embed an image</h3>
+    <p class="scenario">The <code class="inline">&lt;img&gt;</code> element embeds a picture.
+      <code class="inline">src</code> points to the image file, <code class="inline">alt</code> provides descriptive
+      text for screen readers and broken-image fallback, and <code class="inline">width</code> sets the display size
+      in pixels. Place your image in the <code class="inline">images/</code> folder.</p>
+<pre class="code"><span class="cmt">&lt;!-- Image --&gt;</span>
+&lt;h3&gt;My Favorite Board Game&lt;/h3&gt;
+&lt;img src="images/boardgame.jpg" alt="A fun board game setup on a table" width="400"&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Embed a video and an audio clip</h3>
+    <p class="scenario">The <code class="inline">&lt;video&gt;</code> and <code class="inline">&lt;audio&gt;</code> elements
+      play media inline. The <code class="inline">controls</code> attribute shows the play/pause UI, and the nested
+      <code class="inline">&lt;source&gt;</code> element declares the file and its MIME <code class="inline">type</code>.
+      The text inside each element is the fallback shown if the browser can't play that format.</p>
+<pre class="code"><span class="cmt">&lt;!-- Video --&gt;</span>
+&lt;h3&gt;Watch My Demo Video&lt;/h3&gt;
+&lt;video width="400" controls&gt;
+    &lt;source src="media/demo.mp4" type="video/mp4"&gt;
+    Your browser does not support the video tag.
+&lt;/video&gt;
+
+<span class="cmt">&lt;!-- Audio --&gt;</span>
+&lt;h3&gt;Listen to My Favorite Track&lt;/h3&gt;
+&lt;audio controls&gt;
+    &lt;source src="media/music.mp3" type="audio/mpeg"&gt;
+    Your browser does not support the audio element.
+&lt;/audio&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">8</span> Save and open in the browser</h3>
+    <p class="scenario">Save <code class="inline">index.html</code>, then double-click it (or right-click →
+      <strong>Open with</strong> your browser). The page loads instantly — there's nothing to compile.</p>
+  </div>
+
+  <!-- ===================== FULL PAGE ===================== -->
+  <h2 class="section"><span class="em">📄</span> Full page</h2>
+  <div class="card">
+    <p>Putting every section together inside the skeleton gives you the complete <code class="inline">index.html</code>:</p>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;Dima's Webpage&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    <span class="cmt">&lt;!-- Headings and Paragraph --&gt;</span>
+    &lt;h1&gt;Dima's Webpage&lt;/h1&gt;
+    &lt;h2&gt;About Me&lt;/h2&gt;
+    &lt;p&gt;
+        Hello! I'm Dima, a passionate learner and aspiring web developer.
+        I enjoy building websites, learning new technologies, and exploring the world of programming.
+    &lt;/p&gt;
+    <span class="cmt">&lt;!-- Unordered List: Hobbies --&gt;</span>
+    &lt;h3&gt;My Hobbies&lt;/h3&gt;
+    &lt;ul&gt;
+        &lt;li&gt;Programming&lt;/li&gt;
+        &lt;li&gt;Reading tech articles&lt;/li&gt;
+        &lt;li&gt;Playing video games&lt;/li&gt;
+        &lt;li&gt;Traveling&lt;/li&gt;
+        &lt;li&gt;Playing board games&lt;/li&gt;
+    &lt;/ul&gt;
+    <span class="cmt">&lt;!-- Ordered List: Goals --&gt;</span>
+    &lt;h3&gt;My Goals&lt;/h3&gt;
+    &lt;ol&gt;
+        &lt;li&gt;Become a full-stack developer&lt;/li&gt;
+        &lt;li&gt;Create a personal portfolio website&lt;/li&gt;
+        &lt;li&gt;Contribute to open-source projects&lt;/li&gt;
+        &lt;li&gt;Work at a leading tech company&lt;/li&gt;
+    &lt;/ol&gt;
+    <span class="cmt">&lt;!-- External Link --&gt;</span>
+    &lt;h3&gt;Learn More&lt;/h3&gt;
+    &lt;p&gt;
+        Visit &lt;a href="https://developer.mozilla.org/" target="_blank"&gt;MDN Web Docs&lt;/a&gt; to learn more about HTML and web
+        development.
+    &lt;/p&gt;
+    <span class="cmt">&lt;!-- Image --&gt;</span>
+    &lt;h3&gt;My Favorite Board Game&lt;/h3&gt;
+    &lt;img src="images/boardgame.jpg" alt="A fun board game setup on a table" width="400"&gt;
+    <span class="cmt">&lt;!-- Video --&gt;</span>
+    &lt;h3&gt;Watch My Demo Video&lt;/h3&gt;
+    &lt;video width="400" controls&gt;
+        &lt;source src="media/demo.mp4" type="video/mp4"&gt;
+        Your browser does not support the video tag.
+    &lt;/video&gt;
+    <span class="cmt">&lt;!-- Audio --&gt;</span>
+    &lt;h3&gt;Listen to My Favorite Track&lt;/h3&gt;
+    &lt;audio controls&gt;
+        &lt;source src="media/music.mp3" type="audio/mpeg"&gt;
+        Your browser does not support the audio element.
+    &lt;/audio&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The browser shows a single page titled <strong>"Dima's Webpage"</strong> with: a large heading and an
+    "About Me" paragraph, a bulleted <strong>Hobbies</strong> list, a numbered <strong>Goals</strong> list, a
+    clickable <strong>MDN Web Docs</strong> link that opens in a new tab, and three media blocks — an image, a
+    video player, and an audio player, each with playback controls. The browser tab reads <em>Dima's Webpage</em>
+    (from the <code class="inline">&lt;title&gt;</code>).
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">index.html</code> opens in the browser with no errors and the tab title shows <em>Dima's Webpage</em></li>
+      <li>Page has one <code class="inline">&lt;h1&gt;</code> plus <code class="inline">&lt;h2&gt;</code>/<code class="inline">&lt;h3&gt;</code> section headings and an intro paragraph</li>
+      <li>Hobbies render as a bulleted <code class="inline">&lt;ul&gt;</code> and Goals as a numbered <code class="inline">&lt;ol&gt;</code></li>
+      <li>The MDN link works and opens in a new tab</li>
+      <li>The <code class="inline">&lt;img&gt;</code> displays (or shows its <code class="inline">alt</code> text if the file is missing)</li>
+      <li>The <code class="inline">&lt;video&gt;</code> and <code class="inline">&lt;audio&gt;</code> players appear with working controls</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Document structure</strong> — every page needs the <code class="inline">&lt;!DOCTYPE html&gt;</code>
+        declaration plus <code class="inline">&lt;html&gt;</code>, <code class="inline">&lt;head&gt;</code>, and
+        <code class="inline">&lt;body&gt;</code>; the <code class="inline">&lt;head&gt;</code> holds metadata (charset,
+        viewport, title) while the <code class="inline">&lt;body&gt;</code> holds visible content.</li>
+      <li><strong>Semantic headings</strong> — use a single <code class="inline">&lt;h1&gt;</code> and nest heading
+        levels in order to give the page a clear, accessible outline.</li>
+      <li><strong>Lists</strong> — <code class="inline">&lt;ul&gt;</code> produces bullets for unordered items,
+        <code class="inline">&lt;ol&gt;</code> produces numbers for ordered/sequential items; both wrap individual
+        <code class="inline">&lt;li&gt;</code> elements.</li>
+      <li><strong>Links and the <code class="inline">target</code> attribute</strong> —
+        <code class="inline">&lt;a href="…"&gt;</code> navigates; <code class="inline">target="_blank"</code> opens the
+        destination in a new tab.</li>
+      <li><strong>Embedded media with fallbacks</strong> — <code class="inline">&lt;img&gt;</code> needs
+        <code class="inline">alt</code> text for accessibility, and <code class="inline">&lt;video&gt;</code>/<code class="inline">&lt;audio&gt;</code>
+        use a nested <code class="inline">&lt;source&gt;</code> (with a MIME <code class="inline">type</code>) plus fallback
+        text for browsers that can't play the format.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

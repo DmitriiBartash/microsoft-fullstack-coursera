@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Inheritance and Polymorphism — Course 2 · Module 3</title>
+<style>
+  :root {
+    --hdr: #7c3aed ;
+    --pld: #c026d3 ;
+    --sig: #6366f1 ;
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 2 — Introduction to Programming With C# · Module 3 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Inheritance and Polymorphism</h1>
+    <p class="lead">
+      Build a small C# console app that models an <code>Animal</code> base class with
+      <code>Dog</code> and <code>Cat</code> derived classes. Along the way you'll practise the
+      four pillars of OOP reuse in C#: <strong>inheritance</strong>, the
+      <strong><code>virtual</code>/<code>override</code></strong> keyword pair,
+      <strong>interfaces</strong>, and <strong>polymorphism</strong> — calling one method on many
+      types through a shared base type.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Use a single console application to see how <code>Dog</code> and
+      <code>Cat</code> can <strong>inherit</strong> from a common <code>Animal</code> base class,
+      <strong>override</strong> its behaviour, satisfy an <code>IAnimal</code>
+      <strong>interface contract</strong>, and finally be driven <strong>polymorphically</strong>
+      through a <code class="inline">List&lt;Animal&gt;</code> so one loop speaks to every animal type.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single console project. All of the code lives in <code class="inline">Program.cs</code> and
+      is grouped into a few small types:</p>
+    <table>
+      <thead><tr><th>Type</th><th>Kind</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>IAnimal</code></td><td>interface</td><td>Declares the <code>Eat()</code> contract every animal must fulfil</td></tr>
+        <tr><td><code>Animal</code></td><td>base class</td><td>Default <code>MakeSound()</code> and <code>Eat()</code>, both marked <code>virtual</code></td></tr>
+        <tr><td><code>Dog</code></td><td>derived class</td><td><code>override</code>s <code>MakeSound()</code> and <code>Eat()</code> with dog behaviour</td></tr>
+        <tr><td><code>Cat</code></td><td>derived class</td><td><code>override</code>s <code>MakeSound()</code> and <code>Eat()</code> with cat behaviour</td></tr>
+        <tr><td><code>Program</code></td><td>entry point</td><td><code>Main()</code> creates instances and exercises them</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="d">Animal</span> <span class="ar">(virtual)</span> <span class="ar">→</span>
+      <span class="c">Dog / Cat</span> <span class="ar">(override)</span> <span class="ar">→</span>
+      <span class="t">List&lt;Animal&gt;</span> <span class="ar">→</span>
+      <span class="ar">foreach</span> <span class="ar">→</span>
+      <span class="c">MakeSound()</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (the console app you created at the start of the course)</li>
+      <li>The <code class="inline">Program.cs</code> file of that console application, ready to be cleared</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Reuse the Visual Studio Code console application you created at the start of
+      the course. Open its <code class="inline">Program.cs</code>, <strong>remove any existing
+      code</strong>, and build every step below in that one file.</p>
+    <div class="callout">All five remaining steps add code to the <strong>same</strong>
+      <code class="inline">Program.cs</code>.</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create a base class and derived classes</h3>
+    <p class="scenario">Create a base class called <code>Animal</code> and two derived classes,
+      <code>Dog</code> and <code>Cat</code>. This is the heart of <strong>inheritance</strong>:
+      <code>Dog</code> and <code>Cat</code> automatically receive the members declared on
+      <code>Animal</code>.</p>
+    <ul class="plain">
+      <li>Define a base class <code class="inline">Animal</code> with a <code class="inline">virtual</code> method <code class="inline">MakeSound</code>.</li>
+      <li>Create two derived classes <code class="inline">Dog</code> and <code class="inline">Cat</code> that inherit from <code class="inline">Animal</code> (<code class="inline">class Dog : Animal</code>).</li>
+      <li>Override the <code class="inline">MakeSound</code> method in each derived class.</li>
+    </ul>
+<pre class="code">class Animal
+{
+    public virtual void MakeSound()
+    {
+        Console.WriteLine("The animal makes a sound.");
+    }
+}
+
+class Dog : Animal
+{
+    public override void MakeSound()
+    {
+        Console.WriteLine("The dog barks: Woof!");
+    }
+}
+
+class Cat : Animal
+{
+    public override void MakeSound()
+    {
+        Console.WriteLine("The cat meows: Meow!");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Use the <code>virtual</code> and <code>override</code> keywords</h3>
+    <p class="scenario">Explore how the base method you marked <code class="inline">virtual</code> is
+      replaced by the <code class="inline">override</code> versions at runtime.</p>
+    <ul class="plain">
+      <li>Above any existing classes in <code class="inline">Program.cs</code>, create a <code class="inline">Program</code> class.</li>
+      <li>In the <code class="inline">Program</code> class, create a <code class="inline">Main</code> method.</li>
+      <li>In <code class="inline">Main</code>, create instances of <code class="inline">Dog</code> and <code class="inline">Cat</code>, then call <code class="inline">MakeSound</code> on each.</li>
+    </ul>
+<pre class="code">class Program
+{
+    static void Main(string[] args)
+    {
+        Dog myDog = new();
+        Cat myCat = new();
+
+        myDog.MakeSound(); <span class="cmt">// The dog barks: Woof!</span>
+        myCat.MakeSound(); <span class="cmt">// The cat meows: Meow!</span>
+    }
+}</pre>
+    <div class="callout">To check your answer, run the app with <code class="inline">dotnet run</code>.
+      If you get an error, compare your code against the worked solution at the end of this lab.</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Implement an interface</h3>
+    <p class="scenario">Introduce an <strong>interface</strong> to define a contract that classes must
+      implement. An interface specifies a set of methods that different classes are required to provide.</p>
+    <ul class="plain">
+      <li>Above any existing classes in <code class="inline">Program.cs</code>, define an interface called <code class="inline">IAnimal</code> with a method <code class="inline">Eat</code>.</li>
+      <li>Implement this interface in the <code class="inline">Animal</code> class (<code class="inline">class Animal : IAnimal</code>) and provide an implementation of <code class="inline">Eat</code> in the <code class="inline">Dog</code> and <code class="inline">Cat</code> classes.</li>
+    </ul>
+<pre class="code">interface IAnimal
+{
+    void Eat();
+}
+
+class Animal : IAnimal
+{
+    public virtual void MakeSound()
+    {
+        Console.WriteLine("The animal makes a sound.");
+    }
+
+    public virtual void Eat()
+    {
+        Console.WriteLine("The animal eats food.");
+    }
+}</pre>
+<pre class="code">class Dog : Animal
+{
+    public override void MakeSound()
+    {
+        Console.WriteLine("The dog barks: Woof!");
+    }
+
+    public override void Eat()
+    {
+        Console.WriteLine("The dog eats bones.");
+    }
+}
+
+class Cat : Animal
+{
+    public override void MakeSound()
+    {
+        Console.WriteLine("The cat meows: Meow!");
+    }
+
+    public override void Eat()
+    {
+        Console.WriteLine("The cat eats fish.");
+    }
+}</pre>
+    <div class="callout">Because <code class="inline">Animal</code> satisfies <code class="inline">IAnimal</code>,
+      every class that derives from <code class="inline">Animal</code> is also an <code class="inline">IAnimal</code>.</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Use the interface</h3>
+    <p class="scenario">Call the interface method from your main program.</p>
+    <ul class="plain">
+      <li>In <code class="inline">Main</code>, underneath the existing method calls, call the <code class="inline">Eat</code> method on the <code class="inline">Dog</code> and <code class="inline">Cat</code> instances.</li>
+    </ul>
+<pre class="code">        myDog.Eat(); <span class="cmt">// The dog eats bones.</span>
+        myCat.Eat(); <span class="cmt">// The cat eats fish.</span></pre>
+    <div class="callout">Run the app again with <code class="inline">dotnet run</code> to confirm. If you
+      get an error, check your code against the worked solution below.</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Polymorphism with lists of base types and interfaces</h3>
+    <p class="scenario">Use <strong>polymorphism</strong> to interact with objects of different classes
+      through a common base type. This lets one loop call <code class="inline">MakeSound</code> on every
+      object without knowing its concrete type.</p>
+    <ul class="plain">
+      <li>Update <code class="inline">Main</code> by creating a <code class="inline">List&lt;Animal&gt;</code> that includes instances of <code class="inline">Dog</code> and <code class="inline">Cat</code>.</li>
+      <li>Use a loop to call <code class="inline">MakeSound</code> on each object in the list.</li>
+    </ul>
+<pre class="code">        List&lt;Animal&gt; animals =
+        [
+            new Dog(),
+            new Cat()
+        ];
+
+        Console.WriteLine("\nPolymorphic behavior using base class reference:");
+        foreach (Animal animal in animals)
+        {
+            animal.MakeSound();
+        }</pre>
+    <div class="callout">The variable is typed <code class="inline">Animal</code>, but the
+      <em>runtime type</em> (<code class="inline">Dog</code> or <code class="inline">Cat</code>) decides
+      which overridden <code class="inline">MakeSound</code> actually runs. Run with
+      <code class="inline">dotnet run</code>; if it errors, compare against the solution below.</div>
+  </div>
+
+  <div class="card">
+    <h3>Worked solution — complete <code>Program.cs</code></h3>
+    <p class="scenario">Putting all six steps together, the finished file looks like this:</p>
+<pre class="code"><span class="cmt">// Step 4.1: Define an interface IAnimal with a method Eat</span>
+interface IAnimal
+{
+    void Eat();
+}
+
+<span class="cmt">// Step 2.1 + Step 4.2: Base class Animal implements IAnimal</span>
+class Animal : IAnimal
+{
+    public virtual void MakeSound()
+    {
+        Console.WriteLine("The animal makes a sound.");
+    }
+
+    public virtual void Eat()
+    {
+        Console.WriteLine("The animal eats food.");
+    }
+}
+
+<span class="cmt">// Step 2.2 + 2.3 + Step 4.2: Derived class Dog</span>
+class Dog : Animal
+{
+    public override void MakeSound()
+    {
+        Console.WriteLine("The dog barks: Woof!");
+    }
+
+    public override void Eat()
+    {
+        Console.WriteLine("The dog eats bones.");
+    }
+}
+
+<span class="cmt">// Step 2.2 + 2.3 + Step 4.2: Derived class Cat</span>
+class Cat : Animal
+{
+    public override void MakeSound()
+    {
+        Console.WriteLine("The cat meows: Meow!");
+    }
+
+    public override void Eat()
+    {
+        Console.WriteLine("The cat eats fish.");
+    }
+}
+
+<span class="cmt">// Step 3 + Step 5 + Step 6: Program class</span>
+class Program
+{
+    static void Main(string[] args)
+    {
+        <span class="cmt">// Step 3: Create Dog and Cat instances and call MakeSound</span>
+        Dog myDog = new();
+        Cat myCat = new();
+        myDog.MakeSound(); <span class="cmt">// The dog barks: Woof!</span>
+        myCat.MakeSound(); <span class="cmt">// The cat meows: Meow!</span>
+
+        <span class="cmt">// Step 5.1: Call Eat method from Dog and Cat instances</span>
+        myDog.Eat();       <span class="cmt">// The dog eats bones.</span>
+        myCat.Eat();       <span class="cmt">// The cat eats fish.</span>
+
+        <span class="cmt">// Step 6.1: Create a list of Animal objects</span>
+        List&lt;Animal&gt; animals =
+        [
+            new Dog(),
+            new Cat()
+        ];
+
+        <span class="cmt">// Step 6.2: Use a loop to call MakeSound</span>
+        Console.WriteLine("\nPolymorphic behavior using base class reference:");
+        foreach (Animal animal in animals)
+        {
+            animal.MakeSound();
+        }
+    }
+}</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Running <code class="inline">dotnet run</code> prints the direct calls, then the interface calls,
+    then the polymorphic loop:
+  </div>
+<pre class="code">The dog barks: Woof!
+The cat meows: Meow!
+The dog eats bones.
+The cat eats fish.
+
+Polymorphic behavior using base class reference:
+The dog barks: Woof!
+The cat meows: Meow!</pre>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">Program.cs</code> cleared and rebuilt from the steps above</li>
+      <li>Base class <code class="inline">Animal</code> defines <code class="inline">virtual</code> methods <code class="inline">MakeSound</code> and <code class="inline">Eat</code></li>
+      <li><code class="inline">Dog</code> and <code class="inline">Cat</code> derive from <code class="inline">Animal</code> and <code class="inline">override</code> both methods</li>
+      <li>Interface <code class="inline">IAnimal</code> declares <code class="inline">Eat</code>, and <code class="inline">Animal</code> implements <code class="inline">IAnimal</code></li>
+      <li><code class="inline">Main</code> creates <code class="inline">Dog</code>/<code class="inline">Cat</code> instances and calls <code class="inline">MakeSound</code> and <code class="inline">Eat</code></li>
+      <li>A <code class="inline">List&lt;Animal&gt;</code> is iterated with <code class="inline">foreach</code> to call <code class="inline">MakeSound</code> polymorphically</li>
+      <li><code class="inline">dotnet run</code> produces the expected output above</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Inheritance</strong> — <code class="inline">Dog</code> and <code class="inline">Cat</code>
+        reuse the members of <code class="inline">Animal</code> via <code class="inline">class Dog : Animal</code>,
+        so shared behaviour is written once on the base class.</li>
+      <li><strong><code class="inline">virtual</code> + <code class="inline">override</code></strong> —
+        marking a base method <code class="inline">virtual</code> <em>allows</em> a subclass to replace it;
+        the matching <code class="inline">override</code> supplies the specialised version that runs for that type.</li>
+      <li><strong>Interfaces as contracts</strong> — <code class="inline">IAnimal</code> says "every animal
+        must <code class="inline">Eat()</code>" without dictating <em>how</em>; implementing it on
+        <code class="inline">Animal</code> propagates the contract to all derived classes.</li>
+      <li><strong>Polymorphism</strong> — a <code class="inline">List&lt;Animal&gt;</code> can hold any
+        subclass, and the loop calls the <em>runtime</em> type's overridden method, so one piece of code
+        drives many behaviours.</li>
+      <li><strong>Base-type references</strong> — programming to <code class="inline">Animal</code> (the
+        abstraction) rather than <code class="inline">Dog</code>/<code class="inline">Cat</code> (the
+        concretions) keeps calling code open to new animal types without changes.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

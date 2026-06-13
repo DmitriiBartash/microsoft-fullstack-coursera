@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fundamentals of Logical Thinking in Porgramming — Course 1 · Module 2</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 2 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Fundamentals of Logical Thinking in Programming</h1>
+    <p class="lead">
+      Practice the core habit every programmer relies on: turning a fuzzy requirement into a
+      precise, step-by-step plan <strong>before</strong> writing real code. You will walk a small
+      problem — <em>"is this number even or odd?"</em> — all the way from a plain-English
+      definition through key processes, a flowchart, and finally <code>pseudocode</code>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn to decompose a problem into ordered, unambiguous steps and express the
+      solution as <strong>language-independent pseudocode</strong>, so the logic is clear and correct
+      <em>before</em> it is translated into any specific programming language.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">📦</span> What you will produce</h2>
+  <div class="card">
+    <p>A complete logical breakdown of one small program, captured in four artifacts that build on
+      each other:</p>
+    <table>
+      <thead><tr><th>Artifact</th><th>What it captures</th></tr></thead>
+      <tbody>
+        <tr><td>Problem definition</td><td>Plain-English statement of the inputs, the rule, and the outputs</td></tr>
+        <tr><td>Key processes</td><td>The ordered list of actions the program must perform</td></tr>
+        <tr><td>Flowchart</td><td>A visual map of the control flow, including the decision branch</td></tr>
+        <tr><td>Pseudocode</td><td>A structured, language-neutral version of the algorithm ready to code</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Problem</span> <span class="ar">→</span>
+      <span class="c">Key processes</span> <span class="ar">→</span>
+      <span class="t">Flowchart</span> <span class="ar">→</span>
+      <span class="d">Pseudocode</span> <span class="ar">→</span>
+      <span class="ar">(later) real code</span>
+    </div>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🧭</span> Walkthrough</h2>
+  <p>We will work the example end-to-end: a program that reads a number and reports whether it is
+    <strong>even</strong> or <strong>odd</strong>.</p>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Define the problem</h3>
+    <p class="scenario">State exactly what the program must do, in plain language, with no code.</p>
+    <p>Create a simple program that:</p>
+    <ul class="plain">
+      <li>Accepts a number as input.</li>
+      <li>Checks if the number is even or odd.</li>
+      <li>Displays <code class="inline">"Even number"</code> if the number is divisible by 2, otherwise <code class="inline">"Odd number"</code>.</li>
+    </ul>
+    <p>A good definition names the <strong>input</strong> (a number), the <strong>rule</strong>
+      (divisibility by 2), and the <strong>outputs</strong> (the two possible messages). Nail these
+      down first — everything else follows from them.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Identify the key processes</h3>
+    <p class="scenario">List the actions the program performs, in order. This is the skeleton of the algorithm.</p>
+    <ul class="plain">
+      <li>Start the program</li>
+      <li>Input a number</li>
+      <li>Check if the number is divisible by 2</li>
+      <li>If divisible, display <code class="inline">"Even number"</code></li>
+      <li>Else, display <code class="inline">"Odd number"</code></li>
+      <li>End the program</li>
+    </ul>
+    <p>Notice the check introduces a <strong>decision</strong> — one input leads to two possible
+      paths. Spotting where the logic branches is the whole point of this stage.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Draw the flowchart</h3>
+    <p class="scenario">Sketch the control flow visually. Each process becomes a shape, and the
+      decision becomes a branch with two labelled exits (<code class="inline">Yes</code> /
+      <code class="inline">No</code>).</p>
+<pre class="code">        ┌───────────────┐
+        │     Start     │
+        └───────┬───────┘
+                │
+        ┌───────▼───────┐
+        │  Input Number │
+        └───────┬───────┘
+                │
+        ╱───────▼───────╲
+       ╱  number % 2     ╲   No
+       ╲   == 0 ?        ╱ ────────────┐
+        ╲───────┬───────╱              │
+                │ Yes                  │
+        ┌───────▼───────┐     ┌────────▼────────┐
+        │ Print         │     │ Print           │
+        │ "Even number" │     │ "Odd number"    │
+        └───────┬───────┘     └────────┬────────┘
+                │                      │
+                └──────────┬───────────┘
+                           │
+                   ┌───────▼───────┐
+                   │      End      │
+                   └───────────────┘</pre>
+    <div class="callout">
+      <strong>Note:</strong> the original includes a flowchart diagram here; the version above is a
+      text representation of the same control flow.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Map the flowchart to pseudocode</h3>
+    <p class="scenario">Translate each flowchart element into a pseudocode construct. The mapping is
+      deliberate — every symbol has a textual counterpart.</p>
+    <table>
+      <thead><tr><th>Flowchart element</th><th>Pseudocode counterpart</th></tr></thead>
+      <tbody>
+        <tr><td>Start</td><td>Start of the process</td></tr>
+        <tr><td>Input Number</td><td>Prompt the user for input</td></tr>
+        <tr><td>Decision</td><td>Use an <code class="inline">if</code> condition to check divisibility</td></tr>
+        <tr><td>Output</td><td>Print the appropriate message</td></tr>
+        <tr><td>End</td><td>End of the process</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Write the pseudocode</h3>
+    <p class="scenario">Put it all together as structured, language-neutral pseudocode. Indentation
+      shows which statements belong to the decision branches.</p>
+<pre class="code">Start
+    Prompt user to enter a number
+    Read number
+    If number modulo 2 equals 0 then
+        Print "Even number"
+    Else
+        Print "Odd number"
+    End If
+End</pre>
+    <p>This reads almost like English, yet maps one-to-one onto real code in any language — the hard
+      thinking is already done.</p>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">✍️</span> Your turn</h2>
+  <div class="card">
+    <p>Apply the same five-stage process to a new problem of your own. A good practice target:</p>
+    <div class="callout">
+      Read a number and report whether it is <strong>positive</strong>, <strong>negative</strong>, or
+      <strong>zero</strong>.
+    </div>
+    <p>Work through each stage in order:</p>
+    <ul class="plain">
+      <li>Write the <strong>problem definition</strong> (input, rule, outputs).</li>
+      <li>List the <strong>key processes</strong>.</li>
+      <li>Draw the <strong>flowchart</strong> — note that this one needs <em>two</em> decisions, so it branches twice.</li>
+      <li>Map the flowchart to <strong>pseudocode</strong> elements.</li>
+      <li>Write the final <strong>pseudocode</strong>.</li>
+    </ul>
+    <p style="margin:0">Keep the logic in pseudocode only — resist jumping to a programming language
+      until the plan is complete and correct.</p>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Problem is defined in plain English with input, rule, and outputs stated explicitly</li>
+      <li>Key processes are listed as an ordered sequence from start to end</li>
+      <li>Flowchart shows the control flow with the decision drawn as a labelled branch</li>
+      <li>Each flowchart element is mapped to its pseudocode counterpart</li>
+      <li>Final pseudocode uses <code class="inline">If / Else / End If</code> with correct indentation and is language-neutral</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Decomposition first</strong> — break a requirement into the smallest ordered steps
+        before writing any code; clear steps prevent confused code.</li>
+      <li><strong>Pseudocode is language-independent</strong> — it expresses logic in structured plain
+        language, so the same plan can be implemented in C#, Python, JavaScript, or any other language.</li>
+      <li><strong>Decisions create branches</strong> — an <code class="inline">if</code>/<code class="inline">else</code>
+        (here, <code class="inline">number modulo 2 equals 0</code>) splits one input into multiple
+        paths; identifying these branches early is what flowcharts make visible.</li>
+      <li><strong>Flowchart ↔ pseudocode are two views of one algorithm</strong> — every flowchart
+        shape has a textual counterpart, so you can move between the visual and written forms freely.</li>
+      <li><strong>Verify the logic before coding</strong> — getting the plan right up front is cheaper
+        than debugging tangled code later.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

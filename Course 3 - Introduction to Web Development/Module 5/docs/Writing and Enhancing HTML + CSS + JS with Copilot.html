@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Writing and Enhancing HTML + CSS + JS with Copilot — Course 3 · Module 5</title>
+<style>
+  :root {
+    --hdr: #ea580c ;      /* header / create  */
+    --pld: #f59e0b ;      /* payload / decode */
+    --sig: #f43f5e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 3 — Introduction to Web Development · Module 5
+      <span class="pill">You Try It!</span></p>
+    <h1>Writing and Enhancing HTML + CSS + JS with Copilot</h1>
+    <p class="lead">
+      Build a complete, responsive <strong>portfolio website</strong> with vanilla HTML, CSS, and
+      JavaScript — using <strong>Microsoft Copilot</strong> as a coding assistant to generate semantic
+      markup, accessible styling, and interactive behavior. You'll move through four activities
+      (HTML → CSS → JavaScript → integrate &amp; test) and finish with a single deployable site:
+      <code>index.html</code>, <code>style.css</code>, and <code>script.js</code>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Use Microsoft Copilot to <strong>write and enhance</strong> the three front-end layers
+      of a portfolio site — semantic and accessible <strong>HTML</strong>, responsive <strong>CSS</strong>, and
+      interactive <strong>JavaScript</strong> — then integrate, test, and debug them into one working project
+      that meets accessibility (WCAG), SEO, and cross-browser best practices.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A self-contained portfolio website made of three linked files plus an <code class="inline">images/</code> folder:</p>
+    <table>
+      <thead><tr><th>File</th><th>Layer</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>index.html</code></td><td>Structure</td><td>Semantic sections (header/nav, about, projects, skills, contact, footer)</td></tr>
+        <tr><td><code>style.css</code></td><td>Presentation</td><td>Layout, color, typography, project cards, responsive <code>@media</code> rules</td></tr>
+        <tr><td><code>script.js</code></td><td>Behavior</td><td>Menu toggle, smooth scroll, project filter, lightbox, form validation</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">index.html</span> <span class="ar">→</span>
+      <span class="c">&lt;link&gt; style.css</span> <span class="ar">→</span>
+      <span class="d">&lt;script&gt; script.js</span> <span class="ar">→</span>
+      <span class="t">interactive portfolio</span>
+    </div>
+    <div class="callout">
+      <strong>Note:</strong> Copilot is the assistant here — you type a tag, comment, or function name and
+      accept its suggestions, then review every line for correctness, accessibility, and SEO.
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>An IDE with Copilot enabled (e.g. <strong>Visual Studio Code</strong> + GitHub Copilot, or Microsoft Copilot)</li>
+      <li>A modern browser for testing — <strong>Edge, Chrome, and Firefox</strong></li>
+      <li>The <strong>WebAIM Contrast Checker</strong> (or your browser's contrast tooling) for verifying WCAG color contrast</li>
+      <li>Basic familiarity with HTML5, CSS3, and JavaScript</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+  <p class="scenario">This project spans four activities. Steps 1–6 build each layer; Step 7 integrates and tests the whole site.</p>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Create and structure <code>index.html</code></h3>
+    <p class="scenario">Type <code class="inline">&lt;!DOCTYPE html&gt;</code> and let Copilot auto-complete the boilerplate,
+      then fill in the <code class="inline">&lt;head&gt;</code> and a <strong>semantic</strong> <code class="inline">&lt;body&gt;</code>
+      using meaningful tags (<code class="inline">&lt;header&gt;</code>, <code class="inline">&lt;nav&gt;</code>,
+      <code class="inline">&lt;section&gt;</code>, <code class="inline">&lt;article&gt;</code>, <code class="inline">&lt;footer&gt;</code>) that help accessibility and SEO.</p>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8" /&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;
+  &lt;meta name="description"
+    content="Portfolio website of a Junior Full-Stack Developer specializing in .NET &amp; ASP.NET Core." /&gt;
+  &lt;title&gt;Dmitrii Bartash | Junior Full-Stack Developer&lt;/title&gt;
+  &lt;link rel="stylesheet" href="style.css" /&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;!-- Header + Navigation --&gt;
+  &lt;header role="banner"&gt;
+    &lt;button id="menu-toggle" aria-label="Toggle navigation"&gt;
+      &lt;span class="bar"&gt;&lt;/span&gt;
+      &lt;span class="bar"&gt;&lt;/span&gt;
+      &lt;span class="bar"&gt;&lt;/span&gt;
+    &lt;/button&gt;
+    &lt;nav role="navigation" aria-label="Main navigation"&gt;
+      &lt;ul&gt;
+        &lt;li&gt;&lt;a href="#about-me"&gt;About&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href="#experience"&gt;Experience&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href="#skills"&gt;Skills&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href="#projects"&gt;Projects&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href="#contact"&gt;Contact&lt;/a&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/nav&gt;
+  &lt;/header&gt;
+  &lt;!-- Sections are added in Step 2 --&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Build the portfolio sections</h3>
+    <p class="scenario">Generate each <code class="inline">&lt;section&gt;</code> with Copilot, keeping the structure semantic:
+      an <code class="inline">&lt;h2&gt;</code> per section, <code class="inline">&lt;article&gt;</code> cards for entries,
+      <code class="inline">&lt;ul&gt;</code>/<code class="inline">&lt;li&gt;</code> for skills, and a <code class="inline">&lt;form&gt;</code> for contact.</p>
+<pre class="code">  &lt;!-- About Me --&gt;
+  &lt;section id="about-me"&gt;
+    &lt;h2&gt;About Me&lt;/h2&gt;
+    &lt;p&gt;&lt;strong&gt;Dmitrii Bartash&lt;/strong&gt; – Junior Full-Stack Developer based in Chișinău, Moldova.&lt;/p&gt;
+    &lt;p&gt;Aspiring software developer with hands-on experience building full-stack web applications
+      and distributed backend systems.&lt;/p&gt;
+    &lt;p&gt;&lt;strong&gt;Email:&lt;/strong&gt; &lt;span class="email-obfuscated"&gt;moc.liamg@hsatrab.iirtimd&lt;/span&gt;&lt;/p&gt;
+  &lt;/section&gt;
+
+  &lt;!-- Experience (repeat &lt;article&gt; per role) --&gt;
+  &lt;section id="experience"&gt;
+    &lt;h2&gt;Experience&lt;/h2&gt;
+    &lt;article&gt;
+      &lt;h3&gt;Biocond S.R.L – Intern Full-Stack Developer&lt;/h3&gt;
+      &lt;p&gt;&lt;em&gt;01/2024 – 06/2025 | Chișinău, Moldova&lt;/em&gt;&lt;/p&gt;
+      &lt;ul&gt;
+        &lt;li&gt;Built backend with ASP.NET Core and FastAPI&lt;/li&gt;
+        &lt;li&gt;Integrated PostgreSQL, MongoDB, Redis&lt;/li&gt;
+        &lt;li&gt;Containerized services with Docker&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/article&gt;
+  &lt;/section&gt;
+
+  &lt;!-- Skills (styled as pills via CSS) --&gt;
+  &lt;section id="skills"&gt;
+    &lt;h2&gt;Skills&lt;/h2&gt;
+    &lt;ul&gt;
+      &lt;li&gt;&lt;strong&gt;Programming Languages:&lt;/strong&gt; C#, Python, JavaScript, SQL&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;.NET Frameworks &amp; Tools:&lt;/strong&gt; ASP.NET Core, EF Core, LINQ, Blazor&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Databases:&lt;/strong&gt; PostgreSQL, SQL Server, SQLite, MongoDB, Redis&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;DevOps:&lt;/strong&gt; Docker, Docker Compose, CI/CD, Git&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/section&gt;
+
+  &lt;!-- Projects: filter buttons + cards + a reusable lightbox modal --&gt;
+  &lt;section id="projects"&gt;
+    &lt;h2&gt;Projects&lt;/h2&gt;
+    &lt;div id="project-filters"&gt;
+      &lt;button data-category="all" class="active"&gt;All&lt;/button&gt;
+      &lt;button data-category="web"&gt;Web&lt;/button&gt;
+      &lt;button data-category="api"&gt;API&lt;/button&gt;
+      &lt;button data-category="tool"&gt;Tool&lt;/button&gt;
+    &lt;/div&gt;
+    &lt;div class="project-card" data-category="web"&gt;
+      &lt;h3&gt;Personal Portfolio&lt;/h3&gt;
+      &lt;p&gt;A responsive portfolio built with HTML, CSS, and JavaScript.&lt;/p&gt;
+      &lt;img src="images/portfolio.png" alt="Portfolio screenshot" /&gt;
+    &lt;/div&gt;
+    &lt;div class="project-card" data-category="api"&gt;
+      &lt;h3&gt;Weather API&lt;/h3&gt;
+      &lt;p&gt;REST API built with ASP.NET Core and OpenWeather integration.&lt;/p&gt;
+      &lt;img src="images/weather.png" alt="Weather API screenshot" /&gt;
+    &lt;/div&gt;
+    &lt;div class="project-card" data-category="tool"&gt;
+      &lt;h3&gt;BTU Calculator&lt;/h3&gt;
+      &lt;p&gt;Thermal load estimation tool built with FastAPI and a JS frontend.&lt;/p&gt;
+      &lt;img src="images/btu.png" alt="BTU Calculator screenshot" /&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;!-- Lightbox modal (hidden until an image is clicked) --&gt;
+  &lt;div id="lightbox" class="lightbox" style="display: none;"&gt;
+    &lt;span id="lightbox-close"&gt;×&lt;/span&gt;
+    &lt;img id="lightbox-img" src="" alt="Project Preview" /&gt;
+  &lt;/div&gt;
+
+  &lt;!-- Contact: labelled form for accessibility --&gt;
+  &lt;section id="contact"&gt;
+    &lt;h2&gt;Contact Me&lt;/h2&gt;
+    &lt;form class="contact-form" action="#" method="post"&gt;
+      &lt;label for="name"&gt;Your Name&lt;/label&gt;
+      &lt;input type="text" id="name" name="name" placeholder="Enter your name" required /&gt;
+      &lt;label for="email"&gt;Your Email&lt;/label&gt;
+      &lt;input type="email" id="email" name="email" placeholder="Enter your email" required /&gt;
+      &lt;label for="message"&gt;Your Message&lt;/label&gt;
+      &lt;textarea id="message" name="message" rows="5" required&gt;&lt;/textarea&gt;
+      &lt;button type="submit"&gt;Send Message&lt;/button&gt;
+    &lt;/form&gt;
+  &lt;/section&gt;
+
+  &lt;footer&gt;
+    &lt;p&gt;&amp;copy; 2025 Dmitrii Bartash. All rights reserved.&lt;/p&gt;
+  &lt;/footer&gt;
+  &lt;script src="script.js"&gt;&lt;/script&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Add accessibility and SEO</h3>
+    <p class="scenario">With the structure in place, harden it for users and search engines.</p>
+    <ul class="plain">
+      <li>Add <code class="inline">alt</code> text to every <code class="inline">&lt;img&gt;</code>, especially in the Projects section.</li>
+      <li>Add <strong>ARIA roles</strong> where they clarify intent — <code class="inline">role="banner"</code> on <code class="inline">&lt;header&gt;</code>, <code class="inline">role="navigation"</code> on <code class="inline">&lt;nav&gt;</code>.</li>
+      <li>Ensure interactive elements (buttons, links) are reachable by <strong>keyboard</strong>.</li>
+      <li>Use the <strong>WebAIM Contrast Checker</strong> to confirm text/background contrast meets <strong>WCAG</strong>.</li>
+      <li>Keep a meaningful <code class="inline">&lt;title&gt;</code> and <code class="inline">&lt;meta name="description"&gt;</code>, plus a sensible heading hierarchy, for <strong>SEO</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Create and link <code>style.css</code></h3>
+    <p class="scenario">Create <code class="inline">style.css</code>, confirm it is linked from the <code class="inline">&lt;head&gt;</code>
+      (<code class="inline">&lt;link rel="stylesheet" href="style.css" /&gt;</code>), and define base styles with CSS variables.</p>
+<pre class="code"><span class="cmt">/* ========= Root Variables &amp; Base ========= */</span>
+:root {
+  --bg-color: #f9fafb;
+  --text-color: #1f2937;
+  --accent: #2563eb;
+  --accent-dark: #1e40af;
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --pill-bg: #eef2ff;
+  --pill-text: #3730a3;
+  --font-main: 'Segoe UI', Roboto, sans-serif;
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.7;
+  font-size: 16px;
+  padding: 0 1rem;
+  scroll-behavior: smooth;
+}
+img { max-width: 100%; display: block; border-radius: 8px; }
+
+header, section, footer { max-width: 1000px; margin: auto; padding: 3rem 1rem; }</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Style the sections (cards, skills, contact)</h3>
+    <p class="scenario">Let Copilot suggest layout for each section: a sticky gradient header, card-like project
+      tiles using <code class="inline">display: flex</code>, and skill "pills".</p>
+<pre class="code"><span class="cmt">/* Sticky header with gradient */</span>
+header {
+  background: linear-gradient(90deg, #1f2937, #111827);
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-md);
+  border-radius: 0 0 16px 16px;
+}
+
+<span class="cmt">/* Card layout for articles and project cards */</span>
+section &gt; article,
+section &gt; div.project-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+section &gt; article:hover,
+section &gt; div.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+<span class="cmt">/* Skills rendered as pills */</span>
+#skills ul { display: flex; flex-wrap: wrap; gap: 0.6rem; list-style: none; padding-left: 0; }
+#skills li {
+  background-color: var(--pill-bg);
+  color: var(--pill-text);
+  padding: 0.5rem 0.9rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Make it responsive and cross-browser</h3>
+    <p class="scenario">Add a <strong>media query at 768px</strong> that collapses the nav into a <strong>hamburger menu</strong>,
+      keep media fluid with <code class="inline">max-width: 100%; height: auto;</code>, then test in Edge, Chrome, and Firefox
+      and add vendor prefixes where needed.</p>
+<pre class="code"><span class="cmt">/* Hamburger button is hidden on desktop, shown on mobile */</span>
+#menu-toggle { display: none; background: none; border: none; cursor: pointer; }
+
+@media (max-width: 768px) {
+  #menu-toggle { display: block; margin: 0 auto; }
+  nav ul {
+    display: none;            <span class="cmt">/* hidden until toggled open */</span>
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  nav ul.open { display: flex; }
+  h2 { font-size: 1.8rem; }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Add interactivity in <code>script.js</code>, then integrate &amp; test</h3>
+    <p class="scenario">Create <code class="inline">script.js</code> and link it at the <strong>bottom</strong> of
+      <code class="inline">index.html</code>. With Copilot, implement the menu toggle (<code class="inline">toggleMenu</code>),
+      smooth scrolling, the project filter (<code class="inline">filterProjects(category)</code>), an image lightbox, and
+      contact-form validation with real-time feedback. Then review all three files together, test on desktop/tablet/mobile
+      across browsers, and use the dev-tools console plus Copilot to debug.</p>
+<pre class="code"><span class="cmt">// ===== Toggle navigation menu (hamburger) =====</span>
+const menuToggle = document.getElementById('menu-toggle');
+const navList = document.querySelector('nav ul');
+menuToggle?.addEventListener('click', () =&gt; {
+  navList.classList.toggle('open');
+  menuToggle.classList.toggle('active');
+});
+
+<span class="cmt">// ===== Smooth scroll for internal links =====</span>
+document.querySelectorAll('a[href^="#"]').forEach(anchor =&gt; {
+  anchor.addEventListener('click', function (e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    navList.classList.remove('open');
+    menuToggle.classList.remove('active');
+    target?.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+<span class="cmt">// ===== Filter projects by category =====</span>
+const filterButtons = document.querySelectorAll('#project-filters button');
+const projectCards = document.querySelectorAll('.project-card');
+filterButtons.forEach(button =&gt; {
+  button.addEventListener('click', () =&gt; {
+    filterProjects(button.getAttribute('data-category'));
+    filterButtons.forEach(btn =&gt; btn.classList.remove('active'));
+    button.classList.add('active');
+  });
+});
+function filterProjects(category) {
+  projectCards.forEach(card =&gt; {
+    const match = category === 'all' || card.dataset.category === category;
+    card.style.display = match ? 'block' : 'none';
+  });
+}
+
+<span class="cmt">// ===== Lightbox effect for project images =====</span>
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightbox-img');
+const lightboxClose = document.getElementById('lightbox-close');
+document.querySelectorAll('.project-card img').forEach(img =&gt; {
+  img.addEventListener('click', () =&gt; {
+    lightboxImg.src = img.src;
+    lightbox.style.display = 'flex';
+  });
+});
+lightboxClose.addEventListener('click', () =&gt; { lightbox.style.display = 'none'; });
+lightbox.addEventListener('click', (e) =&gt; {
+  if (e.target === lightbox) lightbox.style.display = 'none';
+});
+
+<span class="cmt">// ===== Contact form validation =====</span>
+const form = document.querySelector('.contact-form');
+form?.addEventListener('submit', function (e) {
+  e.preventDefault();
+  const fields = [form.name, form.email, form.message];
+  let valid = true;
+  fields.forEach(input =&gt; {
+    input.style.borderColor = '';
+    if (!input.value.trim()) { input.style.borderColor = 'red'; valid = false; }
+  });
+  if (valid) { alert('Message sent successfully!'); form.reset(); }
+  else { alert('Please fill in all required fields.'); }
+});
+
+<span class="cmt">// ===== Real-time input feedback =====</span>
+['name', 'email', 'message'].forEach(id =&gt; {
+  const input = document.getElementById(id);
+  input?.addEventListener('input', () =&gt; {
+    input.style.borderColor = input.value.trim() ? 'green' : 'red';
+  });
+});</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Opening <code class="inline">index.html</code> in a browser shows a styled, single-page portfolio. The navigation
+    collapses to a hamburger menu below <strong>768px</strong>; nav links <strong>smooth-scroll</strong> to their sections;
+    the Projects filter buttons show/hide cards by category; clicking a project image opens it in a <strong>lightbox</strong>;
+    and the Contact form blocks empty submissions while giving <strong>green/red real-time</strong> feedback — consistently
+    across Edge, Chrome, and Firefox.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">index.html</code> uses semantic tags (<code class="inline">header</code>, <code class="inline">nav</code>, <code class="inline">section</code>, <code class="inline">article</code>, <code class="inline">footer</code>) with <code class="inline">alt</code> text and ARIA roles</li>
+      <li><code class="inline">style.css</code> is linked in the <code class="inline">&lt;head&gt;</code> and styles header, cards, skill pills, and the contact form</li>
+      <li>A <code class="inline">@media (max-width: 768px)</code> query turns the nav into a working hamburger menu</li>
+      <li><code class="inline">script.js</code> is linked at the bottom and implements toggle, smooth scroll, <code class="inline">filterProjects()</code>, lightbox, and form validation</li>
+      <li>Color contrast verified against WCAG (e.g. WebAIM Contrast Checker)</li>
+      <li>The site is tested and behaves consistently in Edge, Chrome, and Firefox</li>
+      <li>All three files are saved together for use in the final integrated project</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Copilot as a pair-programmer, not an oracle</strong> — you prompt with tags, comments, and function
+        names, but you review every suggestion for correctness, accessibility, and SEO before accepting it.</li>
+      <li><strong>Separation of concerns across three layers</strong> — HTML carries <em>structure</em>, CSS carries
+        <em>presentation</em>, and JavaScript carries <em>behavior</em>; keeping them in <code class="inline">index.html</code>,
+        <code class="inline">style.css</code>, and <code class="inline">script.js</code> keeps the project maintainable.</li>
+      <li><strong>Semantic, accessible markup is the foundation</strong> — meaningful tags, <code class="inline">alt</code> text,
+        ARIA roles, keyboard access, and WCAG-compliant contrast benefit both users and search engines (SEO).</li>
+      <li><strong>Responsive design is intentional</strong> — a <code class="inline">768px</code> breakpoint, a collapsible
+        hamburger nav, and fluid media (<code class="inline">max-width: 100%</code>) make the single layout work from desktop to mobile.</li>
+      <li><strong>Integrate, then test and debug</strong> — the payoff only appears when the three files are wired together
+        and exercised across devices and browsers, using dev-tools and Copilot to resolve issues.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

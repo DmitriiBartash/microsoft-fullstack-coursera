@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Build a web page with asynchronous JavaScript — Course 3 · Module 3</title>
+<style>
+  :root {
+    --hdr: #ea580c ;      /* header / create  */
+    --pld: #f59e0b ;      /* payload / decode */
+    --sig: #f43f5e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 3 — Introduction to Web Development · Module 3 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Build a web page with asynchronous JavaScript</h1>
+    <p class="lead">
+      Build a small demo page to understand <strong>asynchronous programming</strong> in JavaScript.
+      Instead of hitting a real API, you'll <em>simulate</em> a delayed fetch with <code>setTimeout</code>
+      and surface the same mock data three ways — a <strong>callback</strong>, a <strong>Promise</strong>,
+      and <strong>async/await</strong> — then render the result into the DOM.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn the three core models of asynchronous JavaScript — <strong>callbacks</strong>,
+      <strong>Promises</strong>, and <strong>async/await</strong> (with <code class="inline">try</code>/<code class="inline">catch</code>
+      error handling) — by wiring a button that "fetches" local mock data after a delay and displays it on the page.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A tiny static site with two files served by VS Code Live Server:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>index.html</code></td><td>Page shell — heading, a <strong>Fetch Data</strong> button, an empty results <code>div</code></td></tr>
+        <tr><td><code>script.js</code></td><td>The async logic — callback, Promise, <code>async</code>/<code>await</code>, and DOM update</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">click #fetch-data</span> <span class="ar">→</span>
+      <span class="c">fetchAndDisplayData()</span> <span class="ar">→</span>
+      <span class="d">await fetchDataWithPromise()</span> <span class="ar">→</span>
+      <span class="ar">setTimeout 1s</span> <span class="ar">→</span>
+      <span class="t">resolve(mockData)</span> <span class="ar">→</span>
+      <span class="ar">#data-container.innerHTML</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>Visual Studio Code</li>
+      <li>The <strong>Live Server</strong> extension (provides the <strong>Go Live</strong> button)</li>
+      <li>A modern browser — no build tools, no <code class="inline">npm</code>, no framework</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Create a new HTML file</h3>
+    <ul class="plain">
+      <li>Select <strong>File &gt; New File</strong>.</li>
+      <li>Press <strong>Enter</strong> and select <strong>OK</strong>.</li>
+      <li>Name it <code class="inline">index.html</code>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Build the HTML structure</h3>
+    <p class="scenario">In <code class="inline">index.html</code>, set up a basic HTML5 document. Inside the
+      <code class="inline">&lt;body&gt;</code>, add:</p>
+    <ul class="plain">
+      <li>An <code class="inline">&lt;h1&gt;</code> heading with the text <strong>"Async JavaScript Lab"</strong>.</li>
+      <li>A <code class="inline">&lt;button&gt;</code> with the ID <code class="inline">fetch-data</code> and the text <strong>"Fetch Data"</strong>.</li>
+      <li>A <code class="inline">&lt;div&gt;</code> with the ID <code class="inline">data-container</code> to display results.</li>
+    </ul>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8" /&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;
+    &lt;title&gt;Async JavaScript Lab&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Async JavaScript Lab&lt;/h1&gt;
+    &lt;button id="fetch-data"&gt;Fetch Data&lt;/button&gt;
+    &lt;div id="data-container"&gt;&lt;/div&gt;
+
+    &lt;script src="script.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+    <div class="callout">
+      The <code class="inline">&lt;script&gt;</code> tag sits just before <code class="inline">&lt;/body&gt;</code>
+      so the button and container exist in the DOM by the time <code class="inline">script.js</code> runs.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Create a new JavaScript file</h3>
+    <ul class="plain">
+      <li>Select <strong>File &gt; New File</strong>.</li>
+      <li>Name it <code class="inline">script.js</code>.</li>
+      <li>Press <strong>Enter</strong> and select <strong>OK</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Write the asynchronous JavaScript code</h3>
+    <p class="scenario">You will simulate data fetching and use callbacks, Promises, and
+      <code class="inline">async</code>/<code class="inline">await</code> with local data and a delay via
+      <code class="inline">setTimeout</code>.</p>
+    <ul class="plain">
+      <li><strong>Callback function</strong> — takes a callback, uses <code class="inline">setTimeout</code> to simulate a delay, then runs the callback with mock data (an array of names).</li>
+      <li><strong>Promises</strong> — convert the callback function into one that returns a <code class="inline">Promise</code>, resolved with the same mock data.</li>
+      <li><strong>async/await</strong> — use <code class="inline">async</code> and <code class="inline">await</code> to handle the Promise, then update the DOM with string concatenation and <code class="inline">.innerHTML</code>.</li>
+      <li><strong>Error handling</strong> — wrap the <code class="inline">async</code>/<code class="inline">await</code> logic in <code class="inline">try</code>/<code class="inline">catch</code> and log a console message if an error occurs.</li>
+    </ul>
+<pre class="code"><span class="cmt">// --- Mock Data ---</span>
+const mockData = ['Alice', 'Bob', 'Charlie'];
+
+<span class="cmt">// --- 1. Callback-based Fetch ---</span>
+function fetchDataWithCallback(callback) {
+    setTimeout(() =&gt; {
+        callback(mockData);
+    }, 1000);
+}
+
+<span class="cmt">// --- 2. Promise-based Fetch ---</span>
+function fetchDataWithPromise() {
+    return new Promise((resolve, reject) =&gt; {
+        setTimeout(() =&gt; {
+            <span class="cmt">// Simulate success</span>
+            resolve(mockData);
+            <span class="cmt">// To simulate error, uncomment the line below:</span>
+            <span class="cmt">// reject('Failed to fetch data');</span>
+        }, 1000);
+    });
+}
+
+<span class="cmt">// --- 3 &amp; 4. Async/Await + Error Handling ---</span>
+async function fetchAndDisplayData() {
+    try {
+        const data = await fetchDataWithPromise();
+        const container = document.getElementById('data-container');
+        container.innerHTML = '';
+        let html = '&lt;ul&gt;';
+        for (let name of data) {
+            html += '&lt;li&gt;' + name + '&lt;/li&gt;';
+        }
+        html += '&lt;/ul&gt;';
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error fetching data:', error);
+    }
+}
+
+<span class="cmt">// --- Button Click Handler ---</span>
+document.getElementById('fetch-data').addEventListener('click', () =&gt; {
+    fetchAndDisplayData();
+});
+
+<span class="cmt">// Uncomment to test callback version</span>
+<span class="cmt">/*
+fetchDataWithCallback((data) =&gt; {
+  console.log('Callback Data:', data);
+});
+*/</span></pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Run your code</h3>
+    <ul class="plain">
+      <li>Click <strong>Go Live</strong> in the lower-right corner of Visual Studio Code.</li>
+      <li>A new browser tab should open, displaying your page.</li>
+      <li>Click the <strong>Fetch Data</strong> button to test your asynchronous logic.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    After clicking <strong>Fetch Data</strong>, the page pauses for about one second (the simulated network
+    delay), then <code class="inline">#data-container</code> fills with a bulleted list of the mock names —
+    <strong>Alice</strong>, <strong>Bob</strong>, <strong>Charlie</strong>. Uncomment the
+    <code class="inline">reject(...)</code> line to watch the <code class="inline">catch</code> block log
+    <code class="inline">Error fetching data:</code> to the console instead.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">index.html</code> contains the <code class="inline">&lt;h1&gt;</code>, a <code class="inline">#fetch-data</code> button, and an empty <code class="inline">#data-container</code></li>
+      <li><code class="inline">script.js</code> defines <code class="inline">fetchDataWithCallback</code>, <code class="inline">fetchDataWithPromise</code>, and <code class="inline">fetchAndDisplayData</code></li>
+      <li>The Promise version resolves with <code class="inline">mockData</code> after a <code class="inline">setTimeout</code> delay</li>
+      <li><code class="inline">async</code>/<code class="inline">await</code> reads the Promise inside a <code class="inline">try</code>/<code class="inline">catch</code> block</li>
+      <li>Clicking <strong>Fetch Data</strong> renders the names as a <code class="inline">&lt;ul&gt;</code> inside <code class="inline">#data-container</code></li>
+      <li>Uncommenting <code class="inline">reject(...)</code> triggers the <code class="inline">catch</code> and logs the error</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong><code class="inline">setTimeout</code> simulates async work</strong> — it schedules the callback to run
+        after the delay without blocking the page, standing in for a real network request.</li>
+      <li><strong>Callbacks → Promises → async/await</strong> — the same task expressed three ways; each step up
+        flattens nesting and makes the "do this <em>after</em> that" intent read top-to-bottom.</li>
+      <li><strong><code class="inline">await</code> pauses, it doesn't block</strong> — it suspends only the
+        <code class="inline">async</code> function until the Promise settles; the rest of the page (and event loop) keeps running.</li>
+      <li><strong><code class="inline">try</code>/<code class="inline">catch</code> handles failure</strong> — a rejected
+        Promise surfaces as a thrown error, so wrapping the <code class="inline">await</code> lets one block handle both success and failure paths.</li>
+      <li><strong>Update the DOM once</strong> — build the markup string in a variable, then assign
+        <code class="inline">.innerHTML</code> a single time to render the whole list efficiently.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

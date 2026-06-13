@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Deserialization — Course 5 · Module 3</title>
+<style>
+  :root {
+    --hdr: #2563eb;      /* header / create  */
+    --pld: #0891b2;      /* payload / decode */
+    --sig: #3b82f6;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 5 — Back-End Development with .NET · Module 3 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Deserialization</h1>
+    <p class="lead">
+      Build a .NET console app that <strong>deserializes</strong> a <code>Person</code> object from three
+      formats — <strong>binary</strong>, <strong>XML</strong>, and <strong>JSON</strong> — and then
+      <strong>verifies the integrity</strong> of the restored data. One model, three round-trips, one
+      integrity check that proves nothing was lost.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn how to read serialized data back into .NET objects across multiple formats.
+      You'll implement binary deserialization with <code class="inline">BinaryReader</code>, XML deserialization
+      with <code class="inline">XmlSerializer</code>, and JSON deserialization with
+      <code class="inline">System.Text.Json</code>, then validate that every required property survived the round-trip.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A console project named <code class="inline">DeserializationLab</code> made of two files:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Person.cs</code></td><td>The model being round-tripped (<code>UserName</code>, <code>UserAge</code>, <code>Email</code>, <code>IsActive</code>)</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Serialize once, then deserialize from binary, XML, and JSON + integrity check</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="t">Person</span> <span class="ar">→</span>
+      <span class="c">write (bin / xml / json)</span> <span class="ar">→</span>
+      <span class="d">read back</span> <span class="ar">→</span>
+      <span class="t">Person</span> <span class="ar">→</span>
+      <span class="ar">integrity check</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>Built-in namespaces only: <code class="inline">System.Text.Json</code> (JSON) and
+        <code class="inline">System.Xml.Serialization</code> (XML) — no extra NuGet packages required</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Create a new .NET console application. This program reads data from different
+      formats (binary, XML, and JSON) back into objects.</p>
+<pre class="code">dotnet new console -n DeserializationLab
+cd DeserializationLab</pre>
+    <ul class="plain">
+      <li>Open the project in Visual Studio Code.</li>
+      <li><strong>Delete any existing code</strong> in <code class="inline">Program.cs</code>.</li>
+      <li>The serialization namespaces ship with the .NET SDK: <code class="inline">System.Text.Json</code> for
+        JSON and <code class="inline">System.Xml.Serialization</code> for XML — no package installs needed.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Define the <code>Person</code> model</h3>
+    <p class="scenario">Public, settable properties are what <code class="inline">XmlSerializer</code> and
+      <code class="inline">System.Text.Json</code> both need to repopulate the object on the way back in.</p>
+    <p>Create a new file <code class="inline">Person.cs</code>:</p>
+<pre class="code">namespace DeserializationLab.Models;
+
+public class Person
+{
+    public required string UserName { get; set; }
+    public int UserAge { get; set; }
+    public required string Email { get; set; }
+    public bool IsActive { get; set; }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Binary deserialization (<code>BinaryWriter</code> / <code>BinaryReader</code>)</h3>
+    <p class="scenario">Write each field into <code class="inline">person.dat</code>, then read the fields back
+      <strong>in the same order</strong> and reconstruct the object.</p>
+    <div class="callout">
+      <strong>Order matters.</strong> <code class="inline">BinaryReader</code> has no notion of names, only
+      position and type — reads must mirror the exact write sequence.
+    </div>
+<pre class="code">Console.WriteLine("=== Binary ===");
+try
+{
+    using var fsWrite = new FileStream(binaryPath, FileMode.Create);
+    using var writer = new BinaryWriter(fsWrite, Encoding.UTF8);
+    writer.Write(person.UserName);
+    writer.Write(person.UserAge);
+    writer.Write(person.Email);
+    writer.Write(person.IsActive);
+
+    using var fsRead = new FileStream(binaryPath, FileMode.Open);
+    using var reader = new BinaryReader(fsRead, Encoding.UTF8);
+    var name = reader.ReadString();
+    var age = reader.ReadInt32();
+    var email = reader.ReadString();
+    var active = reader.ReadBoolean();
+    Console.WriteLine($"Binary restored: {name}, {age}, {email}, Active={active}");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Binary error: {ex.Message}");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> XML deserialization (<code>XmlSerializer</code>)</h3>
+    <p class="scenario">Serialize the object to <code class="inline">person.xml</code>, then deserialize it
+      back and cast the result to <code class="inline">Person</code>.</p>
+<pre class="code">Console.WriteLine("\n=== XML ===");
+try
+{
+    var xmlSerializer = new XmlSerializer(typeof(Person));
+    using var fsXml = new FileStream(xmlPath, FileMode.Create);
+    xmlSerializer.Serialize(fsXml, person);
+
+    using var fsXmlRead = new FileStream(xmlPath, FileMode.Open);
+    var xmlPersonObj = xmlSerializer.Deserialize(fsXmlRead);
+    var xmlPerson = xmlPersonObj as Person;
+    if (xmlPerson != null)
+        Console.WriteLine($"XML restored: {xmlPerson.UserName}, {xmlPerson.UserAge}, {xmlPerson.Email}, Active={xmlPerson.IsActive}");
+    else
+        Console.WriteLine("XML restored: Deserialization returned null.");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"XML error: {ex.Message}");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> JSON deserialization (<code>System.Text.Json</code>)</h3>
+    <p class="scenario">Serialize the object to <code class="inline">person.json</code>, then deserialize the
+      file contents back into a typed <code class="inline">Person</code>.</p>
+<pre class="code">Console.WriteLine("\n=== JSON ===");
+try
+{
+    var json = JsonSerializer.Serialize(person, new JsonSerializerOptions { WriteIndented = true });
+    File.WriteAllText(jsonPath, json);
+
+    var jsonPerson = JsonSerializer.Deserialize&lt;Person&gt;(File.ReadAllText(jsonPath));
+    if (jsonPerson != null)
+        Console.WriteLine($"JSON restored: {jsonPerson.UserName}, {jsonPerson.UserAge}, {jsonPerson.Email}, Active={jsonPerson.IsActive}");
+    else
+        Console.WriteLine("JSON restored: Deserialization returned null.");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"JSON error: {ex.Message}");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Verify integrity of deserialized data</h3>
+    <p class="scenario">Check that all required properties are present (not <code class="inline">null</code> or
+      empty) and values are sensible — for example, <code class="inline">UserAge</code> greater than zero.</p>
+<pre class="code">Console.WriteLine("\n=== Integrity Check ===");
+try
+{
+    var jsonPerson = JsonSerializer.Deserialize&lt;Person&gt;(File.ReadAllText(jsonPath));
+    if (!string.IsNullOrEmpty(jsonPerson?.UserName) &amp;&amp; jsonPerson.UserAge &gt; 0 &amp;&amp; !string.IsNullOrEmpty(jsonPerson.Email))
+        Console.WriteLine("Integrity check passed: all formats preserved data correctly");
+    else
+        Console.WriteLine("Integrity check failed: some data missing or corrupted");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Integrity check error: {ex.Message}");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Putting it together — <code>Program.cs</code></h3>
+    <p class="scenario">Create a <code class="inline">Data</code> directory, build one sample
+      <code class="inline">Person</code>, and run all four blocks in sequence, then run the app.</p>
+<pre class="code">using System.Text;
+using System.Text.Json;
+using System.Xml.Serialization;
+using DeserializationLab.Models;
+
+class Program
+{
+    static void Main()
+    {
+        Directory.CreateDirectory("Data");
+
+        var person = new Person
+        {
+            UserName = "Bob",
+            UserAge = 25,
+            Email = "bob@example.com",
+            IsActive = true
+        };
+
+        var binaryPath = Path.Combine("Data", "person.dat");
+        var xmlPath = Path.Combine("Data", "person.xml");
+        var jsonPath = Path.Combine("Data", "person.json");
+
+        Console.WriteLine("=== Binary ===");
+        try
+        {
+            using var fsWrite = new FileStream(binaryPath, FileMode.Create);
+            using var writer = new BinaryWriter(fsWrite, Encoding.UTF8);
+            writer.Write(person.UserName);
+            writer.Write(person.UserAge);
+            writer.Write(person.Email);
+            writer.Write(person.IsActive);
+
+            using var fsRead = new FileStream(binaryPath, FileMode.Open);
+            using var reader = new BinaryReader(fsRead, Encoding.UTF8);
+            var name = reader.ReadString();
+            var age = reader.ReadInt32();
+            var email = reader.ReadString();
+            var active = reader.ReadBoolean();
+            Console.WriteLine($"Binary restored: {name}, {age}, {email}, Active={active}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Binary error: {ex.Message}");
+        }
+
+        Console.WriteLine("\n=== XML ===");
+        try
+        {
+            var xmlSerializer = new XmlSerializer(typeof(Person));
+            using var fsXml = new FileStream(xmlPath, FileMode.Create);
+            xmlSerializer.Serialize(fsXml, person);
+
+            using var fsXmlRead = new FileStream(xmlPath, FileMode.Open);
+            var xmlPersonObj = xmlSerializer.Deserialize(fsXmlRead);
+            var xmlPerson = xmlPersonObj as Person;
+            if (xmlPerson != null)
+                Console.WriteLine($"XML restored: {xmlPerson.UserName}, {xmlPerson.UserAge}, {xmlPerson.Email}, Active={xmlPerson.IsActive}");
+            else
+                Console.WriteLine("XML restored: Deserialization returned null.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"XML error: {ex.Message}");
+        }
+
+        Console.WriteLine("\n=== JSON ===");
+        try
+        {
+            var json = JsonSerializer.Serialize(person, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(jsonPath, json);
+
+            var jsonPerson = JsonSerializer.Deserialize&lt;Person&gt;(File.ReadAllText(jsonPath));
+            if (jsonPerson != null)
+                Console.WriteLine($"JSON restored: {jsonPerson.UserName}, {jsonPerson.UserAge}, {jsonPerson.Email}, Active={jsonPerson.IsActive}");
+            else
+                Console.WriteLine("JSON restored: Deserialization returned null.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"JSON error: {ex.Message}");
+        }
+
+        Console.WriteLine("\n=== Integrity Check ===");
+        try
+        {
+            var jsonPerson = JsonSerializer.Deserialize&lt;Person&gt;(File.ReadAllText(jsonPath));
+            if (!string.IsNullOrEmpty(jsonPerson?.UserName) &amp;&amp; jsonPerson.UserAge &gt; 0 &amp;&amp; !string.IsNullOrEmpty(jsonPerson.Email))
+                Console.WriteLine("Integrity check passed: all formats preserved data correctly");
+            else
+                Console.WriteLine("Integrity check failed: some data missing or corrupted");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Integrity check error: {ex.Message}");
+        }
+    }
+}</pre>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The console prints one section per format, each echoing the <strong>restored</strong>
+    <code class="inline">Person</code>, followed by a passing integrity check.
+  </div>
+  <div class="card">
+<pre class="code">=== Binary ===
+Binary restored: Bob, 25, bob@example.com, Active=True
+
+=== XML ===
+XML restored: Bob, 25, bob@example.com, Active=True
+
+=== JSON ===
+JSON restored: Bob, 25, bob@example.com, Active=True
+
+=== Integrity Check ===
+Integrity check passed: all formats preserved data correctly</pre>
+    <p style="margin:12px 0 0">A <code class="inline">Data/</code> folder now holds <code class="inline">person.dat</code>,
+      <code class="inline">person.xml</code>, and <code class="inline">person.json</code> — the three serialized
+      payloads you read back.</p>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">DeserializationLab</code> console project created and <code class="inline">Program.cs</code> cleared</li>
+      <li><code class="inline">Person.cs</code> defines <code class="inline">UserName</code>, <code class="inline">UserAge</code>, <code class="inline">Email</code>, and <code class="inline">IsActive</code></li>
+      <li>Binary round-trip reads fields back <strong>in write order</strong> with <code class="inline">BinaryReader</code></li>
+      <li>XML round-trip restores the object via <code class="inline">XmlSerializer.Deserialize</code></li>
+      <li>JSON round-trip restores the object via <code class="inline">JsonSerializer.Deserialize&lt;Person&gt;</code></li>
+      <li>Each format is wrapped in <code class="inline">try/catch</code> and prints its restored values</li>
+      <li>The integrity check confirms all required properties are present and prints "passed"</li>
+      <li><code class="inline">dotnet run</code> produces the four sections and writes the three files under <code class="inline">Data/</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Deserialization is format-specific, the model is not</strong> — one <code class="inline">Person</code>
+        class is reused across binary, XML, and JSON; only the <em>reader</em> changes.</li>
+      <li><strong>Binary is positional</strong> — <code class="inline">BinaryReader</code> restores fields by
+        <strong>order and type</strong>, not by name, so reads must mirror the exact write sequence
+        (<code class="inline">ReadString</code>, <code class="inline">ReadInt32</code>, <code class="inline">ReadString</code>, <code class="inline">ReadBoolean</code>).</li>
+      <li><strong><code class="inline">XmlSerializer</code> and <code class="inline">System.Text.Json</code> are reflection-driven</strong>
+        — they need public, parameterless-constructable types with settable properties to repopulate the object.</li>
+      <li><strong>Fail fast, isolate failures</strong> — wrapping each format in its own <code class="inline">try/catch</code>
+        keeps a malformed XML payload from killing the JSON path and surfaces type mismatches as readable errors.</li>
+      <li><strong>Validate after you deserialize</strong> — round-tripping success isn't integrity; check that required
+        properties are non-null and values are sensible (<code class="inline">UserAge &gt; 0</code>) before trusting the data.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Advanced Debugging — Course 1 · Module 6</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;     /* header / create  */
+    --pld: #0ea5e9 ;     /* payload / decode */
+    --sig: #22c55e ;     /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 6 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Advanced Debugging</h1>
+    <p class="lead">
+      Use <strong>Microsoft Copilot</strong> as a debugging partner on a working-but-fragile C# console
+      To-Do app. You'll review the code by hand, then prompt Copilot to harden three weak spots —
+      <strong>loop efficiency</strong>, <strong>input validation</strong>, and <strong>edge-case handling</strong> —
+      and finish with a round of tests that prove the program no longer crashes or misbehaves.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Use Microsoft Copilot to identify and fix advanced issues in a code block, applying
+      AI-assisted debugging to sharpen your problem-solving. The focus is on <strong>optimizing loops</strong>,
+      <strong>strengthening input validation</strong>, and <strong>handling edge cases</strong> gracefully.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">🧩</span> What you'll produce</h2>
+  <div class="card">
+    <p>A hardened version of a C# console <strong>To-Do List</strong> app, plus the Copilot prompts and
+      reasoning that got you there. You start from a buggy baseline and improve three areas:</p>
+    <table>
+      <thead><tr><th>Area</th><th>Symptom in the starting code</th><th>Goal after debugging</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Loop efficiency</strong></td><td><code>ViewTasks</code> re-checks state every iteration; no guard for empty input</td><td>Iterate cleanly, short-circuit on empty lists</td></tr>
+        <tr><td><strong>Input validation</strong></td><td>Menu choice parses, but blank/whitespace and out-of-range values slip through inconsistently</td><td>Reject non-numeric, out-of-range, and empty inputs early</td></tr>
+        <tr><td><strong>Edge cases</strong></td><td>Marking a non-existent task, empty task list, abrupt exit</td><td>Every branch degrades gracefully with a clear message</td></tr>
+      </tbody>
+    </table>
+    <h4>Debugging loop</h4>
+    <div class="flow">
+      <span class="ar">Review by hand</span> <span class="ar">→</span>
+      <span class="c">Prompt Copilot</span> <span class="ar">→</span>
+      <span class="t">Apply suggestion</span> <span class="ar">→</span>
+      <span class="d">Re-test</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>An IDE with <strong>Microsoft Copilot</strong> available (Visual Studio or VS Code with the Copilot extension)</li>
+      <li>The starting code below, loaded into a console project (<code class="inline">dotnet new console</code>)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🔍</span> Walkthrough — review the starting code</h2>
+  <div class="card">
+    <p>Before touching anything, read the program manually and locate the weak spots. This is the
+      code Copilot will help you harden:</p>
+<pre class="code">class Program
+{
+    static void Main()
+    {
+        List&lt;string&gt; tasks = new List&lt;string&gt;();
+        bool exit = false;
+        while (!exit)
+        {
+            ShowMenu();
+            Console.Write("Enter your choice: ");
+            if (int.TryParse(Console.ReadLine(), out int choice))
+            {
+                switch (choice)
+                {
+                    case 1:
+                        ViewTasks(tasks);
+                        break;
+                    case 2:
+                        AddTask(tasks);
+                        break;
+                    case 3:
+                        MarkTaskComplete(tasks);
+                        break;
+                    case 4:
+                        exit = true;
+                        Console.WriteLine("Goodbye!");
+                        break;
+                    default:
+                        Console.WriteLine("Invalid option. Please try again.");
+                        break;
+                }
+            }
+            else
+            {
+                Console.WriteLine("Please enter a valid number.");
+            }
+            Console.WriteLine();
+        }
+    }
+
+    static void ShowMenu()
+    {
+        Console.WriteLine("=== TO-DO LIST MENU ===");
+        Console.WriteLine("1. View Tasks");
+        Console.WriteLine("2. Add Task");
+        Console.WriteLine("3. Mark Task Complete");
+        Console.WriteLine("4. Exit");
+    }
+
+    static void ViewTasks(List&lt;string&gt; tasks)
+    {
+        Console.WriteLine("\nYour Tasks:");
+        if (tasks.Count == 0)
+        {
+            Console.WriteLine("No tasks available.");
+        }
+        else
+        {
+            for (int i = 0; i &lt; tasks.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {tasks[i]}");
+            }
+        }
+    }
+
+    static void AddTask(List&lt;string&gt; tasks)
+    {
+        Console.Write("Enter the task: ");
+        string? input = Console.ReadLine();
+        string task = input != null ? input.Trim() : string.Empty;
+        if (string.IsNullOrEmpty(task))
+        {
+            Console.WriteLine("Task cannot be empty.");
+        }
+        else
+        {
+            tasks.Add(task);
+            Console.WriteLine("Task added.");
+        }
+    }
+
+    static void MarkTaskComplete(List&lt;string&gt; tasks)
+    {
+        if (tasks.Count == 0)
+        {
+            Console.WriteLine("No tasks to mark complete.");
+            return;
+        }
+        Console.Write("Enter the task number to mark complete: ");
+        if (int.TryParse(Console.ReadLine(), out int taskNumber) &amp;&amp;
+            taskNumber &gt; 0 &amp;&amp; taskNumber &lt;= tasks.Count)
+        {
+            string currentTask = tasks[taskNumber - 1];
+            if (currentTask.EndsWith(" [Complete]"))
+            {
+                Console.WriteLine("This task is already marked as complete.");
+            }
+            else
+            {
+                tasks[taskNumber - 1] += " [Complete]";
+                Console.WriteLine("Task marked as complete.");
+            }
+        }
+        else
+        {
+            Console.WriteLine("Invalid task number.");
+        }
+    }
+}</pre>
+    <h4>What to look for as you read</h4>
+    <ul class="plain">
+      <li><strong>Loops</strong> — <code class="inline">ViewTasks</code> is the main loop. Is the empty-list check in the right place, and does the index math stay in bounds?</li>
+      <li><strong>Validation</strong> — the menu accepts any parsed <code class="inline">int</code>, but does every method reject blank or whitespace-only input the same way?</li>
+      <li><strong>Edge cases</strong> — what happens on an empty list, an out-of-range task number, or a task that's already complete?</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Activate Copilot and surface logical errors</h3>
+    <p class="scenario">Load the code into your IDE with Microsoft Copilot active, then ask it to critique the
+      loop and point out problems you may have missed — especially how the loop processes each item in the list.</p>
+    <div class="callout"><strong>Prompt:</strong> <em>"Copilot, suggest improvements for this loop to handle all task scenarios."</em></div>
+    <p style="margin:0">Use Copilot's response to confirm or extend your manual review: inefficient iterations,
+      validation gaps, and redundant operations.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Optimize the loops</h3>
+    <p class="scenario">Focus on the loop structure next. Ask Copilot to help you rewrite it so it handles every
+      item without unnecessary iterations and short-circuits on empty or near-boundary lists.</p>
+    <div class="callout"><strong>Prompt:</strong> <em>"How can I optimize this loop for better performance?"</em></div>
+    <p>A clean, guarded display loop:</p>
+<pre class="code">static void ViewTasks(List&lt;string&gt; tasks)
+{
+    Console.WriteLine("\nYour Tasks:");
+    if (tasks.Count == 0)
+    {
+        Console.WriteLine("No tasks available.");
+        return;                       <span class="cmt">// short-circuit: nothing to iterate</span>
+    }
+
+    for (int i = 0; i &lt; tasks.Count; i++)
+    {
+        Console.WriteLine($"{i + 1}. {tasks[i]}");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Strengthen input validation</h3>
+    <p class="scenario">Ask Copilot to find weak points in the validation logic — non-numeric input,
+      out-of-range values, and empty or whitespace-only strings — then apply and test its suggestions against each invalid scenario.</p>
+    <div class="callout"><strong>Prompt:</strong> <em>"Can you suggest how to strengthen this input validation block?"</em></div>
+    <p>Make blank/whitespace rejection consistent with <code class="inline">IsNullOrWhiteSpace</code>, and centralize numeric parsing:</p>
+<pre class="code">static int ReadMenuChoice()
+{
+    Console.Write("Enter your choice: ");
+    string? line = Console.ReadLine();
+    if (int.TryParse(line, out int choice))
+        return choice;
+
+    Console.WriteLine("Please enter a valid number.");
+    return -1;                        <span class="cmt">// sentinel handled by the default branch</span>
+}
+
+static void AddTask(List&lt;string&gt; tasks)
+{
+    Console.Write("Enter the task: ");
+    string task = (Console.ReadLine() ?? string.Empty).Trim();
+
+    if (string.IsNullOrWhiteSpace(task))   <span class="cmt">// rejects "" and "   "</span>
+    {
+        Console.WriteLine("Task cannot be empty.");
+        return;
+    }
+
+    tasks.Add(task);
+    Console.WriteLine("Task added.");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Handle edge cases</h3>
+    <p class="scenario">Ask Copilot how to better manage unusual inputs and unexpected actions: no tasks present,
+      marking a task that doesn't exist, or exiting unexpectedly. Implement its suggestions so every branch fails gracefully.</p>
+    <div class="callout"><strong>Prompt:</strong> <em>"How should this code handle edge cases like marking a non-existent task or an empty list?"</em></div>
+<pre class="code">static void MarkTaskComplete(List&lt;string&gt; tasks)
+{
+    if (tasks.Count == 0)
+    {
+        Console.WriteLine("No tasks to mark complete.");
+        return;                       <span class="cmt">// edge case: empty list</span>
+    }
+
+    Console.Write("Enter the task number to mark complete: ");
+    if (!int.TryParse(Console.ReadLine(), out int taskNumber) ||
+        taskNumber &lt; 1 || taskNumber &gt; tasks.Count)
+    {
+        Console.WriteLine("Invalid task number.");   <span class="cmt">// edge case: non-existent / out-of-range</span>
+        return;
+    }
+
+    int index = taskNumber - 1;
+    if (tasks[index].EndsWith(" [Complete]"))
+    {
+        Console.WriteLine("This task is already marked as complete.");
+        return;                       <span class="cmt">// edge case: already complete</span>
+    }
+
+    tasks[index] += " [Complete]";
+    Console.WriteLine("Task marked as complete.");
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Final testing and validation</h3>
+    <p class="scenario">After applying Copilot's suggestions, run the program through several rounds of tests.</p>
+    <ul class="plain">
+      <li>Test with <strong>valid and invalid inputs</strong> (letters, blanks, out-of-range numbers).</li>
+      <li>Confirm the loop runs efficiently for both <strong>small and large</strong> task lists.</li>
+      <li>Confirm validation <strong>prevents crashes or incorrect behavior</strong> in every branch.</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The app runs the same To-Do menu, but now every path is safe: empty lists short-circuit,
+    non-numeric and out-of-range entries are rejected with a clear message, and marking a
+    missing or already-complete task no longer breaks the flow. <strong>No input crashes the program.</strong>
+  </div>
+<pre class="code">=== TO-DO LIST MENU ===
+1. View Tasks
+2. Add Task
+3. Mark Task Complete
+4. Exit
+Enter your choice: abc
+Please enter a valid number.
+
+=== TO-DO LIST MENU ===
+...
+Enter your choice: 3
+No tasks to mark complete.</pre>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>You reviewed the starting code <strong>by hand</strong> and listed the weak spots before prompting Copilot</li>
+      <li>Copilot's loop suggestions applied — <code class="inline">ViewTasks</code> short-circuits on empty lists and iterates cleanly</li>
+      <li>Input validation rejects <strong>non-numeric, out-of-range, and empty/whitespace</strong> inputs consistently</li>
+      <li>Edge cases handled — empty list, non-existent task number, already-complete task</li>
+      <li><code class="inline">dotnet run</code> completes a full test pass with valid and invalid inputs and <strong>no crashes</strong></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>AI-assisted debugging is a dialogue</strong> — Copilot surfaces candidates (inefficient loops, validation gaps), but you stay the reviewer: verify each suggestion against the program's intent before applying it.</li>
+      <li><strong>Guard clauses and early return</strong> — short-circuiting on empty lists or invalid input keeps loops efficient and flattens nesting, making each method easier to reason about.</li>
+      <li><strong>Validate at the boundary</strong> — parse and range-check every external input (<code class="inline">int.TryParse</code>, <code class="inline">IsNullOrWhiteSpace</code>, bounds on the task number) so bad data is rejected before it reaches your logic.</li>
+      <li><strong>Edge cases are first-class</strong> — empty collections, out-of-range indices, and "already done" states each need their own branch with a clear message, not a crash.</li>
+      <li><strong>Test the unhappy paths</strong> — a fix isn't done until you've driven invalid and boundary inputs through it and confirmed graceful behavior.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

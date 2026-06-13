@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Building a RESTful API — Course 7 · Module 1</title>
+<style>
+  :root {
+    --hdr: #db2777;      /* header / create  */
+    --pld: #9333ea;      /* payload / decode */
+    --sig: #ec4899;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 1 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Building a RESTful API</h1>
+    <p class="lead">
+      Build a small <strong>RESTful API</strong> with <strong>.NET Minimal API</strong> in Visual Studio
+      Code that lets users manage a list of tasks. You will wire up the four CRUD operations —
+      <strong>Create, Read, Update, Delete</strong> — over HTTP, return correct status codes, and verify
+      every endpoint with <code>Postman</code>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this lab, you will be able to build a RESTful API using
+      <strong>.NET Minimal API</strong> in a back-end environment: scaffold the project, expose
+      <code class="inline">GET</code>/<code class="inline">POST</code>/<code class="inline">PUT</code>/<code class="inline">DELETE</code>
+      endpoints backed by an in-memory task list, return proper HTTP status codes, and test the API with Postman.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single-file web project named <code class="inline">MinimalApiDemo</code> whose
+      <code class="inline">Program.cs</code> exposes a <code class="inline">/tasks</code> resource with full CRUD:</p>
+    <table>
+      <thead><tr><th>Method</th><th>Route</th><th>Purpose</th><th>Success status</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET</code></td><td><code>/tasks</code></td><td>Retrieve all tasks</td><td><code>200 OK</code></td></tr>
+        <tr><td><code>POST</code></td><td><code>/tasks</code></td><td>Create a new task</td><td><code>201 Created</code></td></tr>
+        <tr><td><code>PUT</code></td><td><code>/tasks/{id}</code></td><td>Update an existing task</td><td><code>200 OK</code> / <code>404</code></td></tr>
+        <tr><td><code>DELETE</code></td><td><code>/tasks/{id}</code></td><td>Remove a task</td><td><code>204 No Content</code> / <code>404</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">HTTP request</span> <span class="ar">→</span>
+      <span class="c">Minimal API endpoint</span> <span class="ar">→</span>
+      <span class="t">in-memory List&lt;TaskItem&gt;</span> <span class="ar">→</span>
+      <span class="d">JSON response</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>Postman to exercise the endpoints</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Open Visual Studio Code and a new terminal, then scaffold a .NET web application and move into it.</p>
+<pre class="code">dotnet new web -o MinimalApiDemo
+cd MinimalApiDemo</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and <strong>remove any existing code</strong> so you can start fresh.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Set up the API</h3>
+    <p class="scenario">Configure the builder, create an in-memory task list, and add a <code class="inline">GET</code> route that returns every task.</p>
+<pre class="code">var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+<span class="cmt">// In-memory data store</span>
+var tasks = new List&lt;TaskItem&gt;();
+
+<span class="cmt">// Read: return all tasks</span>
+app.MapGet("/tasks", () =&gt; Results.Ok(tasks));
+
+app.Run();
+
+<span class="cmt">// Task model</span>
+record TaskItem(int Id, string Name, bool IsCompleted);</pre>
+    <div class="callout">
+      A <code class="inline">record</code> gives a concise, immutable model; the <code class="inline">List&lt;TaskItem&gt;</code>
+      lives in memory, so data resets every time the app restarts.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Create the CRUD endpoints</h3>
+    <p class="scenario">Add the remaining endpoints so the API can <strong>Create, Update, and Delete</strong> tasks, each
+      returning the correct status code: <code class="inline">201 Created</code>, <code class="inline">200 OK</code>,
+      <code class="inline">204 No Content</code>, or <code class="inline">404 Not Found</code>.</p>
+<pre class="code"><span class="cmt">// Create: add a new task</span>
+app.MapPost("/tasks", (TaskItem task) =&gt;
+{
+    tasks.Add(task);
+    return Results.Created($"/tasks/{task.Id}", task);
+});
+
+<span class="cmt">// Update: replace an existing task by id</span>
+app.MapPut("/tasks/{id}", (int id, TaskItem updated) =&gt;
+{
+    var index = tasks.FindIndex(t =&gt; t.Id == id);
+    if (index == -1)
+        return Results.NotFound($"Task {id} not found.");
+
+    tasks[index] = updated;
+    return Results.Ok(updated);
+});
+
+<span class="cmt">// Delete: remove a task by id</span>
+app.MapDelete("/tasks/{id}", (int id) =&gt;
+{
+    var task = tasks.FirstOrDefault(t =&gt; t.Id == id);
+    if (task is null)
+        return Results.NotFound($"Task {id} not found.");
+
+    tasks.Remove(task);
+    return Results.NoContent();
+});</pre>
+    <ul class="plain">
+      <li>Place these calls <strong>before</strong> <code class="inline">app.Run();</code>, then run the API:</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Note the URL the app listens on (the default is <code class="inline">http://localhost:5000</code>).</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Test the API with Postman</h3>
+    <p class="scenario">With the API running, open Postman and exercise each endpoint.</p>
+    <ul class="plain">
+      <li><strong>GET</strong> — send a <code class="inline">GET</code> request to <code class="inline">http://localhost:5000/tasks</code> to retrieve all tasks.</li>
+      <li><strong>POST</strong> — send a <code class="inline">POST</code> request to <code class="inline">http://localhost:5000/tasks</code> with a JSON body:</li>
+    </ul>
+<pre class="code">{
+  "id": 1,
+  "name": "Learn .NET Minimal API",
+  "isCompleted": false
+}</pre>
+    <ul class="plain">
+      <li><strong>PUT</strong> — send a <code class="inline">PUT</code> request to <code class="inline">http://localhost:5000/tasks/1</code> with the updated task body.</li>
+      <li><strong>DELETE</strong> — send a <code class="inline">DELETE</code> request to <code class="inline">http://localhost:5000/tasks/1</code> to remove the task.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Each request returns the expected payload and status code: <strong>GET</strong> lists the tasks,
+    <strong>POST</strong> echoes the new task with <code class="inline">201 Created</code>, <strong>PUT</strong> returns
+    the updated task (or <code class="inline">404</code> for a missing id), and <strong>DELETE</strong> returns
+    <code class="inline">204 No Content</code> (or <code class="inline">404</code>). A follow-up <strong>GET</strong> reflects
+    every change — proving the CRUD API works end-to-end.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">MinimalApiDemo</code> web project created with <code class="inline">dotnet new web</code> and <code class="inline">Program.cs</code> cleared</li>
+      <li>In-memory <code class="inline">List&lt;TaskItem&gt;</code> and a <code class="inline">TaskItem</code> model defined</li>
+      <li><code class="inline">GET /tasks</code> returns all tasks with <code class="inline">200 OK</code></li>
+      <li><code class="inline">POST /tasks</code> adds a task and returns <code class="inline">201 Created</code></li>
+      <li><code class="inline">PUT /tasks/{id}</code> updates a task, returning <code class="inline">200 OK</code> or <code class="inline">404 Not Found</code></li>
+      <li><code class="inline">DELETE /tasks/{id}</code> removes a task, returning <code class="inline">204 No Content</code> or <code class="inline">404 Not Found</code></li>
+      <li>All four endpoints verified in Postman against <code class="inline">http://localhost:5000/tasks</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>REST over HTTP verbs</strong> — each CRUD operation maps to its idiomatic verb
+        (<code class="inline">GET</code>/<code class="inline">POST</code>/<code class="inline">PUT</code>/<code class="inline">DELETE</code>)
+        on a single <code class="inline">/tasks</code> resource, keeping the API predictable and uniform.</li>
+      <li><strong>Minimal API</strong> — .NET's <code class="inline">MapGet</code>/<code class="inline">MapPost</code>/<code class="inline">MapPut</code>/<code class="inline">MapDelete</code>
+        define routes directly in <code class="inline">Program.cs</code> with no controllers, ideal for small, focused services.</li>
+      <li><strong>Meaningful status codes</strong> — returning <code class="inline">201</code>, <code class="inline">200</code>,
+        <code class="inline">204</code>, and <code class="inline">404</code> (via <code class="inline">Results.*</code>) lets clients
+        react correctly instead of guessing from the body.</li>
+      <li><strong>In-memory state is ephemeral</strong> — the <code class="inline">List&lt;TaskItem&gt;</code> resets on restart;
+        swapping it for a database is the natural next step toward a production API.</li>
+      <li><strong>Test the contract, not the code</strong> — Postman drives the API exactly as a real client would,
+        confirming routes, payloads, and status codes behave as designed.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

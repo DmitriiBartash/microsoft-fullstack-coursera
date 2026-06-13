@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IntegratingSwagger — Course 5 · Module 4</title>
+<style>
+  :root {
+    --hdr: #2563eb ;      /* header / create  */
+    --pld: #0891b2 ;      /* payload / decode */
+    --sig: #3b82f6 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 5 — Back-End Development with .NET · Module 4 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Integrating Swagger and Generating API Clients</h1>
+    <p class="lead">
+      Stand up a minimal ASP.NET Core Web API, expose its contract through <strong>Swagger / OpenAPI</strong>,
+      then point <strong>NSwag</strong> at that contract to <strong>generate a strongly-typed C# API client</strong> —
+      and finally consume that generated client from the same app to call the endpoint end-to-end.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Integrate Swagger with an ASP.NET Core application and generate API clients with NSwag.
+      You'll practice <strong>configuring Swagger middleware</strong>, <strong>generating client code</strong> from the
+      live OpenAPI document, and <strong>customizing</strong> the generated namespace and class name.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A console-hosted Web API project named <code class="inline">SwaggerApiClientLab</code> made of these files:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Program.cs</code></td><td>Host the API, register + serve Swagger, then drive the client</td></tr>
+        <tr><td><code>Controllers/UserController.cs</code></td><td>Define the <code>User</code> model and the <code>GetUser</code> endpoint</td></tr>
+        <tr><td><code>ClientGenerator.cs</code></td><td>Fetch <code>swagger.json</code> and emit a strongly-typed client via NSwag</td></tr>
+        <tr><td><code>GeneratedApiClient.cs</code></td><td><strong>Generated</strong> output — the <code>CustomApiClient</code> your app calls</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Program</span> <span class="ar">→</span>
+      <span class="c">AddSwaggerGen / UseSwagger</span> <span class="ar">→</span>
+      <span class="t">swagger.json</span> <span class="ar">→</span>
+      <span class="d">NSwag CSharpClientGenerator</span> <span class="ar">→</span>
+      <span class="t">GeneratedApiClient.cs</span> <span class="ar">→</span>
+      <span class="ar">call GetUser</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code with an integrated terminal</li>
+      <li>NuGet packages: <code class="inline">Swashbuckle.AspNetCore</code>, <code class="inline">NSwag.Core</code>,
+        <code class="inline">NSwag.CodeGeneration.CSharp</code>, <code class="inline">NSwag.ApiDescription.Client</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Set up a new console application</h3>
+    <p class="scenario">Create the project, move into it, add the Swagger + NSwag packages, and add a <code>Controllers</code> folder.</p>
+<pre class="code">dotnet new console -o SwaggerApiClientLab
+cd SwaggerApiClientLab
+dotnet add package Swashbuckle.AspNetCore
+dotnet add package NSwag.Core
+dotnet add package NSwag.CodeGeneration.CSharp
+dotnet add package NSwag.ApiDescription.Client</pre>
+    <p>Create a folder named <code class="inline">Controllers</code> to hold your API controller, then confirm the structure:</p>
+<pre class="code">SwaggerApiClientLab
+├── Controllers
+├── Program.cs
+└── SwaggerApiClientLab.csproj</pre>
+    <div class="callout">
+      The console template ships with a top-level <code class="inline">Program.cs</code>. You'll replace its contents in
+      Step 2 to host a <code class="inline">WebApplication</code>, so the project behaves as a self-hosted Web API.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Configure Swagger in the application</h3>
+    <p class="scenario">In <code class="inline">Program.cs</code>, build a <code class="inline">WebApplication</code>,
+      register the controllers and Swagger generator, and serve the API documentation at
+      <code class="inline">/swagger/v1/swagger.json</code>.</p>
+<pre class="code">using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+app.UseSwagger();
+app.UseSwaggerUI();
+app.MapControllers();
+
+app.Run();</pre>
+    <p>Run the application and open the Swagger UI endpoint in your browser to verify the setup.</p>
+<pre class="code">dotnet run</pre>
+    <div class="callout">
+      The console prints the bound URL (for example <code class="inline">http://localhost:5000</code>). Browse to
+      <code class="inline">/swagger</code> for the UI, or <code class="inline">/swagger/v1/swagger.json</code> for the raw OpenAPI document.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Create the API specification</h3>
+    <p class="scenario">Inside <code class="inline">Controllers</code>, add <code class="inline">UserController.cs</code>:
+      a simple <code>User</code> class with <code>Id</code> and <code>Name</code>, and a <code>GetUser</code> endpoint that
+      returns a sample user. <code class="inline">[ProducesResponseType]</code> makes the response type explicit in the OpenAPI document.</p>
+<pre class="code">using Microsoft.AspNetCore.Mvc;
+
+[ApiController]
+[Route("api/[controller]")]
+public class UserController : ControllerBase
+{
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(User), 200)]
+    public ActionResult&lt;User&gt; GetUser(int id)
+    {
+        return Ok(new User { Id = id, Name = $"User{id}" });
+    }
+}
+
+public class User
+{
+    public int Id { get; set; }
+    public required string Name { get; set; }
+}</pre>
+    <p>Run the application again and view the Swagger documentation to confirm the
+      <code class="inline">GET /api/User/{id}</code> endpoint appears correctly.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Generate client code with NSwag</h3>
+    <p class="scenario">Create <code class="inline">ClientGenerator.cs</code> in the project root. It fetches the live
+      <code class="inline">swagger.json</code>, parses it into an <code class="inline">OpenApiDocument</code>, and uses
+      <code class="inline">CSharpClientGenerator</code> to emit a strongly-typed client file.</p>
+<pre class="code">using NSwag;
+using NSwag.CodeGeneration.CSharp;
+
+public class ClientGenerator
+{
+    private readonly string _baseUrl;
+
+    public ClientGenerator(string baseUrl)
+    {
+        _baseUrl = baseUrl.TrimEnd('/');
+    }
+
+    public async Task GenerateClient()
+    {
+        using var httpClient = new HttpClient();
+        var swaggerUrl = $"{_baseUrl}/swagger/v1/swagger.json";
+        var swaggerJson = await httpClient.GetStringAsync(swaggerUrl);
+        var document = await OpenApiDocument.FromJsonAsync(swaggerJson);
+
+        var settings = new CSharpClientGeneratorSettings
+        {
+            ClassName = "GeneratedApiClient",
+            CSharpGeneratorSettings = { Namespace = "MyApiClientNamespace" }
+        };
+
+        var generator = new CSharpClientGenerator(document, settings);
+        var code = generator.GenerateFile();
+        await File.WriteAllTextAsync("GeneratedApiClient.cs", code);
+        Console.WriteLine($"Client code generated from {swaggerUrl}");
+    }
+}</pre>
+    <p>In <code class="inline">Program.cs</code>, drive the generator. Because the document is only served while the host
+      is running, start the server asynchronously, wait for it to come up, then generate:</p>
+    <ul class="plain">
+      <li>Replace <code class="inline">app.Run();</code> with <code class="inline">Task.Run(() =&gt; app.RunAsync());</code> so the server runs in the background.</li>
+      <li>Below it, <code class="inline">await</code> a delay of <strong>3 seconds or more</strong> to let the server start.</li>
+      <li>Below the delay, <code class="inline">await</code> the <code class="inline">GenerateClient</code> method on <code class="inline">ClientGenerator</code>.</li>
+    </ul>
+    <p>Run the application again to generate the client code, and confirm <code class="inline">GeneratedApiClient.cs</code>
+      appears in the project directory.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Customize the generated client code</h3>
+    <p class="scenario">Open <code class="inline">ClientGenerator.cs</code> and change the class name and namespace — for
+      this lab, set the class name to <code class="inline">CustomApiClient</code> and the namespace to <code class="inline">CustomNamespace</code>.</p>
+<pre class="code">var settings = new CSharpClientGeneratorSettings
+{
+    ClassName = "CustomApiClient",
+    CSharpGeneratorSettings = { Namespace = "CustomNamespace" }
+};</pre>
+    <p>Run the generator again and confirm the regenerated <code class="inline">GeneratedApiClient.cs</code> reflects the
+      custom settings. Then, in <code class="inline">Program.cs</code>, <strong>comment out or remove the call to
+      <code class="inline">GenerateClient</code></strong> — the client is generated, so it no longer needs to run on every start.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Integrate the client code into the application</h3>
+    <p class="scenario">Use the generated client to make a real API request. Instantiate the client with the API base URL
+      and an <code class="inline">HttpClient</code>, call the <code>GetUser</code> endpoint, and display the returned user data.</p>
+<pre class="code">dotnet run</pre>
+    <p>Run the application to confirm the API client integration works end-to-end.</p>
+  </div>
+
+  <!-- ===================== FINAL SOURCE FILES ===================== -->
+  <h2 class="section"><span class="em">📄</span> Final source files</h2>
+  <div class="card">
+    <p>The complete, runnable versions of the three hand-written files. <code class="inline">Program.cs</code>
+      self-bootstraps: on first run it generates <code class="inline">GeneratedApiClient.cs</code> and asks you to restart;
+      on the next run it loads the generated <code class="inline">CustomApiClient</code> and calls the endpoint.</p>
+
+    <h4><code>Controllers/UserController.cs</code></h4>
+<pre class="code">using Microsoft.AspNetCore.Mvc;
+
+[ApiController]
+[Route("api/[controller]")]
+public class UserController : ControllerBase
+{
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(User), 200)]
+    public ActionResult&lt;User&gt; GetUser(int id)
+    {
+        return Ok(new User { Id = id, Name = $"User{id}" });
+    }
+}
+
+public class User
+{
+    public int Id { get; set; }
+    public required string Name { get; set; }
+}</pre>
+
+    <h4><code>ClientGenerator.cs</code></h4>
+<pre class="code">using NSwag;
+using NSwag.CodeGeneration.CSharp;
+
+public class ClientGenerator
+{
+    private readonly string _baseUrl;
+
+    public ClientGenerator(string baseUrl)
+    {
+        _baseUrl = baseUrl.TrimEnd('/');
+    }
+
+    public async Task GenerateClient()
+    {
+        using var httpClient = new HttpClient();
+        var swaggerUrl = $"{_baseUrl}/swagger/v1/swagger.json";
+        var swaggerJson = await httpClient.GetStringAsync(swaggerUrl);
+        var document = await OpenApiDocument.FromJsonAsync(swaggerJson);
+
+        var settings = new CSharpClientGeneratorSettings
+        {
+            ClassName = "CustomApiClient",
+            CSharpGeneratorSettings = { Namespace = "CustomNamespace" }
+        };
+
+        var generator = new CSharpClientGenerator(document, settings);
+        var code = generator.GenerateFile();
+        await File.WriteAllTextAsync("GeneratedApiClient.cs", code);
+        Console.WriteLine($"Client code generated from {swaggerUrl}");
+    }
+}</pre>
+
+    <h4><code>Program.cs</code></h4>
+<pre class="code">using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
+
+public class Program
+{
+    public static async Task Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        builder.Services.AddControllers();
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
+
+        var app = builder.Build();
+        app.UseSwagger();
+        app.UseSwaggerUI();
+        app.MapControllers();
+
+        _ = Task.Run(async () =&gt; await app.RunAsync());
+        await Task.Delay(3000);
+
+        if (!File.Exists("GeneratedApiClient.cs"))
+        {
+            var url = app.Urls.FirstOrDefault() ?? "http://localhost:5000";
+            var generator = new ClientGenerator(url);
+            await generator.GenerateClient();
+            Console.WriteLine("GeneratedApiClient.cs created. Please restart the application.");
+            return;
+        }
+
+        await RunClient(app);
+    }
+
+    private static async Task RunClient(WebApplication app)
+    {
+        var url = app.Urls.FirstOrDefault() ?? "http://localhost:5000";
+        var assembly = Assembly.GetExecutingAssembly();
+        var clientType = assembly.GetType("CustomNamespace.CustomApiClient");
+        if (clientType == null)
+        {
+            Console.WriteLine("Client type not found. Please rebuild the project.");
+            return;
+        }
+
+        using var http = new HttpClient();
+        var client = Activator.CreateInstance(clientType, url, http);
+        if (client == null)
+        {
+            Console.WriteLine("Failed to create client instance.");
+            return;
+        }
+
+        var method = clientType.GetMethod("GetUserAsync", new[] { typeof(int), typeof(CancellationToken) })
+                     ?? clientType.GetMethod("UserAsync", new[] { typeof(int) });
+        if (method == null)
+        {
+            Console.WriteLine("API method not found in generated client.");
+            return;
+        }
+
+        var parameters = method.GetParameters().Length == 2
+            ? new object[] { 1, CancellationToken.None }
+            : new object[] { 1 };
+        var task = method.Invoke(client, parameters) as Task;
+        if (task == null)
+        {
+            Console.WriteLine("Failed to invoke client method.");
+            return;
+        }
+
+        await task.ConfigureAwait(false);
+        var resultProperty = task.GetType().GetProperty("Result");
+        if (resultProperty != null)
+        {
+            var user = resultProperty.GetValue(task);
+            var idProp = user?.GetType().GetProperty("Id");
+            var nameProp = user?.GetType().GetProperty("Name");
+            Console.WriteLine($"User ID: {idProp?.GetValue(user)}, User Name: {nameProp?.GetValue(user)}");
+        }
+        else
+        {
+            Console.WriteLine("Request completed successfully (200 OK).");
+        }
+    }
+}</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    On the <strong>first</strong> <code class="inline">dotnet run</code>, the server starts, NSwag reads
+    <code class="inline">swagger.json</code>, writes <code class="inline">GeneratedApiClient.cs</code>, and prints a message to restart.
+    On the <strong>second</strong> run, the app loads the generated <code class="inline">CustomApiClient</code>, calls
+    <code class="inline">GET /api/User/1</code>, and prints something like <code class="inline">User ID: 1, User Name: User1</code>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">SwaggerApiClientLab</code> project created with the four Swagger/NSwag packages added</li>
+      <li><code class="inline">Program.cs</code> registers <code class="inline">AddSwaggerGen()</code> and serves <code class="inline">UseSwagger()</code> / <code class="inline">UseSwaggerUI()</code></li>
+      <li>Swagger UI shows <code class="inline">GET /api/User/{id}</code> at <code class="inline">/swagger/v1/swagger.json</code></li>
+      <li><code class="inline">ClientGenerator.cs</code> fetches the OpenAPI document and writes <code class="inline">GeneratedApiClient.cs</code></li>
+      <li>Generated client uses the custom <code class="inline">CustomApiClient</code> class in <code class="inline">CustomNamespace</code></li>
+      <li>App consumes the generated client and prints the user returned by <code class="inline">GetUser</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>OpenAPI as a contract</strong> — <code class="inline">AddSwaggerGen</code> + <code class="inline">UseSwagger</code>
+        reflect over your controllers to emit a machine-readable <code class="inline">swagger.json</code> that fully describes
+        routes, parameters, and response shapes.</li>
+      <li><strong>Spec-driven client generation</strong> — NSwag's <code class="inline">CSharpClientGenerator</code> turns that
+        document into a strongly-typed client, so callers get compile-time-checked methods instead of hand-written HTTP plumbing.</li>
+      <li><strong>Generate against a live document</strong> — the OpenAPI JSON is served by the running host, so the generator
+        must start the server (<code class="inline">RunAsync</code>) and wait before fetching <code class="inline">swagger.json</code>.</li>
+      <li><strong>Customizable output</strong> — <code class="inline">ClassName</code> and <code class="inline">Namespace</code>
+        on the generator settings control the shape of the generated code, letting you fit it to your project's conventions.</li>
+      <li><strong>Generate once, then consume</strong> — after the client file exists, the generation call is removed so the
+        app simply instantiates the client and calls the API like any other typed service.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

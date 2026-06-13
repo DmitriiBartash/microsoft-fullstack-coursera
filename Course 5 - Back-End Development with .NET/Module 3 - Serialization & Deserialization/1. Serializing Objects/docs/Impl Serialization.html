@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Impl Serialization — Course 5 · Module 3</title>
+<style>
+  :root {
+    --hdr: #2563eb;      /* header / create  */
+    --pld: #0891b2;      /* payload / decode */
+    --sig: #3b82f6;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 5 — Back-End Development with .NET · Module 3 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Serialization in .NET</h1>
+    <p class="lead">
+      Build a small .NET console app that serializes a list of <code>Person</code> objects three ways —
+      <strong>binary</strong>, <strong>XML</strong>, and <strong>JSON</strong> — then <strong>deserializes</strong>
+      each back and <strong>compares</strong> the resulting file sizes and readability. Each format lives in its own
+      single-responsibility helper class, and <code>Program.cs</code> just wires them together.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this lab you will set up a .NET project for serialization and implement
+      <strong>binary</strong>, <strong>XML</strong>, and <strong>JSON</strong> serialization (plus their round-trip
+      deserialization). You will then compare the output of each method to understand its use cases and performance
+      trade-offs.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A console project named <code class="inline">SerializationDemo</code> organized into focused files:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Models/Person.cs</code></td><td>The data model — <code>UserName</code> and <code>UserAge</code></td></tr>
+        <tr><td><code>Serializers/BinarySerializerManual.cs</code></td><td>Write/read each field manually with <code>BinaryWriter</code>/<code>BinaryReader</code></td></tr>
+        <tr><td><code>Serializers/XmlSerializerHelper.cs</code></td><td>Serialize/deserialize via <code>XmlSerializer</code></td></tr>
+        <tr><td><code>Serializers/JsonSerializerHelper.cs</code></td><td>Serialize/deserialize via <code>System.Text.Json</code></td></tr>
+        <tr><td><code>Program.cs</code></td><td>Orchestrate: generate data, write all three formats, compare, read back</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Program</span> <span class="ar">→</span>
+      <span class="c">GeneratePeople()</span> <span class="ar">→</span>
+      <span class="d">Binary / XML / JSON Serialize</span> <span class="ar">→</span>
+      <span class="t">files</span> <span class="ar">→</span>
+      <span class="d">Deserialize</span> <span class="ar">→</span>
+      <span class="ar">compare</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (with the C# extension)</li>
+      <li>No extra NuGet packages — binary, XML, and JSON serialization all ship with the .NET base class library</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Set up the .NET project for serialization</h3>
+    <p class="scenario">In the Visual Studio Code terminal, navigate to the folder where you want the project,
+      then scaffold a new console app and move into it.</p>
+<pre class="code">dotnet new console -o SerializationDemo
+cd SerializationDemo</pre>
+    <p>Create the model. Add a <code class="inline">Models</code> folder with a <code>Person</code> class exposing
+      <code class="inline">UserName</code> and <code class="inline">UserAge</code>.</p>
+<pre class="code"><span class="cmt">// Models/Person.cs</span>
+namespace SerializationDemo.Models;
+
+public class Person
+{
+    public string UserName { get; set; } = string.Empty;
+    public int UserAge { get; set; }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Implement binary serialization</h3>
+    <p class="scenario">Write each property manually with a <code>BinaryWriter</code> over a <code>FileStream</code>,
+      and read it back in the same order with a <code>BinaryReader</code>. The leading <code>Count</code> lets the
+      reader know how many records to expect.</p>
+<pre class="code"><span class="cmt">// Serializers/BinarySerializerManual.cs</span>
+using SerializationDemo.Models;
+
+namespace SerializationDemo.Serializers;
+
+public static class BinarySerializerManual
+{
+    public static void Serialize(List&lt;Person&gt; people, string filePath)
+    {
+        using FileStream fs = new FileStream(filePath, FileMode.Create);
+        using BinaryWriter writer = new BinaryWriter(fs);
+
+        writer.Write(people.Count);
+        foreach (var person in people)
+        {
+            writer.Write(person.UserName);
+            writer.Write(person.UserAge);
+        }
+    }
+
+    public static List&lt;Person&gt; Deserialize(string filePath)
+    {
+        using FileStream fs = new FileStream(filePath, FileMode.Open);
+        using BinaryReader reader = new BinaryReader(fs);
+
+        int count = reader.ReadInt32();
+        var people = new List&lt;Person&gt;(count);
+        for (int i = 0; i &lt; count; i++)
+        {
+            string? name = reader.ReadString();
+            int age = reader.ReadInt32();
+            if (name == null)
+                throw new InvalidOperationException("Binary deserialization failed: name is null.");
+            people.Add(new Person { UserName = name, UserAge = age });
+        }
+        return people;
+    }
+}</pre>
+    <div class="callout"><strong>Note:</strong> <code class="inline">BinaryFormatter</code> is obsolete and disabled by
+      default in modern .NET for security reasons. Writing fields explicitly with
+      <code class="inline">BinaryWriter</code>/<code class="inline">BinaryReader</code> is the safe, supported way to
+      produce a compact binary file.</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement XML serialization</h3>
+    <p class="scenario">Use <code>XmlSerializer</code> over the <code>List&lt;Person&gt;</code> type. It writes a
+      human-readable XML document and reconstructs the list on read.</p>
+<pre class="code"><span class="cmt">// Serializers/XmlSerializerHelper.cs</span>
+using System.Xml.Serialization;
+using SerializationDemo.Models;
+
+namespace SerializationDemo.Serializers;
+
+public static class XmlSerializerHelper
+{
+    public static void Serialize(List&lt;Person&gt; people, string filePath)
+    {
+        XmlSerializer serializer = new XmlSerializer(typeof(List&lt;Person&gt;));
+        using FileStream fs = new FileStream(filePath, FileMode.Create);
+        serializer.Serialize(fs, people);
+    }
+
+    public static List&lt;Person&gt; Deserialize(string filePath)
+    {
+        XmlSerializer serializer = new XmlSerializer(typeof(List&lt;Person&gt;));
+        using FileStream fs = new FileStream(filePath, FileMode.Open);
+        var obj = serializer.Deserialize(fs);
+        if (obj is List&lt;Person&gt; people)
+            return people;
+        throw new InvalidOperationException("XML deserialization failed: object is null or not List&lt;Person&gt;.");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Implement JSON serialization</h3>
+    <p class="scenario">Use the built-in <code>System.Text.Json</code>. <code>WriteIndented = true</code> produces
+      pretty-printed JSON so the file is easy to read.</p>
+<pre class="code"><span class="cmt">// Serializers/JsonSerializerHelper.cs</span>
+using System.Text.Json;
+using SerializationDemo.Models;
+
+namespace SerializationDemo.Serializers;
+
+public static class JsonSerializerHelper
+{
+    public static void Serialize(List&lt;Person&gt; people, string filePath)
+    {
+        var json = JsonSerializer.Serialize(people, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(filePath, json);
+    }
+
+    public static List&lt;Person&gt; Deserialize(string filePath)
+    {
+        string json = File.ReadAllText(filePath);
+        var people = JsonSerializer.Deserialize&lt;List&lt;Person&gt;&gt;(json);
+        if (people is not null)
+            return people;
+        throw new InvalidOperationException("JSON deserialization failed: object is null.");
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Wire it together and compare the outputs</h3>
+    <p class="scenario">In <code class="inline">Program.cs</code>, generate sample data, write all three formats into a
+      <code>Data</code> folder, print each file size, then deserialize each format back and confirm the round-trip
+      restored the data.</p>
+<pre class="code"><span class="cmt">// Program.cs</span>
+using SerializationDemo.Models;
+using SerializationDemo.Serializers;
+
+namespace SerializationDemo;
+
+class Program
+{
+    static void Main()
+    {
+        string dataDir = Path.Combine(Directory.GetCurrentDirectory(), "Data");
+        Directory.CreateDirectory(dataDir);
+
+        var people = GeneratePeople(20);
+
+        string binPath = Path.Combine(dataDir, "people.dat");
+        BinarySerializerManual.Serialize(people, binPath);
+        Console.WriteLine($"Binary serialization complete: {binPath}");
+
+        string xmlPath = Path.Combine(dataDir, "people.xml");
+        XmlSerializerHelper.Serialize(people, xmlPath);
+        Console.WriteLine($"XML serialization complete: {xmlPath}");
+
+        string jsonPath = Path.Combine(dataDir, "people.json");
+        JsonSerializerHelper.Serialize(people, jsonPath);
+        Console.WriteLine($"JSON serialization complete: {jsonPath}");
+
+        Console.WriteLine("\n--- Compare Outputs ---");
+        Console.WriteLine($"Binary file size: {new FileInfo(binPath).Length} bytes");
+        Console.WriteLine($"XML file size: {new FileInfo(xmlPath).Length} bytes");
+        Console.WriteLine($"JSON file size: {new FileInfo(jsonPath).Length} bytes");
+
+        Console.WriteLine("\n--- Deserialization Results ---");
+        var binPeople = BinarySerializerManual.Deserialize(binPath);
+        Console.WriteLine($"Binary restored count: {binPeople.Count}, first: {binPeople[0].UserName} ({binPeople[0].UserAge})");
+
+        var xmlPeople = XmlSerializerHelper.Deserialize(xmlPath);
+        Console.WriteLine($"XML restored count: {xmlPeople.Count}, first: {xmlPeople[0].UserName} ({xmlPeople[0].UserAge})");
+
+        var jsonPeople = JsonSerializerHelper.Deserialize(jsonPath);
+        Console.WriteLine($"JSON restored count: {jsonPeople.Count}, first: {jsonPeople[0].UserName} ({jsonPeople[0].UserAge})");
+    }
+
+    static List&lt;Person&gt; GeneratePeople(int count)
+    {
+        var rnd = new Random();
+        var list = new List&lt;Person&gt;();
+        for (int i = 1; i &lt;= count; i++)
+        {
+            list.Add(new Person
+            {
+                UserName = $"User{i}",
+                UserAge = rnd.Next(18, 70)
+            });
+        }
+        return list;
+    }
+}</pre>
+    <p>Run it:</p>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The console prints three "serialization complete" lines, then a size comparison and the deserialization results.
+    The <strong>binary</strong> file is the smallest and least readable, <strong>XML</strong> is the largest and most
+    verbose, and <strong>JSON</strong> sits in between while staying human-readable. Open the generated
+    <code class="inline">Data/people.dat</code>, <code class="inline">Data/people.xml</code>, and
+    <code class="inline">Data/people.json</code> to see the difference for yourself.
+  </div>
+<pre class="code">Binary serialization complete: .../Data/people.dat
+XML serialization complete: .../Data/people.xml
+JSON serialization complete: .../Data/people.json
+
+--- Compare Outputs ---
+Binary file size: 213 bytes
+XML file size: 1024 bytes
+JSON file size: 612 bytes
+
+--- Deserialization Results ---
+Binary restored count: 20, first: User1 (34)
+XML restored count: 20, first: User1 (34)
+JSON restored count: 20, first: User1 (34)</pre>
+  <p style="color:var(--muted);font-size:.9rem;margin-top:6px"><em>(Exact byte counts and ages vary because the sample
+    data is randomized.)</em></p>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">SerializationDemo</code> console project created with a <code>Person</code> model (<code class="inline">UserName</code>, <code class="inline">UserAge</code>)</li>
+      <li><code class="inline">BinarySerializerManual</code> writes and reads each field with <code class="inline">BinaryWriter</code>/<code class="inline">BinaryReader</code></li>
+      <li><code class="inline">XmlSerializerHelper</code> serializes and deserializes via <code class="inline">XmlSerializer</code></li>
+      <li><code class="inline">JsonSerializerHelper</code> serializes and deserializes via <code class="inline">System.Text.Json</code></li>
+      <li><code class="inline">Program.cs</code> writes all three files, prints their sizes, and reads each back</li>
+      <li><code class="inline">dotnet run</code> confirms every format restores the full list of 20 people</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>One format, one class</strong> — each serializer is a small static helper with a single reason to
+        change, so swapping or testing a format never touches the others.</li>
+      <li><strong>Binary is compact but rigid</strong> — <code class="inline">BinaryWriter</code>/<code class="inline">BinaryReader</code>
+        give the smallest file, but reader and writer must agree on field order exactly; there is no self-describing schema.</li>
+      <li><strong>XML is verbose but self-describing</strong> — <code class="inline">XmlSerializer</code> produces the
+        largest, most human- and tooling-friendly output, ideal for interoperability and config.</li>
+      <li><strong>JSON is the balanced default</strong> — <code class="inline">System.Text.Json</code> is compact,
+        readable, and the de facto wire format for web APIs; <code class="inline">WriteIndented</code> trades a few bytes for readability.</li>
+      <li><strong>Round-trip is the real test</strong> — serialization only counts if
+        <code class="inline">Deserialize(Serialize(x))</code> reconstructs the original data, which is why each helper
+        validates and reports its result.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

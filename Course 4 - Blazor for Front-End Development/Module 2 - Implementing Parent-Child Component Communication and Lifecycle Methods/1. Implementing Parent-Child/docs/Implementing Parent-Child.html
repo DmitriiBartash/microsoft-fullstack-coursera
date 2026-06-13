@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing Parent-Child — Course 4 · Module 2</title>
+<style>
+  :root {
+    --hdr: #6d28d9 ;      /* header / create  */
+    --pld: #4f46e5 ;      /* payload / decode */
+    --sig: #8b5cf6 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 4 — Blazor for Front-End Development · Module 2 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Parent-Child Component Communication</h1>
+    <p class="lead">
+      Build a Blazor Server app where a <strong>parent</strong> component owns a list of tasks and renders a
+      <strong>child</strong> component for each one. The parent passes data <em>down</em> with
+      <code>[Parameter]</code>, and the child reports back <em>up</em> with an
+      <code>EventCallback&lt;string&gt;</code> — completing a clean two-way communication loop.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this lab you will be able to implement <strong>parent-to-child</strong> and
+      <strong>child-to-parent</strong> communication in Blazor components using <code class="inline">[Parameter]</code>
+      properties and <code class="inline">EventCallback</code>, wiring them together so a child action updates parent
+      state and re-renders the UI.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A Blazor Server project named <code class="inline">TaskManagerApp</code> with two Razor components:</p>
+    <table>
+      <thead><tr><th>Component</th><th>Role</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>ParentTaskManager.razor</code></td><td>Parent</td><td>Holds the task list, renders one child per task, handles completions</td></tr>
+        <tr><td><code>ChildTaskDisplay.razor</code></td><td>Child</td><td>Shows a single task and raises an event when it's marked complete</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">ParentTaskManager</span> <span class="ar">→</span>
+      <span class="c">[Parameter] TaskName</span> <span class="ar">→</span>
+      <span class="t">ChildTaskDisplay</span> <span class="ar">→</span>
+      <span class="ar">button click</span> <span class="ar">→</span>
+      <span class="d">EventCallback OnTaskCompleted</span> <span class="ar">→</span>
+      <span class="ar">HandleTaskCompleted</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code with the <strong>C# Dev Kit</strong> extension</li>
+      <li>Basic familiarity with Razor components and the <code class="inline">@code</code> block</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Scaffold the Blazor Server app and open it in VS Code. This creates the project structure you'll add components to.</p>
+<pre class="code">dotnet new blazorserver -n TaskManagerApp
+cd TaskManagerApp</pre>
+    <ul class="plain">
+      <li>Open the <code class="inline">TaskManagerApp</code> folder in Visual Studio Code.</li>
+      <li>Under <code class="inline">Pages/</code> (or <code class="inline">Components/</code>), create two Razor components:
+        <code class="inline">ParentTaskManager.razor</code> and <code class="inline">ChildTaskDisplay.razor</code>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Implement parent-to-child communication</h3>
+    <p class="scenario">The parent owns the task list and passes each task <strong>name</strong> down to a child using the
+      <code class="inline">[Parameter]</code> attribute. A <code class="inline">foreach</code> loop renders one
+      <code>ChildTaskDisplay</code> per task.</p>
+    <h4>ParentTaskManager.razor</h4>
+<pre class="code">@page "/tasks"
+
+&lt;h3 class="mb-3"&gt;Task Manager (Parent)&lt;/h3&gt;
+
+@if (tasks.All(t =&gt; t.Completed))
+{
+    &lt;div class="alert alert-success mb-3"&gt;🎉 All tasks are completed!&lt;/div&gt;
+}
+
+&lt;ul class="list-group"&gt;
+    @foreach (var t in tasks)
+    {
+        &lt;li class="list-group-item d-flex justify-content-between align-items-center"&gt;
+            &lt;span class="@(t.Completed ? "text-decoration-line-through text-muted" : null)"&gt;
+                @t.Name
+            &lt;/span&gt;
+            &lt;ChildTaskDisplay
+                TaskName="@t.Name"
+                Completed="@t.Completed"
+                OnTaskCompleted="HandleTaskCompleted" /&gt;
+        &lt;/li&gt;
+    }
+&lt;/ul&gt;
+
+&lt;p class="mt-2 text-muted"&gt;Completed: @tasks.Count(x =&gt; x.Completed) / @tasks.Count&lt;/p&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement child-to-parent communication</h3>
+    <p class="scenario">The child displays one task and exposes an <code class="inline">EventCallback&lt;string&gt;</code>.
+      Clicking its button invokes that callback, notifying the parent which task was completed.</p>
+    <h4>ChildTaskDisplay.razor</h4>
+<pre class="code">&lt;p class="mb-1"&gt;Task: &lt;strong&gt;@TaskName&lt;/strong&gt;&lt;/p&gt;
+
+&lt;button type="button"
+        class="btn btn-sm @(Completed ? "btn-secondary" : "btn-success")"
+        @onclick="MarkComplete"
+        disabled="@(Completed)"&gt;
+    @(Completed ? "✅ Completed" : "✔ Mark Complete")
+&lt;/button&gt;
+
+@code {
+    [Parameter] public string TaskName { get; set; } = string.Empty;
+    [Parameter] public bool Completed { get; set; }
+    [Parameter] public EventCallback&lt;string&gt; OnTaskCompleted { get; set; }
+
+    private Task MarkComplete() =&gt; OnTaskCompleted.InvokeAsync(TaskName);
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Connect both directions</h3>
+    <p class="scenario">Back in the parent, handle the child's <code class="inline">OnTaskCompleted</code> event, update the
+      matching task, and re-render. When every task is complete, the success banner from Step 2 appears automatically.</p>
+    <p>Add this <code class="inline">@code</code> block to <code class="inline">ParentTaskManager.razor</code>:</p>
+<pre class="code">@code {
+    private readonly List&lt;TaskItem&gt; tasks =
+    [
+        new("Complete Blazor lab"),
+        new("Review EventCallback example"),
+        new("Push code to GitHub"),
+    ];
+
+    private void HandleTaskCompleted(string taskName)
+    {
+        var item = tasks.FirstOrDefault(x =&gt; x.Name == taskName);
+        if (item is not null)
+        {
+            item.Completed = true;
+            StateHasChanged();
+            Console.WriteLine($"Completed: {taskName}");
+        }
+    }
+
+    private sealed record TaskItem(string Name)
+    {
+        public bool Completed { get; set; }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Test and run the application</h3>
+    <p class="scenario">Start the app and exercise the two-way flow end to end.</p>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Navigate to <code class="inline">/tasks</code> in the browser.</li>
+      <li>Click <strong>Mark Complete</strong> on a task — the child raises the event, the parent strikes the task through,
+        increments the counter, and disables the button.</li>
+      <li>Complete every task to confirm the <strong>🎉 All tasks are completed!</strong> banner appears.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The page lists three tasks, each with its own <strong>Mark Complete</strong> button. Clicking a button updates the
+    parent: the task name is struck through, the <em>Completed: n / 3</em> counter advances, and the button switches to
+    <strong>✅ Completed</strong>. Once all three are done, the green <strong>All tasks are completed!</strong> alert
+    renders at the top.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">TaskManagerApp</code> Blazor Server project created and opened in VS Code</li>
+      <li><code class="inline">ParentTaskManager.razor</code> holds the task list and renders a <code class="inline">ChildTaskDisplay</code> per task</li>
+      <li>Parent passes <code class="inline">TaskName</code> and <code class="inline">Completed</code> <strong>down</strong> via <code class="inline">[Parameter]</code></li>
+      <li><code class="inline">ChildTaskDisplay.razor</code> raises <code class="inline">OnTaskCompleted</code> <strong>up</strong> through an <code class="inline">EventCallback&lt;string&gt;</code></li>
+      <li>Parent's <code class="inline">HandleTaskCompleted</code> marks the task complete and calls <code class="inline">StateHasChanged()</code></li>
+      <li><code class="inline">dotnet run</code> shows tasks updating and the "all completed" banner when finished</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Parameters flow down</strong> — a parent shares data with a child by binding values to the child's
+        <code class="inline">[Parameter]</code> properties (<code class="inline">TaskName="@t.Name"</code>), keeping ownership of state in the parent.</li>
+      <li><strong>EventCallbacks flow up</strong> — a child can't mutate parent state directly; it raises an
+        <code class="inline">EventCallback&lt;T&gt;</code> (<code class="inline">OnTaskCompleted.InvokeAsync(TaskName)</code>) so the parent decides how to respond.</li>
+      <li><strong>The parent is the source of truth</strong> — <code class="inline">ParentTaskManager</code> owns the
+        <code class="inline">tasks</code> list; children are stateless views that render what they're given and report user intent.</li>
+      <li><strong>Re-rendering after state changes</strong> — mutating a list item in place doesn't automatically refresh the UI,
+        so <code class="inline">StateHasChanged()</code> tells Blazor to re-render with the updated data.</li>
+      <li><strong><code class="inline">EventCallback</code> is async-friendly</strong> — invoking it returns a
+        <code class="inline">Task</code>, integrating cleanly with <code class="inline">@onclick</code> and automatically triggering a render of the receiving component.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing Control Structures — Course 1 · Module 4</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;      /* header / create  */
+    --pld: #0ea5e9 ;      /* payload / decode */
+    --sig: #22c55e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 4 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Control Structures</h1>
+    <p class="lead">
+      Practice driving program flow with <strong>decision logic</strong>. You'll build two small C#
+      console programs: a gym <strong>membership-fee calculator</strong> using nested
+      <code>if</code>/<code>else if</code>/<code>else</code>, and a bank <strong>account manager</strong>
+      using a <code>switch</code> statement — picking the right control structure for each shape of decision.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Solve decision-making scenarios using advanced <code class="inline">if-else</code>
+      statements and complex <code class="inline">switch</code> cases to control program flow by evaluating
+      variable values and program state — applying those skills to a gym membership fee system and a bank
+      account management system.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">🧩</span> What you'll produce</h2>
+  <div class="card">
+    <p>Two standalone C# console programs, each demonstrating a different control structure:</p>
+    <table>
+      <thead><tr><th>Program</th><th>Namespace</th><th>Control structure</th><th>Decides by</th></tr></thead>
+      <tbody>
+        <tr><td>Membership Fee Calculator</td><td><code>MembershipFeeCalcSys</code></td><td>Nested <code>if</code> / <code>else if</code></td><td>Age range <strong>and</strong> membership type</td></tr>
+        <tr><td>Bank Account Manager</td><td><code>BankAccountManagSyst</code></td><td><code>switch</code> statement</td><td>Account type (string)</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:14px"><strong>Rule of thumb:</strong> use <code class="inline">if</code> /
+      <code class="inline">else if</code> when branches test <strong>ranges or compound conditions</strong>;
+      use <code class="inline">switch</code> when you're matching a <strong>single value against discrete cases</strong>.</p>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>A code editor (Visual Studio Code or Visual Studio)</li>
+      <li>Comfort reading console input with <code class="inline">Console.ReadLine()</code> and parsing with <code class="inline">int.TryParse</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Walkthrough</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Membership Fee Calculation System</h3>
+    <p class="scenario">A gym charges a fee that depends on the user's <strong>age</strong> and
+      <strong>membership type</strong>.</p>
+    <table>
+      <thead><tr><th>Age group</th><th>Basic</th><th>Premium</th></tr></thead>
+      <tbody>
+        <tr><td>Under 18</td><td><code>$15</code></td><td><code>$25</code></td></tr>
+        <tr><td>18 – 60</td><td><code>$30</code></td><td><code>$50</code></td></tr>
+        <tr><td>Over 60</td><td><code>$20</code></td><td><code>$35</code></td></tr>
+      </tbody>
+    </table>
+    <p><strong>Approach.</strong> Each age band is a compound range condition
+      (<code class="inline">age &lt; 18</code>, <code class="inline">age &gt;= 18 &amp;&amp; age &lt;= 60</code>,
+      <code class="inline">age &gt; 60</code>), so an outer <code class="inline">if</code> /
+      <code class="inline">else if</code> ladder selects the band, and an inner ladder selects the fee by
+      membership type. Validate every input and fail fast on bad data.</p>
+<pre class="code">namespace MembershipFeeCalcSys
+{
+    public class Program
+    {
+        public static void Main()
+        {
+            <span class="cmt">// Step 1: Input age</span>
+            Console.WriteLine("Enter your age:");
+            string? ageInput = Console.ReadLine();
+            if (!int.TryParse(ageInput, out int age) || age &lt; 0)
+            {
+                Console.WriteLine("Invalid age input");
+                return;
+            }
+
+            <span class="cmt">// Step 2: Input membership type</span>
+            Console.WriteLine("Enter membership type (basic/premium):");
+            string? membershipInput = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(membershipInput))
+            {
+                Console.WriteLine("Invalid membership type.");
+                return;
+            }
+            string membershipType = membershipInput.Trim().ToLower();
+
+            <span class="cmt">// Step 3: Decide the fee by age band, then by membership type</span>
+            double fee = 0;
+            if (age &lt; 18)
+            {
+                if (membershipType == "basic")
+                {
+                    fee = 15;
+                }
+                else if (membershipType == "premium")
+                {
+                    fee = 25;
+                }
+                else
+                {
+                    Console.WriteLine("Unknown membership type.");
+                    return;
+                }
+            }
+            else if (age &gt;= 18 &amp;&amp; age &lt;= 60)
+            {
+                if (membershipType == "basic")
+                {
+                    fee = 30;
+                }
+                else if (membershipType == "premium")
+                {
+                    fee = 50;
+                }
+                else
+                {
+                    Console.WriteLine("Unknown membership type.");
+                    return;
+                }
+            }
+            else if (age &gt; 60)
+            {
+                if (membershipType == "basic")
+                {
+                    fee = 20;
+                }
+                else if (membershipType == "premium")
+                {
+                    fee = 35;
+                }
+                else
+                {
+                    Console.WriteLine("Unknown membership type.");
+                    return;
+                }
+            }
+
+            <span class="cmt">// Step 4: Output the result</span>
+            Console.WriteLine($"The membership fee is: ${fee}");
+        }
+    }
+}</pre>
+    <div class="callout ok">
+      A 25-year-old choosing <code class="inline">premium</code> lands in the <code class="inline">18 – 60</code>
+      band, so the program prints <code class="inline">The membership fee is: $50</code>.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Bank Account Management System</h3>
+    <p class="scenario">A banking app applies the correct fee or interest rate based on the account type.</p>
+    <table>
+      <thead><tr><th>Account type</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr><td><code>savings</code></td><td>Apply a <strong>2%</strong> interest rate</td></tr>
+        <tr><td><code>checking</code></td><td>Apply a <strong>$10</strong> monthly fee</td></tr>
+        <tr><td><code>business</code></td><td>Apply a <strong>1%</strong> interest rate <strong>and</strong> a $20 fee</td></tr>
+        <tr><td>anything else</td><td>Display an error message</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Approach.</strong> Here we match a <strong>single string</strong> against a fixed set of
+      values — the textbook case for a <code class="inline">switch</code>. Each <code class="inline">case</code>
+      updates the running <code class="inline">balance</code>, and the <code class="inline">default</code> arm
+      catches unknown account types.</p>
+<pre class="code">namespace BankAccountManagSyst
+{
+    public class Program
+    {
+        public static void Main()
+        {
+            <span class="cmt">// Step 1: Get user input for account type</span>
+            Console.WriteLine("Enter account type (savings/checking/business):");
+            string? accountInput = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(accountInput))
+            {
+                Console.WriteLine("Invalid input.");
+                return;
+            }
+            string accountType = accountInput.Trim().ToLower();
+
+            double balance = 10000.00; <span class="cmt">// Example for demonstration</span>
+            double interestRate = 0, monthlyFee = 0;
+
+            <span class="cmt">// Step 2: Use switch-case to determine behavior</span>
+            switch (accountType)
+            {
+                case "savings":
+                    interestRate = 0.02; <span class="cmt">// 2% interest</span>
+                    double interest = balance * interestRate;
+                    balance += interest;
+                    Console.WriteLine($"Savings account: +2% interest applied. New balance: ${balance:F2}");
+                    break;
+                case "checking":
+                    monthlyFee = 10.0;
+                    balance -= monthlyFee;
+                    Console.WriteLine($"Checking account: $10 monthly fee deducted. New balance: ${balance:F2}");
+                    break;
+                case "business":
+                    interestRate = 0.01; <span class="cmt">// 1% interest</span>
+                    monthlyFee = 20.0;
+                    balance += balance * interestRate;
+                    balance -= monthlyFee;
+                    Console.WriteLine($"Business account: +1% interest and $20 fee applied. New balance: ${balance:F2}");
+                    break;
+                default:
+                    Console.WriteLine("Unknown account type. Please enter savings, checking, or business.");
+                    break;
+            }
+        }
+    }
+}</pre>
+    <div class="callout ok">
+      Entering <code class="inline">savings</code> on a <code class="inline">$10,000.00</code> balance prints
+      <code class="inline">Savings account: +2% interest applied. New balance: $10200.00</code>.
+    </div>
+    <div class="callout">
+      <strong>Note:</strong> switch on the <strong>normalized</strong> <code class="inline">accountType</code>
+      (trimmed + lower-cased), not the raw <code class="inline">accountInput</code>. Switching on the raw input
+      would make <code class="inline">"Savings "</code> or <code class="inline">"SAVINGS"</code> fall through to
+      <code class="inline">default</code> even though the user meant savings.
+    </div>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">🙌</span> Your turn</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>Run each program with <code class="inline">dotnet run</code> and try the <strong>boundary</strong> inputs: age <code class="inline">17</code>, <code class="inline">18</code>, <code class="inline">60</code>, <code class="inline">61</code>.</li>
+      <li>Feed deliberately bad data (empty age, <code class="inline">"gold"</code> membership, <code class="inline">"crypto"</code> account) and confirm every invalid path prints a clear message and exits cleanly.</li>
+      <li>Refactor Problem 1's fee table into a single <code class="inline">switch</code> expression or a lookup, and compare readability against the nested <code class="inline">if</code> ladder.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">▶️</span> What good looks like</h2>
+  <div class="callout ok">
+    Valid inputs print the correct fee / new balance for <strong>every</strong> branch in the tables above;
+    boundary ages (<code class="inline">17</code>/<code class="inline">18</code> and
+    <code class="inline">60</code>/<code class="inline">61</code>) fall into the band you expect with no
+    off-by-one gaps; and invalid or unknown inputs are rejected with a clear message instead of crashing or
+    computing a wrong number.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">MembershipFeeCalcSys</code> returns the right fee for all three age bands × both membership types</li>
+      <li>Membership program validates age with <code class="inline">int.TryParse</code> and rejects negative / non-numeric input</li>
+      <li><code class="inline">BankAccountManagSyst</code> applies the correct interest and/or fee for <code class="inline">savings</code>, <code class="inline">checking</code>, <code class="inline">business</code></li>
+      <li>The <code class="inline">switch</code> matches on the <strong>normalized</strong> account type and handles unknown types via <code class="inline">default</code></li>
+      <li>Both programs run via <code class="inline">dotnet run</code> and handle empty / invalid input without throwing</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Match the structure to the decision</strong> — <code class="inline">if</code> /
+        <code class="inline">else if</code> shines for <strong>ranges and compound conditions</strong>
+        (<code class="inline">age &gt;= 18 &amp;&amp; age &lt;= 60</code>); <code class="inline">switch</code>
+        shines for matching <strong>one value</strong> against discrete cases.</li>
+      <li><strong>Nesting layers decisions</strong> — the membership program decides the age band first, then
+        the fee within that band, mirroring the two-dimensional pricing table.</li>
+      <li><strong>Validate and fail fast</strong> — guard clauses with <code class="inline">int.TryParse</code>
+        and <code class="inline">string.IsNullOrWhiteSpace</code> reject bad input early with an early
+        <code class="inline">return</code>, before any calculation runs.</li>
+      <li><strong>Normalize before you compare</strong> — <code class="inline">Trim().ToLower()</code> makes
+        string matching robust to casing and stray whitespace; always branch on the cleaned value.</li>
+      <li><strong>Always cover the fallthrough</strong> — a final <code class="inline">else</code> and a
+        <code class="inline">switch</code> <code class="inline">default</code> make sure unexpected values are
+        handled instead of silently doing nothing.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

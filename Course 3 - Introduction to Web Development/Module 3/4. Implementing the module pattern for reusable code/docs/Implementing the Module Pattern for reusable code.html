@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing the Module Pattern for reusable code — Course 3 · Module 3</title>
+<style>
+  :root {
+    --hdr: #ea580c ;      /* header / create  */
+    --pld: #f59e0b ;      /* payload / decode */
+    --sig: #f43f5e ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 3 — Introduction to Web Development · Module 3 · Lesson 4
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing the Module Pattern for reusable code</h1>
+    <p class="lead">
+      Build a small, structured JavaScript app that puts <strong>three classic design patterns</strong>
+      to work together: the <strong>Module</strong> pattern encapsulates a calculator, the
+      <strong>Observer</strong> pattern lets components react to events, and the <strong>Singleton</strong>
+      pattern keeps one shared settings object. Each pattern lives in <code>main.js</code> and is wired up
+      from a single <code>index.html</code>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Apply the <strong>Module</strong>, <strong>Observer</strong>, and
+      <strong>Singleton</strong> patterns to build a structured JavaScript application. Together these
+      patterns let you <strong>encapsulate</strong> state and behaviour, <strong>decouple</strong>
+      communication between components, and keep <strong>one consistent</strong> source of truth for
+      app-wide settings.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A static web page driven by one script file, demonstrating each pattern with its own buttons
+      and output area.</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>index.html</code></td><td>Page structure + buttons that trigger each demo</td></tr>
+        <tr><td><code>styles.css</code></td><td>Visual styling for the calculator, buttons, and output boxes</td></tr>
+        <tr><td><code>main.js</code></td><td><code>CalculatorModule</code> (Module), <code>Subject</code>/<code>Observer</code> (Observer), <code>Settings</code> (Singleton)</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Button click</span> <span class="ar">→</span>
+      <span class="c">CalculatorModule.add / subtract</span> <span class="ar">→</span>
+      <span class="t">result</span> <span class="ar">→</span>
+      <span class="d">displayResult()</span> <span class="ar">→</span>
+      <span class="ar">DOM</span>
+    </div>
+    <div class="flow">
+      <span class="c">Subject.notify()</span> <span class="ar">→</span>
+      <span class="d">each Observer.update()</span> <span class="ar">→</span>
+      <span class="ar">output box</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>Visual Studio Code with the <strong>Live Server</strong> extension (the <strong>Go Live</strong> button)</li>
+      <li>Basic familiarity with JavaScript functions, classes, and the DOM</li>
+      <li>A modern browser with the developer <strong>Console</strong> open (to watch the logging)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Create a new HTML file</h3>
+    <p class="scenario">In the lab editor:</p>
+    <ul class="plain">
+      <li>Select <strong>File</strong>.</li>
+      <li>Select <strong>New File…</strong>.</li>
+      <li>Name the file <code class="inline">index.html</code>.</li>
+      <li>Press <strong>Enter</strong>, then select <strong>OK</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Build the HTML structure</h3>
+    <p class="scenario">Add the following to <code class="inline">index.html</code>. The lab gives you a
+      skeleton with blanks to fill in — each <code class="inline">___</code> is replaced by the value shown
+      in the completed version below.</p>
+    <h4>Template (fill in the blanks)</h4>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="___"&gt;
+&lt;head&gt;
+  &lt;meta charset="___"&gt;
+  &lt;meta name="viewport" content="___"&gt;
+  &lt;title&gt;___&lt;/title&gt;
+  &lt;link rel="stylesheet" href="styles.css"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;___&lt;/h1&gt;
+  &lt;div id="___"&gt;&lt;/div&gt;
+  &lt;script src="main.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+    <h4>Completed structure</h4>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+  &lt;title&gt;Module, Observer, Singleton&lt;/title&gt;
+  &lt;link rel="stylesheet" href="styles.css"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;Calculator&lt;/h1&gt;
+  &lt;div id="result"&gt;Result: 0&lt;/div&gt;
+  &lt;button onclick="CalculatorModule.add(5)"&gt;Add 5&lt;/button&gt;
+  &lt;button onclick="CalculatorModule.subtract(2)"&gt;Subtract 2&lt;/button&gt;
+
+  &lt;h2&gt;Observer Demo&lt;/h2&gt;
+  &lt;button onclick="runObserverDemo()"&gt;Run Observer Demo&lt;/button&gt;
+  &lt;button onclick="clearObserverOutput()"&gt;Clear Observer Output&lt;/button&gt;
+  &lt;div id="observer-output" class="output-box"&gt;
+    &lt;div class="placeholder"&gt;No observer output yet.&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;h2&gt;Singleton Demo&lt;/h2&gt;
+  &lt;button onclick="runSingletonDemo()"&gt;Run Singleton Demo&lt;/button&gt;
+  &lt;button onclick="clearSingletonOutput()"&gt;Clear Singleton Output&lt;/button&gt;
+  &lt;div id="singleton-output" class="output-box"&gt;
+    &lt;div class="placeholder"&gt;No singleton output yet.&lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;script src="main.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Create a new JavaScript file</h3>
+    <ul class="plain">
+      <li>Select <strong>File</strong>.</li>
+      <li>Select <strong>New File…</strong>.</li>
+      <li>Name the file <code class="inline">main.js</code>.</li>
+      <li>Press <strong>Enter</strong>, then select <strong>OK</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Implement the Module Pattern (<code>main.js</code>)</h3>
+    <p class="scenario">The Module pattern wraps state and helper functions inside an <strong>IIFE</strong>
+      and returns only the public API. Here <code class="inline">result</code> and
+      <code class="inline">displayResult()</code> stay private; only <code class="inline">add</code> and
+      <code class="inline">subtract</code> are exposed.</p>
+    <h4>Template (fill in the blanks)</h4>
+<pre class="code">const CalculatorModule = (function () {
+  let result = ___;  <span class="cmt">// Initialize the result to 0</span>
+  function add(value) {
+    result ___ value;
+    displayResult();
+  }
+  function subtract(value) {
+    result ___ value;
+    displayResult();
+  }
+  function displayResult() {
+    document.getElementById('___').textContent = `Result: ${___}`;  <span class="cmt">// Update the UI</span>
+  }
+  return {
+    ___,  <span class="cmt">// Expose the add function</span>
+    ___   <span class="cmt">// Expose the subtract function</span>
+  };
+})();</pre>
+    <h4>Completed implementation</h4>
+<pre class="code"><span class="cmt">// --- CalculatorModule ---</span>
+window.CalculatorModule = (function () {
+  let result = 0;
+  function add(value) {
+    result += value;
+    console.log(`Added ${value}, new result: ${result}`);
+    displayResult();
+  }
+  function subtract(value) {
+    result -= value;
+    console.log(`Subtracted ${value}, new result: ${result}`);
+    displayResult();
+  }
+  function displayResult() {
+    const resultElement = document.getElementById('result');
+    if (resultElement) {
+      resultElement.textContent = `Result: ${result}`;
+    } else {
+      console.warn("Element with ID 'result' not found.");
+    }
+  }
+  return {
+    add,
+    subtract
+  };
+})();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Implement the Observer Pattern (<code>main.js</code>)</h3>
+    <p class="scenario">The Observer pattern lets a <code class="inline">Subject</code> keep a list of
+      <code class="inline">Observer</code>s and broadcast to all of them at once. Subscribers can be added or
+      removed at runtime, and each one decides what to do in its own <code class="inline">update()</code> method.</p>
+    <h4>Template (fill in the blanks)</h4>
+<pre class="code">class Subject {
+  constructor() {
+    this.observers = ___;  <span class="cmt">// Initialize the observers list</span>
+  }
+  subscribe(observer) {
+    this.observers.___(observer);  <span class="cmt">// Add an observer</span>
+  }
+  unsubscribe(observer) {
+    this.observers = this.observers.filter(obs =&gt; obs !== ___);  <span class="cmt">// Remove an observer</span>
+  }
+  notify() {
+    this.observers.forEach(observer =&gt; observer.___());  <span class="cmt">// Notify all observers</span>
+  }
+}
+
+class Observer {
+  constructor(name) {
+    this.name = ___;  <span class="cmt">// Store the observer's name</span>
+  }
+  update() {
+    console.log(`${___} received notification!`);  <span class="cmt">// Log a notification</span>
+  }
+}</pre>
+    <h4>Completed implementation</h4>
+<pre class="code"><span class="cmt">// --- Observer Pattern ---</span>
+class Subject {
+  constructor() {
+    this.observers = [];
+    console.log('Subject created.');
+  }
+  subscribe(observer) {
+    this.observers.push(observer);
+    console.log(`Subscribed: ${observer.name}`);
+  }
+  unsubscribe(observer) {
+    this.observers = this.observers.filter(obs =&gt; obs !== observer);
+    console.log(`Unsubscribed: ${observer.name}`);
+  }
+  notify() {
+    console.log('Notifying observers...');
+    this.observers.forEach(observer =&gt; observer.update());
+  }
+}
+
+class Observer {
+  constructor(name, outputElementId) {
+    this.name = name;
+    this.outputElementId = outputElementId;
+    console.log(`Observer created: ${this.name}`);
+  }
+  update() {
+    const output = document.getElementById(this.outputElementId);
+    if (output) {
+      const message = document.createElement('div');
+      message.className = 'observer-message';
+      message.textContent = `${this.name} received notification!`;
+      output.appendChild(message);
+      console.log(`${this.name} updated.`);
+    } else {
+      console.warn(`Element with ID '${this.outputElementId}' not found.`);
+    }
+  }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Implement the Singleton Pattern (<code>main.js</code>)</h3>
+    <p class="scenario">The Singleton pattern guarantees exactly <strong>one</strong> instance of a class.
+      The constructor checks for an existing instance and, if found, returns it instead of creating a new
+      one — so every <code class="inline">new Settings()</code> call shares the same configuration object.</p>
+    <h4>Template (fill in the blanks)</h4>
+<pre class="code">class Settings {
+  constructor() {
+    if (Settings.___) {
+      return ___;  <span class="cmt">// Return the existing instance</span>
+    }
+    this.configuration = ___;  <span class="cmt">// Initialize the configuration object</span>
+    Settings.___ = this;  <span class="cmt">// Store the instance</span>
+  }
+  set(key, value) {
+    this.configuration[___] = ___;  <span class="cmt">// Set a configuration value</span>
+  }
+  get(key) {
+    return this.configuration[___];  <span class="cmt">// Retrieve a configuration value</span>
+  }
+}</pre>
+    <h4>Completed implementation</h4>
+<pre class="code"><span class="cmt">// --- Singleton Pattern ---</span>
+class Settings {
+  constructor() {
+    if (Settings.instance) {
+      console.log('Settings instance reused.');
+      return Settings.instance;
+    }
+    console.log('Settings instance created.');
+    this.configuration = {};
+    Settings.instance = this;
+  }
+  set(key, value) {
+    this.configuration[key] = value;
+    console.log(`Setting set: ${key} = ${value}`);
+  }
+  get(key) {
+    const value = this.configuration[key];
+    console.log(`Setting get: ${key} = ${value}`);
+    return value;
+  }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Add the demo drivers and helpers (<code>main.js</code>)</h3>
+    <p class="scenario">These functions are called by the buttons in <code class="inline">index.html</code>.
+      They run each demo and manage the placeholder text in the output boxes. Add them to
+      <code class="inline">main.js</code> alongside the patterns above.</p>
+<pre class="code"><span class="cmt">// --- Helper Functions ---</span>
+function setPlaceholder(containerId, message) {
+  const container = document.getElementById(containerId);
+  if (container) {
+    container.innerHTML = `&lt;div class="placeholder"&gt;${message}&lt;/div&gt;`;
+    console.log(`Placeholder set in #${containerId}: "${message}"`);
+  }
+}
+
+function clearPlaceholder(containerId) {
+  const container = document.getElementById(containerId);
+  if (container) {
+    const placeholder = container.querySelector('.placeholder');
+    if (placeholder) {
+      placeholder.remove();
+      console.log(`Placeholder cleared in #${containerId}`);
+    }
+  }
+}
+
+<span class="cmt">// --- Observer demo drivers ---</span>
+window.runObserverDemo = function () {
+  const output = document.getElementById('observer-output');
+  if (output) output.innerHTML = '';
+  clearPlaceholder('observer-output');
+  const subject = new Subject();
+  const observerA = new Observer("Observer A", "observer-output");
+  const observerB = new Observer("Observer B", "observer-output");
+  subject.subscribe(observerA);
+  subject.subscribe(observerB);
+  subject.notify();
+};
+
+window.clearObserverOutput = function () {
+  setPlaceholder('observer-output', 'No observer output yet.');
+};
+
+<span class="cmt">// --- Singleton demo drivers ---</span>
+window.runSingletonDemo = function () {
+  clearPlaceholder('singleton-output');
+  const settings1 = new Settings();
+  settings1.set("theme", "dark");
+  const settings2 = new Settings();
+  const output = document.getElementById('singleton-output');
+  if (output) {
+    output.innerHTML = '';
+    const message = document.createElement('div');
+    message.textContent = `Theme from settings2: ${settings2.get("theme")}`;
+    output.appendChild(message);
+  } else {
+    console.warn("Element with ID 'singleton-output' not found.");
+  }
+};
+
+window.clearSingletonOutput = function () {
+  setPlaceholder('singleton-output', 'No singleton output yet.');
+};</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">8</span> Add the styling (<code>styles.css</code>)</h3>
+    <p class="scenario">Create a <code class="inline">styles.css</code> file next to
+      <code class="inline">index.html</code> and paste in the styles for the calculator, buttons, and output boxes.</p>
+<pre class="code">body {
+  font-family: Arial, sans-serif;
+  margin: 40px;
+  background-color: #f4f4f4;
+  color: #333;
+  line-height: 1.5;
+}
+h1, h2 {
+  color: #333;
+  margin-bottom: 15px;
+}
+h2 {
+  margin-top: 40px;
+}
+#result {
+  font-size: 24px;
+  margin-bottom: 20px;
+  padding: 12px 18px;
+  background-color: #fff;
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  display: inline-block;
+}
+button {
+  margin: 5px 10px 10px 0;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  background-color: #3498db;
+  color: white;
+  transition: background-color 0.3s ease;
+}
+button:hover {
+  background-color: #2980b9;
+}
+.output-box {
+  margin-top: 10px;
+  padding: 15px;
+  background-color: #eef;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  min-height: 40px;
+  width: fit-content;
+  max-width: 100%;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.05);
+}
+.observer-message {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background-color: #dff0d8;
+  border-left: 4px solid #3c763d;
+  border-radius: 4px;
+  font-size: 15px;
+  color: #2b542c;
+}
+input[type="text"] {
+  padding: 8px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-right: 10px;
+}
+input[type="text"]:focus {
+  border-color: #3498db;
+  outline: none;
+}
+.placeholder {
+  color: #888;
+  font-style: italic;
+  font-size: 14px;
+  padding: 4px;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">9</span> Run your code</h3>
+    <ul class="plain">
+      <li>Click <strong>Go Live</strong> (in the lower-right of the lab).</li>
+      <li>A new tab opens and displays your webpage.</li>
+    </ul>
+    <div class="callout">
+      <strong>Stuck?</strong> If your code is not running as expected, compare it against the completed
+      code in the steps above (or the next item in the lab) to find the missing piece.
+    </div>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The page loads showing <strong>Result: 0</strong>. <strong>Add 5 / Subtract 2</strong> update the result
+    in place (the calculator's <code class="inline">result</code> is private, mutated only through the exposed
+    methods). <strong>Run Observer Demo</strong> subscribes two observers, then <code class="inline">notify()</code>
+    makes both print <em>Observer X received notification!</em> into the output box.
+    <strong>Run Singleton Demo</strong> sets <code class="inline">theme = "dark"</code> on the first
+    <code class="inline">Settings</code>; a second <code class="inline">new Settings()</code> reads the same
+    value back (<em>Theme from settings2: dark</em>), proving both point at one shared instance. Open the
+    browser Console to watch the matching log lines.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">index.html</code>, <code class="inline">main.js</code>, and <code class="inline">styles.css</code> created in the same folder</li>
+      <li><code class="inline">CalculatorModule</code> keeps <code class="inline">result</code> private and exposes only <code class="inline">add</code> and <code class="inline">subtract</code></li>
+      <li><strong>Add 5</strong> / <strong>Subtract 2</strong> update the on-screen <code class="inline">#result</code></li>
+      <li><code class="inline">Subject.notify()</code> calls <code class="inline">update()</code> on every subscribed <code class="inline">Observer</code>, writing to the output box</li>
+      <li>A second <code class="inline">new Settings()</code> returns the <strong>same</strong> instance and reads back <code class="inline">theme = "dark"</code></li>
+      <li><strong>Go Live</strong> serves the page and all three demos run without console errors</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Module pattern = encapsulation via closure</strong> — an IIFE keeps
+        <code class="inline">result</code> and <code class="inline">displayResult()</code> private and returns a
+        small public API (<code class="inline">add</code>, <code class="inline">subtract</code>), preventing
+        outside code from corrupting internal state.</li>
+      <li><strong>Observer pattern = loose coupling</strong> — the <code class="inline">Subject</code> knows only
+        that its observers implement <code class="inline">update()</code>; it can broadcast to any number of them
+        without knowing what each one does.</li>
+      <li><strong>Singleton pattern = one shared instance</strong> — guarding the constructor with
+        <code class="inline">Settings.instance</code> ensures every <code class="inline">new Settings()</code>
+        returns the same object, giving the whole app a single source of truth for configuration.</li>
+      <li><strong>Patterns compose</strong> — each pattern solves one structural problem (state hiding, event
+        fan-out, shared state), and combining them yields code that is reusable, decoupled, and easier to reason about.</li>
+      <li><strong>Defensive DOM access</strong> — null-checking <code class="inline">getElementById</code> and
+        logging to the console makes the demo resilient and easy to debug when an element id is missing.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

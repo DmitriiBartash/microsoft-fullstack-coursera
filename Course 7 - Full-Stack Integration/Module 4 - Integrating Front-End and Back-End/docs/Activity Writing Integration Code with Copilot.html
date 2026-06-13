@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Activity Writing Integration Code with Copilot — Course 7 · Module 4</title>
+<style>
+  :root {
+    --hdr: #db2777 ;      /* header / create  */
+    --pld: #9333ea ;      /* payload / decode */
+    --sig: #ec4899 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 4
+      <span class="pill">Activity</span></p>
+    <h1>Writing Integration Code with Copilot</h1>
+    <p class="lead">
+      Build the first slice of <strong>InventoryHub</strong>: wire a <strong>Blazor WebAssembly</strong>
+      front-end to a <strong>Minimal API</strong> back-end so the app can fetch and render a product list.
+      You'll use <strong>Microsoft Copilot</strong> to generate the <code>HttpClient</code> call inside a
+      Razor component, then refine it for error handling and readability. This is <em>Activity 1 of 4</em> —
+      the integration you build here is the foundation for later debugging, JSON-structuring, and performance work.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Create the integration layer between a Blazor WebAssembly client and a Minimal API
+      server: call the <code class="inline">/api/products</code> endpoint from a Razor component with
+      <code class="inline">HttpClient</code>, deserialize the JSON into a strongly-typed
+      <code class="inline">Product</code> model, and display the results — using Copilot to generate and refine the code.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A solution named <code class="inline">FullStackSolution</code> containing two projects:</p>
+    <table>
+      <thead><tr><th>Project</th><th>Type</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>ClientApp</code></td><td>Blazor WebAssembly (<code>blazorwasm</code>)</td><td>Front-end UI; fetches and renders the product list</td></tr>
+        <tr><td><code>ServerApp</code></td><td>Minimal API (<code>webapi</code>)</td><td>Exposes <code>GET /api/products</code> returning product JSON</td></tr>
+      </tbody>
+    </table>
+    <p>The integration itself lives in one new Razor component, <code class="inline">FetchProducts.razor</code>,
+      which owns the <code class="inline">HttpClient</code> call and the <code class="inline">Product</code> model.</p>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="d">FetchProducts.razor</span> <span class="ar">→</span>
+      <span class="c">HttpClient.GetFromJsonAsync("/api/products")</span> <span class="ar">→</span>
+      <span class="t">JSON</span> <span class="ar">→</span>
+      <span class="d">Product[]</span> <span class="ar">→</span>
+      <span class="ar">rendered list</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code with the C# Dev Kit extension</li>
+      <li>Access to <strong>Microsoft Copilot</strong> (or GitHub Copilot in VS Code) for code generation</li>
+      <li>Basic familiarity with the terminal and running <code class="inline">dotnet</code> commands</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Set up the base application and solution</h3>
+    <p class="scenario">Browse to the root folder where you want the app, then create the project folder and move into it.</p>
+<pre class="code">mkdir FullStackApp
+cd FullStackApp</pre>
+    <p>Create the <strong>Client</strong> (Blazor WASM) and <strong>Server</strong> (Minimal API) applications:</p>
+<pre class="code">dotnet new blazorwasm -n ClientApp
+dotnet new webapi -n ServerApp</pre>
+    <p>Create a solution and add both projects to it:</p>
+<pre class="code">dotnet new sln -n FullStackSolution
+dotnet sln add ClientApp ServerApp</pre>
+    <p>Replace the contents of the <strong>ServerApp's <code class="inline">Program.cs</code></strong> with this
+      starter Minimal API. It exposes a single <code class="inline">GET /api/products</code> endpoint returning
+      two hard-coded products as JSON:</p>
+<pre class="code"><span class="cmt">// ServerApp/Program.cs — Minimal API back-end</span>
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+app.MapGet("/api/products", () =>
+{
+    return new[]
+    {
+        new { Id = 1, Name = "Laptop", Price = 1200.50, Stock = 25 },
+        new { Id = 2, Name = "Headphones", Price = 50.00, Stock = 100 }
+    };
+});
+
+app.Run();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Launch both applications</h3>
+    <ul class="plain">
+      <li>Open <strong>two</strong> terminal windows in VS Code.</li>
+      <li>In the first, run the client: <code class="inline">cd ClientApp</code> then <code class="inline">dotnet run</code>.</li>
+      <li>In the second, run the server: <code class="inline">cd ServerApp</code> then <code class="inline">dotnet run</code>.</li>
+      <li>Open the <strong>ClientApp</strong> (front end) in your browser — the data is <strong>not</strong> displayed
+        yet because the integration code doesn't exist.</li>
+      <li>Open the <strong>ServerApp</strong> (back end) and browse to
+        <code class="inline">http://localhost:[port]/api/products</code> — confirm the API returns the product list in JSON.</li>
+    </ul>
+    <div class="callout">
+      <strong>Note:</strong> grab the server's port number from its terminal output — you'll point the client's
+      <code class="inline">HttpClient</code> at it.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Add the product list component</h3>
+    <p class="scenario">In the <strong>ClientApp</strong> project, create a file named
+      <code class="inline">FetchProducts.razor</code>. The <code class="inline">OnInitializedAsync</code> method is
+      intentionally empty — that's where the integration logic goes.</p>
+<pre class="code">@page "/fetchproducts"
+
+&lt;h3&gt;Product List&lt;/h3&gt;
+
+&lt;ul&gt;
+    @if (products != null)
+    {
+        foreach (var product in products)
+        {
+            &lt;li&gt;@product.Name - $@product.Price&lt;/li&gt;
+        }
+    }
+    else
+    {
+        &lt;li&gt;Loading...&lt;/li&gt;
+    }
+&lt;/ul&gt;
+
+@code {
+    private Product[]? products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        <span class="cmt">// API call logic will go here</span>
+    }
+
+    public class Product
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public double Price { get; set; }
+        public int Stock { get; set; }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Generate the API call with Copilot</h3>
+    <p class="scenario">Ask Copilot to fill in <code class="inline">OnInitializedAsync</code> so it uses
+      <code class="inline">HttpClient</code> to call <code class="inline">/api/products</code> and deserializes the
+      JSON into the <code class="inline">Product</code> class. A clean result uses the injected
+      <code class="inline">HttpClient</code> and the <code class="inline">GetFromJsonAsync</code> helper:</p>
+<pre class="code">@page "/fetchproducts"
+@inject HttpClient Http
+@using System.Net.Http.Json
+
+&lt;h3&gt;Product List&lt;/h3&gt;
+
+&lt;ul&gt;
+    @if (products != null)
+    {
+        foreach (var product in products)
+        {
+            &lt;li&gt;@product.Name - $@product.Price&lt;/li&gt;
+        }
+    }
+    else
+    {
+        &lt;li&gt;Loading...&lt;/li&gt;
+    }
+&lt;/ul&gt;
+
+@code {
+    private Product[]? products;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await Http.GetFromJsonAsync&lt;Product[]&gt;("/api/products");
+    }
+
+    public class Product
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public double Price { get; set; }
+        public int Stock { get; set; }
+    }
+}</pre>
+    <p>For the request to resolve, the client's <code class="inline">HttpClient</code> base address must point at the
+      <strong>server's</strong> origin. In <code class="inline">ClientApp/Program.cs</code>, set it to the ServerApp
+      URL from Step 2:</p>
+<pre class="code"><span class="cmt">// ClientApp/Program.cs — point HttpClient at the ServerApp</span>
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri("http://localhost:5000") <span class="cmt">// use your ServerApp port</span>
+});</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Refine and test the integration</h3>
+    <p class="scenario">Use Copilot to refine the call so it's production-friendly — <strong>add error handling</strong>
+      for invalid responses or timeouts, and keep the code readable and maintainable.</p>
+<pre class="code">@code {
+    private Product[]? products;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            <span class="cmt">// GetFromJsonAsync throws on non-success status and deserializes in one call</span>
+            products = await Http.GetFromJsonAsync&lt;Product[]&gt;("/api/products");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to load products: {ex.Message}";
+            products = Array.Empty&lt;Product&gt;();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unexpected error: {ex.Message}";
+            products = Array.Empty&lt;Product&gt;();
+        }
+    }
+
+    public class Product
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public double Price { get; set; }
+        public int Stock { get; set; }
+    }
+}</pre>
+    <p>Run both projects with <code class="inline">dotnet run</code> and browse to
+      <code class="inline">/fetchproducts</code> in the client to verify the product data appears.
+      <strong>Save your work</strong> — Activity 2 expands this app to debug and resolve integration issues
+      (API routes, CORS, malformed JSON).</p>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Browsing to <strong><code class="inline">/fetchproducts</code></strong> in the ClientApp renders the live
+    product list pulled from the Minimal API — <em>Laptop&nbsp;-&nbsp;$1200.5</em> and
+    <em>Headphones&nbsp;-&nbsp;$50</em>. The list briefly shows <strong>Loading...</strong> before the data arrives,
+    and a failed request surfaces an error message instead of a blank page.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">FullStackSolution</code> created with <code class="inline">ClientApp</code> (Blazor WASM)
+        and <code class="inline">ServerApp</code> (Minimal API) added</li>
+      <li><code class="inline">ServerApp/Program.cs</code> exposes <code class="inline">GET /api/products</code> returning product JSON</li>
+      <li><code class="inline">FetchProducts.razor</code> exists at route <code class="inline">/fetchproducts</code> with a strongly-typed <code class="inline">Product</code> model</li>
+      <li><code class="inline">OnInitializedAsync</code> calls the API via <code class="inline">HttpClient</code> and deserializes the response</li>
+      <li><code class="inline">HttpClient.BaseAddress</code> in the client points at the ServerApp origin</li>
+      <li>Error handling wraps the call so timeouts / bad responses don't crash the UI</li>
+      <li>Running both projects shows the product list at <code class="inline">/fetchproducts</code> in the browser</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Front-end / back-end integration</strong> — the client and server are separate processes;
+        integration is an <strong>HTTP call</strong> from the Blazor component to the API endpoint, not a direct method call.</li>
+      <li><strong>Typed deserialization</strong> — <code class="inline">GetFromJsonAsync&lt;Product[]&gt;</code> fetches
+        and maps JSON to C# objects in one step, so the UI binds to a strongly-typed model instead of raw text.</li>
+      <li><strong><code class="inline">HttpClient</code> base address</strong> — a Blazor WASM client calling a
+        <em>different</em> origin must have its <code class="inline">BaseAddress</code> (or absolute URLs) set to the
+        server, or requests won't resolve.</li>
+      <li><strong>Resilient calls</strong> — wrapping the request in <code class="inline">try/catch</code> for
+        <code class="inline">HttpRequestException</code> keeps the app responsive when the API is slow, down, or returns an error.</li>
+      <li><strong>Copilot as a pair-programmer</strong> — generate the first draft fast, then <strong>refine</strong>
+        it for error handling, readability, and maintainability rather than shipping the raw suggestion.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

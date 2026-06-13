@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Securing Serialization and Deserialization — Course 5 · Module 3</title>
+<style>
+  :root {
+    --hdr: #2563eb;      /* header / create  */
+    --pld: #0891b2;      /* payload / decode */
+    --sig: #3b82f6;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 5 — Back-End Development with .NET · Module 3 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Securing Serialization and Deserialization</h1>
+    <p class="lead">
+      Build a .NET console app that serializes user data <strong>securely</strong>. You'll walk the full
+      threat surface — exposed secrets, deserialization attacks, tampering — and layer in
+      <strong>input validation</strong>, <strong>AES encryption</strong>, <strong>trusted-source checks</strong>,
+      and a <strong>SHA-256 integrity hash</strong>, organized into clean <code>Models</code> and <code>Services</code> classes.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this lab you will be able to identify potential security risks in
+      serialization, implement secure serialization practices, validate input data with data annotations,
+      use a secure library (<code class="inline">System.Text.Json</code>), encrypt sensitive fields before
+      serialization, and verify the integrity of serialized data in .NET.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A console project named <code class="inline">SerializationSecurityApp</code> organized into a model and three services:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Models/User.cs</code></td><td>The <code>User</code> model with <code>[Required]</code> / <code>[EmailAddress]</code> / <code>[StringLength]</code> validation</td></tr>
+        <tr><td><code>Services/EncryptionService.cs</code></td><td>AES-encrypt sensitive fields (the <code>Password</code>) before serialization</td></tr>
+        <tr><td><code>Services/HashService.cs</code></td><td>Produce a SHA-256 hash of serialized data for integrity checks</td></tr>
+        <tr><td><code>Services/SerializationService.cs</code></td><td>Validate → encrypt → serialize, and verify-source → check-hash → deserialize</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Drive the flow: collect input, serialize, then deserialize trusted vs. untrusted</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Input</span> <span class="ar">→</span>
+      <span class="c">Validate</span> <span class="ar">→</span>
+      <span class="c">Encrypt(Password)</span> <span class="ar">→</span>
+      <span class="t">Serialize(JSON)</span> <span class="ar">→</span>
+      <span class="d">Hash</span> <span class="ar">→</span>
+      <span class="ar">Deserialize (if trusted &amp; hash matches)</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>Built-in namespaces only: <code class="inline">System.Text.Json</code>, <code class="inline">System.Security.Cryptography</code>, <code class="inline">System.ComponentModel.DataAnnotations</code> (no extra NuGet packages)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Create a new console application</h3>
+    <p class="scenario">Scaffold the project and move into it.</p>
+<pre class="code">dotnet new console -o SerializationSecurityApp
+cd SerializationSecurityApp</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> in Visual Studio Code and <strong>delete any existing code</strong> — each step adds to a clean project.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Identify serialization risks</h3>
+    <p class="scenario">Before securing anything, understand what goes wrong. Serializing a raw <code class="inline">User</code> to JSON would:</p>
+    <ul class="plain">
+      <li><strong>Expose sensitive data</strong> — the <code class="inline">Password</code> lands in the output as plain text.</li>
+      <li><strong>Enable deserialization attacks</strong> — accepting JSON from any source lets an attacker craft malicious payloads.</li>
+      <li><strong>Allow data tampering</strong> — without an integrity check, a modified payload deserializes as if it were genuine.</li>
+    </ul>
+    <p style="margin:0">The remaining steps neutralize each of these risks.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement input validation for serialization</h3>
+    <p class="scenario">Add validation attributes to the model so malformed data never reaches serialization. Create <code class="inline">Models/User.cs</code>:</p>
+<pre class="code">using System.ComponentModel.DataAnnotations;
+
+namespace SerializationSecurityApp.Models;
+
+public class User
+{
+    [Required]
+    [StringLength(50, MinimumLength = 3)]
+    public required string Name { get; set; }
+
+    [Required]
+    [EmailAddress]
+    public required string Email { get; set; }
+
+    [Required]
+    [StringLength(100, MinimumLength = 6)]
+    public required string Password { get; set; }
+}</pre>
+    <ul class="plain">
+      <li>Validation runs inside the serialization service (Step 6) via <code class="inline">Validator.TryValidateObject</code>; if any property fails, the object is <strong>not</strong> serialized and the errors are reported.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Use a secure library for serialization</h3>
+    <p class="scenario">Use the built-in <code class="inline">System.Text.Json</code> library rather than legacy/binary formatters (which are unsafe for untrusted input). It is fast, does not execute arbitrary types, and is configured explicitly. The lab enables:</p>
+    <ul class="plain">
+      <li><code class="inline">WriteIndented = true</code> for readable output.</li>
+      <li><code class="inline">DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull</code> so null fields are omitted.</li>
+    </ul>
+    <p style="margin:0">This is wired up in <code class="inline">SerializationService.SerializeUserData</code> (Step 6).</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Encrypt sensitive data before serialization</h3>
+    <p class="scenario">Encrypt the <code class="inline">Password</code> before it is ever written to JSON. Create <code class="inline">Services/EncryptionService.cs</code>:</p>
+<pre class="code">using System.Security.Cryptography;
+using System.Text;
+
+namespace SerializationSecurityApp.Services;
+
+public static class EncryptionService
+{
+    private static readonly byte[] Key = Encoding.UTF8.GetBytes("A1B2C3D4E5F6G7H8");
+    private static readonly byte[] IV = Encoding.UTF8.GetBytes("1H2G3F4E5D6C7B8A");
+
+    public static string Encrypt(string plainText)
+    {
+        using var aes = Aes.Create();
+        aes.Key = Key;
+        aes.IV = IV;
+        using var encryptor = aes.CreateEncryptor();
+        using var ms = new MemoryStream();
+        using var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
+        using var sw = new StreamWriter(cs);
+        sw.Write(plainText);
+        sw.Close();
+        return Convert.ToBase64String(ms.ToArray());
+    }
+}</pre>
+    <div class="callout">
+      <strong>Note:</strong> The 16-byte <code class="inline">Key</code>/<code class="inline">IV</code> are hard-coded here <em>only for the lab</em>.
+      In production, load them from a secret store (environment variables, Azure Key Vault, etc.) and use a fresh random IV per message — never commit keys to source control.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Prevent deserialization of untrusted data</h3>
+    <p class="scenario">Build the core service that ties validation, encryption, serialization, hashing, and trusted-source checks together. First add <code class="inline">Services/HashService.cs</code> for the integrity hash (used here and in Step 7):</p>
+<pre class="code">using System.Security.Cryptography;
+using System.Text;
+
+namespace SerializationSecurityApp.Services;
+
+public static class HashService
+{
+    public static string GenerateHash(string data)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(data);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
+    }
+}</pre>
+    <p class="scenario">Now create <code class="inline">Services/SerializationService.cs</code>. <code class="inline">DeserializeUserData</code> refuses any <strong>untrusted source</strong> and aborts deserialization entirely:</p>
+<pre class="code">using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using SerializationSecurityApp.Models;
+
+namespace SerializationSecurityApp.Services;
+
+public class SerializationService
+{
+    private string? _lastHash;
+
+    public string? SerializeUserData(User user)
+    {
+        var validationContext = new ValidationContext(user);
+        var results = new List&lt;ValidationResult&gt;();
+        bool isValid = Validator.TryValidateObject(user, validationContext, results, true);
+        if (!isValid)
+        {
+            Console.WriteLine("\nValidation errors:");
+            foreach (var error in results)
+            {
+                Console.WriteLine($" - {error.ErrorMessage}");
+            }
+            return null;
+        }
+
+        user.Password = EncryptionService.Encrypt(user.Password);
+
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
+
+        var jsonData = JsonSerializer.Serialize(user, options);
+        _lastHash = HashService.GenerateHash(jsonData);
+        return jsonData;
+    }
+
+    public User? DeserializeUserData(string jsonData, bool trustedSource)
+    {
+        if (!trustedSource)
+        {
+            Console.WriteLine("Untrusted source. Deserialization aborted.");
+            return null;
+        }
+
+        var hash = HashService.GenerateHash(jsonData);
+        if (_lastHash != hash)
+        {
+            Console.WriteLine("Data integrity check failed. Possible tampering detected.");
+            return null;
+        }
+
+        return JsonSerializer.Deserialize&lt;User&gt;(jsonData);
+    }
+
+    public string? GetLastHash() =&gt; _lastHash;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">7</span> Implement data integrity checks</h3>
+    <p class="scenario">Notice the integrity check is already woven in above: <code class="inline">SerializeUserData</code> stores
+      <code class="inline">_lastHash = HashService.GenerateHash(jsonData)</code> right after serializing, and
+      <code class="inline">DeserializeUserData</code> recomputes the hash of the incoming JSON and <strong>rejects</strong> it if it differs from
+      <code class="inline">_lastHash</code> — detecting any tampering in transit before the object is reconstructed.</p>
+    <p class="scenario">Finally, wire everything together in <code class="inline">Program.cs</code>:</p>
+<pre class="code">using SerializationSecurityApp.Models;
+using SerializationSecurityApp.Services;
+
+class Program
+{
+    static void Main()
+    {
+        var serializer = new SerializationService();
+        string? jsonData = null;
+
+        while (jsonData == null)
+        {
+            Console.WriteLine("\n=== User Registration ===");
+            Console.Write("Enter Name: ");
+            string name = Console.ReadLine() ?? "";
+            Console.Write("Enter Email: ");
+            string email = Console.ReadLine() ?? "";
+            Console.Write("Enter Password: ");
+            string password = Console.ReadLine() ?? "";
+
+            var user = new User
+            {
+                Name = name,
+                Email = email,
+                Password = password
+            };
+
+            jsonData = serializer.SerializeUserData(user);
+            if (jsonData == null)
+            {
+                Console.WriteLine("\nPlease try again.\n");
+            }
+        }
+
+        Console.WriteLine("\nUser data validated and serialized successfully.");
+        Console.WriteLine("\n--- Serialized Data ---");
+        Console.WriteLine(jsonData);
+
+        Console.WriteLine("\n--- Hash ---");
+        Console.WriteLine(serializer.GetLastHash());
+
+        Console.WriteLine("\n--- Deserialization from Trusted Source ---");
+        var deserializedTrusted = serializer.DeserializeUserData(jsonData, trustedSource: true);
+        if (deserializedTrusted != null)
+        {
+            Console.WriteLine($"Name: {deserializedTrusted.Name}, Email: {deserializedTrusted.Email}, Password: {deserializedTrusted.Password}");
+        }
+
+        Console.WriteLine("\n--- Deserialization from Untrusted Source ---");
+        var deserializedUntrusted = serializer.DeserializeUserData(jsonData, trustedSource: false);
+        Console.WriteLine(deserializedUntrusted == null ? "Blocked." : "Unexpected success!");
+    }
+}</pre>
+    <p class="scenario" style="margin:14px 0 0">Run it:</p>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Enter valid details (Name ≥ 3 chars, a real email, Password ≥ 6 chars) and the app prints the
+    <strong>Serialized Data</strong> (indented JSON where <code class="inline">Password</code> is an AES Base64 ciphertext, not plain text),
+    the <strong>Hash</strong> (SHA-256 Base64 integrity hash), <strong>Deserialization from Trusted Source</strong> succeeding and printing the reconstructed
+    fields, and <strong>Deserialization from Untrusted Source</strong> showing <code class="inline">Untrusted source. Deserialization aborted.</code> then
+    <code class="inline">Blocked.</code> Invalid input prints validation errors and re-prompts until valid.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">SerializationSecurityApp</code> console project created with <code class="inline">Models/</code> and <code class="inline">Services/</code> folders</li>
+      <li><code class="inline">User</code> model carries <code class="inline">[Required]</code>, <code class="inline">[EmailAddress]</code>, and <code class="inline">[StringLength]</code> validation attributes</li>
+      <li><code class="inline">SerializeUserData</code> rejects invalid objects via <code class="inline">Validator.TryValidateObject</code> and re-prompts</li>
+      <li><code class="inline">Password</code> is AES-encrypted by <code class="inline">EncryptionService</code> before it is serialized</li>
+      <li>Serialization uses <code class="inline">System.Text.Json</code> with <code class="inline">WriteIndented</code> and <code class="inline">WhenWritingNull</code></li>
+      <li>A SHA-256 hash is stored on serialize and re-checked on deserialize</li>
+      <li>Deserialization is blocked for untrusted sources and on any hash mismatch</li>
+      <li><code class="inline">dotnet run</code> shows trusted deserialization succeeding and untrusted being blocked</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Validate before you serialize</strong> — <code class="inline">Validator.TryValidateObject</code> against data annotations means malformed or oversized input never enters the pipeline (fail fast), shrinking the attack surface.</li>
+      <li><strong>Never trust incoming payloads</strong> — gate deserialization on a trusted-source flag and use a safe serializer (<code class="inline">System.Text.Json</code>) instead of binary formatters that can instantiate arbitrary types.</li>
+      <li><strong>Protect data in transit and at rest</strong> — encrypt sensitive fields (the <code class="inline">Password</code>) <em>before</em> serialization so secrets are never written in plain text, even if the JSON leaks.</li>
+      <li><strong>Integrity via hashing</strong> — storing a SHA-256 hash at serialize time and re-comparing it at deserialize time detects tampering before the object is reconstructed.</li>
+      <li><strong>Keep secrets out of code</strong> — the lab's hard-coded AES <code class="inline">Key</code>/<code class="inline">IV</code> are for learning only; production keys belong in a secret store with a per-message random IV.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

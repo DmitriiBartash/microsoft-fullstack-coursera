@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Activity Databases — Course 6 · Module 1</title>
+<style>
+  :root {
+    --hdr: #059669;      /* header / create  */
+    --pld: #0d9488;      /* payload / decode */
+    --sig: #10b981;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 6 — Database Integration and Management · Module 1 · Lesson 1
+      <span class="pill">Activity</span></p>
+    <h1>Activity: Databases</h1>
+    <p class="lead">
+      Practise turning a plain-English domain into a <strong>relational schema</strong>. You will model two
+      systems — a <strong>university</strong> and a <strong>library</strong> — identifying the tables, choosing
+      columns, wiring up the relationships (One-to-Many and Many-to-Many), and writing the
+      <code>CREATE TABLE</code> DDL that brings each design to life.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Learn to translate a business problem into a normalized relational database design:
+      pick the right <strong>tables</strong>, define their <strong>columns</strong> with appropriate types and
+      keys, and resolve <strong>Many-to-Many</strong> relationships with a junction table — then express the
+      whole design as runnable SQL DDL with primary and foreign keys.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">📦</span> What you will produce</h2>
+  <div class="card">
+    <p>Two complete schema designs, each delivered as a table list, a relationship map, and a SQL script:</p>
+    <table>
+      <thead><tr><th>Task</th><th>Domain</th><th>Tables</th><th>Key relationship</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Task 1</td><td>University</td>
+          <td><code>Students</code>, <code>Professors</code>, <code>Courses</code>, <code>Enrollments</code></td>
+          <td>Students ↔ Courses (Many-to-Many via <code>Enrollments</code>)</td>
+        </tr>
+        <tr>
+          <td>Task 2</td><td>Library</td>
+          <td><code>Members</code>, <code>Books</code>, <code>Loans</code></td>
+          <td>Members ↔ Books (Many-to-Many via <code>Loans</code>)</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin:12px 0 0">Each design must include: primary keys, foreign keys, sensible column types,
+      <code class="inline">UNIQUE</code> constraints where identity demands it, and a junction table that
+      resolves the Many-to-Many link.</p>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>Familiarity with relational concepts: <strong>primary key (PK)</strong>, <strong>foreign key (FK)</strong>, and <strong>cardinality</strong>.</li>
+      <li>Basic SQL DDL syntax (<code class="inline">CREATE TABLE</code>, column types, <code class="inline">PRIMARY KEY</code>, <code class="inline">FOREIGN KEY … REFERENCES</code>).</li>
+      <li>A SQL database or editor to run the scripts (SQL Server, PostgreSQL, MySQL, or SQLite).</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WALKTHROUGH — TASK 1 ===================== -->
+  <h2 class="section"><span class="em">🧭</span> Walkthrough — Task 1: University Database Schema</h2>
+
+  <div class="card">
+    <h4>Define the problem</h4>
+    <p>Design a database for a university to manage <strong>students, courses, and professors</strong>.</p>
+
+    <h4>Steps to complete the task</h4>
+    <ul class="plain">
+      <li><strong>Identify the tables:</strong> <code>Students</code>, <code>Courses</code>, <code>Professors</code>.</li>
+      <li><strong>Decide on the columns</strong> for each table.</li>
+      <li><strong>Connect the tables with relationships:</strong>
+        <ul class="plain">
+          <li>Each professor can teach many courses, but a course is taught by one professor — <strong>One-to-Many</strong>.</li>
+          <li>Each student can enroll in many courses, and each course can have many students — <strong>Many-to-Many</strong>.</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>Solution</h3>
+    <h4>1. Tables and attributes</h4>
+
+    <p style="margin:0 0 6px"><code class="inline">Students</code></p>
+    <table>
+      <thead><tr><th>Column</th><th>Key</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>StudentID</code></td><td>PK</td><td>Unique student identifier</td></tr>
+        <tr><td><code>FirstName</code></td><td></td><td>First name</td></tr>
+        <tr><td><code>LastName</code></td><td></td><td>Last name</td></tr>
+        <tr><td><code>Email</code></td><td></td><td>Email address</td></tr>
+        <tr><td><code>DateOfBirth</code></td><td></td><td>Date of birth</td></tr>
+        <tr><td><code>Major</code></td><td></td><td>Student's major</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin:14px 0 6px"><code class="inline">Professors</code></p>
+    <table>
+      <thead><tr><th>Column</th><th>Key</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>ProfessorID</code></td><td>PK</td><td>Unique professor identifier</td></tr>
+        <tr><td><code>FirstName</code></td><td></td><td>First name</td></tr>
+        <tr><td><code>LastName</code></td><td></td><td>Last name</td></tr>
+        <tr><td><code>Email</code></td><td></td><td>Email address</td></tr>
+        <tr><td><code>Department</code></td><td></td><td>Department name</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin:14px 0 6px"><code class="inline">Courses</code></p>
+    <table>
+      <thead><tr><th>Column</th><th>Key</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>CourseID</code></td><td>PK</td><td>Unique course identifier</td></tr>
+        <tr><td><code>Title</code></td><td></td><td>Course title</td></tr>
+        <tr><td><code>Credits</code></td><td></td><td>Number of credits</td></tr>
+        <tr><td><code>ProfessorID</code></td><td>FK</td><td>Reference to professor (One-to-Many: one professor → many courses)</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin:14px 0 6px"><code class="inline">Enrollments</code> <span class="scenario">(junction table for Many-to-Many)</span></p>
+    <table>
+      <thead><tr><th>Column</th><th>Key</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>EnrollmentID</code></td><td>PK</td><td>Unique enrollment record</td></tr>
+        <tr><td><code>StudentID</code></td><td>FK</td><td>Reference to student</td></tr>
+        <tr><td><code>CourseID</code></td><td>FK</td><td>Reference to course</td></tr>
+        <tr><td><code>Grade</code></td><td></td><td>Grade (nullable until course completion)</td></tr>
+      </tbody>
+    </table>
+
+    <h4>2. Relationships</h4>
+    <ul class="plain">
+      <li><strong>Professors → Courses:</strong> one professor can teach many courses, but each course is taught by one professor (<strong>One-to-Many</strong>).</li>
+      <li><strong>Students ↔ Courses (via <code class="inline">Enrollments</code>):</strong> a student can enroll in many courses, and each course can have many students (<strong>Many-to-Many</strong>).</li>
+    </ul>
+
+    <h4>3. ER diagram</h4>
+    <p class="scenario" style="margin:0 0 8px"><em>(The original includes an ER diagram here.)</em> The relationships in shorthand:</p>
+<pre class="code">Professors 1 ──&lt; Courses 1 ──&lt; Enrollments &gt;── 1 Students</pre>
+
+    <h4>SQL script (DDL)</h4>
+<pre class="code">CREATE TABLE Students (
+    StudentID INT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    Email VARCHAR(100) UNIQUE,
+    DateOfBirth DATE,
+    Major VARCHAR(100)
+);
+
+CREATE TABLE Professors (
+    ProfessorID INT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    Email VARCHAR(100) UNIQUE,
+    Department VARCHAR(100)
+);
+
+CREATE TABLE Courses (
+    CourseID INT PRIMARY KEY,
+    Title VARCHAR(100),
+    Credits INT,
+    ProfessorID INT,
+    FOREIGN KEY (ProfessorID) REFERENCES Professors(ProfessorID)
+);
+
+CREATE TABLE Enrollments (
+    EnrollmentID INT PRIMARY KEY,
+    StudentID INT,
+    CourseID INT,
+    Grade CHAR(2),
+    FOREIGN KEY (StudentID) REFERENCES Students(StudentID),
+    FOREIGN KEY (CourseID) REFERENCES Courses(CourseID)
+);</pre>
+  </div>
+
+  <!-- ===================== YOUR TURN — TASK 2 ===================== -->
+  <h2 class="section"><span class="em">🧩</span> Your turn — Task 2: Library Management Schema</h2>
+
+  <div class="card">
+    <h4>Define the problem</h4>
+    <p>Design a database for a library to manage <strong>members, books, and loans</strong>.</p>
+
+    <h4>Steps to complete the task</h4>
+    <ul class="plain">
+      <li><strong>Identify the tables:</strong> <code>Members</code>, <code>Books</code>, <code>Loans</code>.</li>
+      <li><strong>Decide on the columns</strong> for each table.</li>
+      <li><strong>Connect the tables with relationships:</strong>
+        <ul class="plain">
+          <li>A loan connects a member to a book (<strong>One-to-Many</strong> from each side).</li>
+          <li>A book can be borrowed many times by different members (<strong>Many-to-Many</strong>, resolved by <code>Loans</code>).</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>Solution</h3>
+    <h4>1. Tables and attributes</h4>
+
+    <p style="margin:0 0 6px"><code class="inline">Members</code></p>
+    <table>
+      <thead><tr><th>Column</th><th>Key</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>MemberID</code></td><td>PK</td><td>Unique member identifier</td></tr>
+        <tr><td><code>FirstName</code></td><td></td><td>First name</td></tr>
+        <tr><td><code>LastName</code></td><td></td><td>Last name</td></tr>
+        <tr><td><code>Email</code></td><td></td><td>Email address (unique)</td></tr>
+        <tr><td><code>Phone</code></td><td></td><td>Phone number</td></tr>
+        <tr><td><code>DateJoined</code></td><td></td><td>Date when member joined</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin:14px 0 6px"><code class="inline">Books</code></p>
+    <table>
+      <thead><tr><th>Column</th><th>Key</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>BookID</code></td><td>PK</td><td>Unique book identifier</td></tr>
+        <tr><td><code>Title</code></td><td></td><td>Book title</td></tr>
+        <tr><td><code>Author</code></td><td></td><td>Author of the book</td></tr>
+        <tr><td><code>ISBN</code></td><td></td><td>International book number (unique)</td></tr>
+        <tr><td><code>PublishedYear</code></td><td></td><td>Year of publication</td></tr>
+        <tr><td><code>CopiesAvailable</code></td><td></td><td>Number of available copies</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin:14px 0 6px"><code class="inline">Loans</code> <span class="scenario">(junction table for Many-to-Many)</span></p>
+    <table>
+      <thead><tr><th>Column</th><th>Key</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>LoanID</code></td><td>PK</td><td>Unique loan identifier</td></tr>
+        <tr><td><code>MemberID</code></td><td>FK</td><td>Reference to member</td></tr>
+        <tr><td><code>BookID</code></td><td>FK</td><td>Reference to book</td></tr>
+        <tr><td><code>LoanDate</code></td><td></td><td>Date when book was borrowed</td></tr>
+        <tr><td><code>DueDate</code></td><td></td><td>Due date for return</td></tr>
+        <tr><td><code>ReturnDate</code></td><td></td><td>Actual return date (nullable)</td></tr>
+      </tbody>
+    </table>
+
+    <h4>2. Relationships</h4>
+    <ul class="plain">
+      <li><strong>Members → Loans:</strong> one member can have many loans (<strong>One-to-Many</strong>).</li>
+      <li><strong>Books → Loans:</strong> one book can appear in many loans (<strong>One-to-Many</strong>).</li>
+      <li><strong>Members ↔ Books (via <code class="inline">Loans</code>):</strong> a member can borrow many books, and each book can be borrowed by many members (<strong>Many-to-Many</strong>, resolved by <code>Loans</code>).</li>
+    </ul>
+
+    <h4>3. ER diagram</h4>
+    <p class="scenario" style="margin:0 0 8px"><em>(The original includes an ER diagram here.)</em> The relationships in shorthand:</p>
+<pre class="code">Members 1 ──&lt; Loans &gt;── 1 Books</pre>
+
+    <h4>SQL script (DDL)</h4>
+<pre class="code">CREATE TABLE Members (
+    MemberID INT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    Email VARCHAR(100) UNIQUE,
+    Phone VARCHAR(20),
+    DateJoined DATE
+);
+
+CREATE TABLE Books (
+    BookID INT PRIMARY KEY,
+    Title VARCHAR(150),
+    Author VARCHAR(100),
+    ISBN VARCHAR(20) UNIQUE,
+    PublishedYear INT,
+    CopiesAvailable INT
+);
+
+CREATE TABLE Loans (
+    LoanID INT PRIMARY KEY,
+    MemberID INT NOT NULL,
+    BookID INT NOT NULL,
+    LoanDate DATE NOT NULL,
+    DueDate DATE NOT NULL,
+    ReturnDate DATE,
+    FOREIGN KEY (MemberID) REFERENCES Members(MemberID),
+    FOREIGN KEY (BookID) REFERENCES Books(BookID)
+);</pre>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">🌟</span> What good looks like</h2>
+  <div class="card">
+    <ul class="plain">
+      <li><strong>Every table has a primary key</strong>, and natural-identity columns (<code class="inline">Email</code>, <code class="inline">ISBN</code>) carry a <code class="inline">UNIQUE</code> constraint.</li>
+      <li><strong>Many-to-Many is always resolved with a junction table</strong> (<code class="inline">Enrollments</code>, <code class="inline">Loans</code>) holding two foreign keys plus any relationship-specific data (<code class="inline">Grade</code>, <code class="inline">LoanDate</code>).</li>
+      <li><strong>Foreign keys reference the correct parent PK</strong>, so the database enforces referential integrity.</li>
+      <li><strong>Column types fit the data:</strong> dates use <code class="inline">DATE</code>, identifiers use <code class="inline">INT</code>, text uses sized <code class="inline">VARCHAR</code>.</li>
+      <li><strong>Nullable columns reflect the domain</strong> — <code class="inline">Grade</code> and <code class="inline">ReturnDate</code> are empty until the course finishes or the book is returned.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>University schema lists <code class="inline">Students</code>, <code class="inline">Professors</code>, <code class="inline">Courses</code>, and the <code class="inline">Enrollments</code> junction table.</li>
+      <li>Library schema lists <code class="inline">Members</code>, <code class="inline">Books</code>, and the <code class="inline">Loans</code> junction table.</li>
+      <li>Every table defines a <strong>primary key</strong>; <code class="inline">Email</code> and <code class="inline">ISBN</code> are marked <code class="inline">UNIQUE</code>.</li>
+      <li>Each <strong>One-to-Many</strong> link (e.g. <code class="inline">Courses.ProfessorID</code>) is a foreign key to the parent's PK.</li>
+      <li>Each <strong>Many-to-Many</strong> link is resolved by a junction table carrying both foreign keys.</li>
+      <li>Both <code class="inline">CREATE TABLE</code> scripts run without error and create the tables with their constraints.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Tables model entities; columns model attributes.</strong> Start by naming the real-world things (students, books) and the facts you store about each.</li>
+      <li><strong>Primary keys give every row a unique identity</strong>, while <code class="inline">UNIQUE</code> constraints protect natural identifiers like email or ISBN from duplication.</li>
+      <li><strong>One-to-Many is expressed with a foreign key on the "many" side</strong> — a course points to its single professor via <code class="inline">ProfessorID</code>.</li>
+      <li><strong>Many-to-Many cannot be stored directly; it is resolved with a junction (associative) table</strong> that holds a foreign key to each side and any data about the relationship itself (a grade, a loan date).</li>
+      <li><strong>Foreign keys enforce referential integrity</strong> — the database refuses orphaned rows, keeping the data consistent.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

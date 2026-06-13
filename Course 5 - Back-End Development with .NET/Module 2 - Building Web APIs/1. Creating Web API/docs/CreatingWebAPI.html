@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CreatingWebAPI — Course 5 · Module 2</title>
+<style>
+  :root {
+    --hdr: #2563eb ;      /* header / create  */
+    --pld: #0891b2 ;      /* payload / decode */
+    --sig: #3b82f6 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 5 — Back-End Development with .NET · Module 2 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Creating a Web API</h1>
+    <p class="lead">
+      Build a small <strong>ASP.NET Core Web API</strong> that manages an in-memory list of items with
+      full <strong>CRUD</strong> (Create, Read, Update, Delete) operations using minimal-API endpoints,
+      then exercise every endpoint with <code>Postman</code>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this lab you will be able to set up a basic ASP.NET Core project, create a
+      web API, and implement <strong>GET, POST, PUT, and DELETE</strong> endpoints — and use <strong>Postman</strong>
+      to test your API.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A minimal-API project (<code class="inline">ItemsApi</code>) that keeps a list of items in memory and
+      exposes CRUD endpoints under <code class="inline">/items</code>:</p>
+    <table>
+      <thead><tr><th>Endpoint</th><th>Verb</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>/</code></td><td><code>GET</code></td><td>Welcome message</td></tr>
+        <tr><td><code>/items</code></td><td><code>GET</code></td><td>Return all items</td></tr>
+        <tr><td><code>/items/{id}</code></td><td><code>GET</code></td><td>Return one item by <code>Id</code> (or <code>404</code>)</td></tr>
+        <tr><td><code>/items</code></td><td><code>POST</code></td><td>Create an item, assign next <code>Id</code></td></tr>
+        <tr><td><code>/items/{id}</code></td><td><code>PUT</code></td><td>Update an existing item's <code>Name</code></td></tr>
+        <tr><td><code>/items/{id}</code></td><td><code>DELETE</code></td><td>Remove an item by <code>Id</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Request</span> <span class="ar">→</span>
+      <span class="c">/items endpoint</span> <span class="ar">→</span>
+      <span class="t">in-memory List&lt;Item&gt;</span> <span class="ar">→</span>
+      <span class="d">Results (Ok / Created / NoContent / NotFound)</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>The <strong>.NET SDK</strong> installed — get the latest version from the official .NET website if needed</li>
+      <li><strong>Visual Studio Code</strong></li>
+      <li><strong>Postman</strong> for testing the endpoints</li>
+      <li>NuGet package: <code class="inline">Swashbuckle.AspNetCore</code> (added below; powers the Swagger UI used in <code class="inline">Program.cs</code>)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare for the application</h3>
+    <p class="scenario">You'll create a small web API using ASP.NET Core that manages a simple list of items with
+      basic CRUD operations.</p>
+    <ul class="plain">
+      <li>Open <strong>Visual Studio Code</strong>.</li>
+      <li>Make sure the <strong>.NET SDK</strong> is installed; if not, install the latest version from the
+        official .NET website.</li>
+      <li>Open the terminal in VS Code (<code class="inline">Ctrl + ~</code> on Windows/Linux or
+        <code class="inline">Cmd + ~</code> on Mac).</li>
+      <li>Create a new ASP.NET Core Web API project, move into it, add the Swagger package, and open it in VS Code:</li>
+    </ul>
+<pre class="code">dotnet new web -n ItemsApi
+cd ItemsApi
+dotnet add package Swashbuckle.AspNetCore
+code .</pre>
+    <p class="scenario" style="margin-top:12px">The <code class="inline">web</code> template gives you a minimal <code class="inline">Program.cs</code>. Adding <code class="inline">Swashbuckle.AspNetCore</code> provides the <code class="inline">AddSwaggerGen</code> / <code class="inline">UseSwaggerUI</code> APIs used in Step 3.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Set up the API project</h3>
+    <p class="scenario">Set up the basic project structure and configure the components for your API.</p>
+    <ul class="plain">
+      <li>In <code class="inline">Program.cs</code>, remove any existing code and start with a clean slate.</li>
+      <li>Use the following basic structure to set up your API routes:</li>
+    </ul>
+<pre class="code">var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+<span class="cmt">// Basic routes</span>
+app.MapGet("/", () =&gt; "Welcome to the Simple Web API!");
+
+app.Run();</pre>
+    <ul class="plain">
+      <li>Save the file and run your project.</li>
+      <li>Open a web browser and check that the API is running.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement CRUD endpoints</h3>
+    <p class="scenario">Create the endpoints for managing a list of items (GET, POST, PUT, DELETE).</p>
+    <ul class="plain">
+      <li>Create a new folder named <code class="inline">Models</code> and add a file called
+        <code class="inline">Item.cs</code> defining a basic model:</li>
+    </ul>
+<pre class="code">namespace ItemsApi.Models;
+
+public class Item
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}</pre>
+    <ul class="plain">
+      <li>In <code class="inline">Program.cs</code>, create an in-memory list to store items and implement all
+        endpoints (GET all, GET by ID, POST, PUT, DELETE):</li>
+    </ul>
+<pre class="code">using ItemsApi.Models;
+using Microsoft.OpenApi.Models;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =&gt;
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Items API", Version = "v1" });
+});
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =&gt;
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Items API v1");
+    });
+}
+
+app.UseHttpsRedirection();
+
+var items = new List&lt;Item&gt;();
+var nextId = 1;
+
+app.MapGet("/", () =&gt; "Welcome to the Simple Web API (NET 9)!");
+
+var itemsApi = app.MapGroup("/items").WithOpenApi();
+
+itemsApi.MapGet("/", () =&gt; items);
+
+itemsApi.MapGet("/{id}", (int id) =&gt;
+{
+    var item = items.FirstOrDefault(i =&gt; i.Id == id);
+    return item is not null ? Results.Ok(item) : Results.NotFound();
+});
+
+itemsApi.MapPost("/", (Item newItem) =&gt;
+{
+    newItem.Id = nextId++;
+    items.Add(newItem);
+    return Results.Created($"/items/{newItem.Id}", newItem);
+});
+
+itemsApi.MapPut("/{id}", (int id, Item updatedItem) =&gt;
+{
+    var item = items.FirstOrDefault(i =&gt; i.Id == id);
+    if (item is null) return Results.NotFound();
+    item.Name = updatedItem.Name;
+    return Results.NoContent();
+});
+
+itemsApi.MapDelete("/{id}", (int id) =&gt;
+{
+    var item = items.FirstOrDefault(i =&gt; i.Id == id);
+    if (item is null) return Results.NotFound();
+    items.Remove(item);
+    return Results.NoContent();
+});
+
+app.Run();</pre>
+    <ul class="plain">
+      <li>Save the file and test the endpoints by running the project.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Test the API with Postman</h3>
+    <p class="scenario">Use Postman to exercise each endpoint.</p>
+    <ul class="plain">
+      <li>Open <strong>Postman</strong> and create a new request.</li>
+      <li>Set the request type (<strong>GET, POST, PUT, DELETE</strong>) in the dropdown menu.</li>
+      <li>Enter the API URL in the request field, e.g. <code class="inline">http://localhost:5000/items</code>.</li>
+      <li>For <strong>POST</strong> and <strong>PUT</strong> requests, open the <strong>Body</strong> tab, select
+        <strong>raw</strong>, and choose <strong>JSON</strong>. Enter your JSON data, for example:</li>
+    </ul>
+<pre class="code">{
+    "name": "New Item"
+}</pre>
+    <ul class="plain">
+      <li>Click <strong>Send</strong> to make the request.</li>
+      <li>Check the response in the lower section of Postman to confirm the API behaves as expected.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The API runs locally and responds on every verb: <code class="inline">GET /items</code> returns the current list,
+    <code class="inline">POST /items</code> creates an item with an auto-assigned <code class="inline">Id</code> and
+    returns <strong>201 Created</strong>, <code class="inline">PUT</code> and <code class="inline">DELETE</code> return
+    <strong>204 No Content</strong> on success, and unknown IDs return <strong>404 Not Found</strong> — all verifiable
+    from Postman.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>New ASP.NET Core project (<code class="inline">ItemsApi</code>) created and opened in VS Code</li>
+      <li><code class="inline">Program.cs</code> runs and serves the welcome message at <code class="inline">/</code></li>
+      <li><code class="inline">Models/Item.cs</code> defines the <code class="inline">Item</code> model (<code class="inline">Id</code>, <code class="inline">Name</code>)</li>
+      <li>All five <code class="inline">/items</code> endpoints implemented over the in-memory <code class="inline">List&lt;Item&gt;</code></li>
+      <li>Each verb (GET, POST, PUT, DELETE) verified in Postman with the expected status codes</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Minimal APIs</strong> — <code class="inline">MapGet</code>/<code class="inline">MapPost</code>/<code class="inline">MapPut</code>/<code class="inline">MapDelete</code>
+        register endpoints directly on the <code class="inline">WebApplication</code>, and
+        <code class="inline">MapGroup("/items")</code> keeps related routes together.</li>
+      <li><strong>CRUD over HTTP verbs</strong> — Create→<code class="inline">POST</code>, Read→<code class="inline">GET</code>,
+        Update→<code class="inline">PUT</code>, Delete→<code class="inline">DELETE</code>, each mapped to the matching list operation.</li>
+      <li><strong>Typed results</strong> — <code class="inline">Results.Ok</code>, <code class="inline">Results.Created</code>,
+        <code class="inline">Results.NoContent</code>, and <code class="inline">Results.NotFound</code> return the correct
+        HTTP status codes for each outcome.</li>
+      <li><strong>In-memory state</strong> — a <code class="inline">List&lt;Item&gt;</code> with a
+        <code class="inline">nextId</code> counter stands in for a database, so data resets every time the app restarts.</li>
+      <li><strong>Test before you trust</strong> — Postman lets you drive each endpoint with real requests and JSON
+        bodies to confirm behavior independently of a UI.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

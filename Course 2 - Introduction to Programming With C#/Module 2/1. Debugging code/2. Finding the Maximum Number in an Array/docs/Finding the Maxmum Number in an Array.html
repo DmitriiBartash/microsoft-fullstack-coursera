@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Finding the Maxmum Number in an Array — Course 2 · Module 2</title>
+<style>
+  :root {
+    --hdr: #7c3aed ;      /* header / create  */
+    --pld: #c026d3 ;      /* payload / decode */
+    --sig: #6366f1 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 2 — Introduction to Programming With C# · Module 2 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Finding the Maximum Number in an Array</h1>
+    <p class="lead">
+      Debug a C# <code>FindMax</code> method that returns the <strong>wrong answer</strong> when every value
+      in the array is negative. You'll spot the <strong>logical error</strong> (<code>int max = 0</code>),
+      reason about <em>why</em> it bites, fix it, then harden the method with guard clauses and
+      <code>try</code>/<code>catch</code> so it fails fast on bad input.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Practice core debugging techniques — reading code critically, predicting output,
+      inspecting variable values, and stepping through a loop — to <strong>find and fix a logical error</strong>,
+      then make the corrected method robust against null, empty, and out-of-range input.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will produce</h2>
+  <div class="card">
+    <p>A single console program (<code class="inline">Program.cs</code>) that evolves through the exercise:</p>
+    <table>
+      <thead><tr><th>Stage</th><th>State of <code>FindMax</code></th></tr></thead>
+      <tbody>
+        <tr><td>Starting code</td><td>Has a <strong>logical bug</strong> — seeds <code>max</code> with <code>0</code></td></tr>
+        <tr><td>Fixed code</td><td>Seeds <code>max</code> with <code>numbers[0]</code>, loops from index <code>1</code></td></tr>
+        <tr><td>Hardened code</td><td>Adds guard clauses + <code>try</code>/<code>catch</code> for null, empty, overflow</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">array</span> <span class="ar">→</span>
+      <span class="c">FindMax(numbers)</span> <span class="ar">→</span>
+      <span class="t">max</span> <span class="ar">→</span>
+      <span class="d">Console.WriteLine</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>The console application you created at the start of the course (open it, then <strong>clear</strong> <code class="inline">Program.cs</code>)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Walkthrough</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Set up your environment</h3>
+    <p class="scenario">Use the Visual Studio Code console application from the start of the course.</p>
+    <ul class="plain">
+      <li>Remove any existing code in <code class="inline">Program.cs</code>.</li>
+      <li>Copy in the starting code below to follow along.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Read the buggy starting code</h3>
+    <p class="scenario">This code <em>tries</em> to find the maximum number in an array, but it has a
+      <strong>logical error</strong> that produces an incorrect result when <strong>all the numbers are negative</strong>.</p>
+<pre class="code">public class Program
+{
+    public static int FindMax(int[] numbers)
+    {
+        int max = 0;
+        for (int i = 0; i &lt; numbers.Length; i++)
+        {
+            if (numbers[i] &gt; max)
+            {
+                max = numbers[i];
+            }
+        }
+        return max;
+    }
+
+    public static void Main()
+    {
+        int[] myNumbers = { -5, -10, -3, -8, -2 };
+        int maxNumber = FindMax(myNumbers);
+        Console.WriteLine("The maximum number is: " + maxNumber);
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Find the logical error</h3>
+    <p class="scenario">Step through the loop for <code class="inline">{ -5, -10, -3, -8, -2 }</code> — in your head or with the debugger.</p>
+    <ul class="plain">
+      <li><code class="inline">max</code> starts at <code class="inline">0</code>.</li>
+      <li>Every element is negative, so <code class="inline">numbers[i] &gt; max</code> is <strong>never</strong> true.</li>
+      <li>The <code class="inline">if</code> body never runs, <code class="inline">max</code> is never updated, and the method returns <code class="inline">0</code>.</li>
+    </ul>
+<pre class="code">The maximum number is: 0     <span class="cmt">// wrong: 0 is not even in the array</span></pre>
+    <p>The seed value <code class="inline">0</code> is the bug. It silently injects a number that isn't part of
+      the data. The expected answer is <code class="inline">-2</code> (the largest of the negatives).</p>
+    <div class="callout">
+      <strong>💡 Set a breakpoint</strong> on the <code class="inline">if (numbers[i] &gt; max)</code> line and watch
+      <code class="inline">max</code> and <code class="inline">numbers[i]</code> as you step. You'll see
+      <code class="inline">max</code> stay at <code class="inline">0</code> the whole way through — that's your evidence.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Fix the seed and the loop bounds</h3>
+    <p class="scenario">Initialize <code class="inline">max</code> to the <strong>first element</strong> instead of
+      <code class="inline">0</code>, then start the loop at index <code class="inline">1</code>.</p>
+<pre class="code">public static int FindMax(int[] numbers)
+{
+    int max = numbers[0];                       <span class="cmt">// seed with real data, not 0</span>
+    for (int i = 1; i &lt; numbers.Length; i++)    <span class="cmt">// start from the second element</span>
+    {
+        if (numbers[i] &gt; max)
+        {
+            max = numbers[i];
+        }
+    }
+    return max;
+}</pre>
+    <p>Re-run with the same array and you now get the correct result:</p>
+<pre class="code">The maximum number is: -2</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Harden the method against bad input</h3>
+    <p class="scenario">Seeding with <code class="inline">numbers[0]</code> assumes the array is non-empty and
+      non-null, so add <strong>guard clauses</strong> that fail fast, plus a <code class="inline">try</code>/<code class="inline">catch</code>
+      in <code class="inline">Main</code> to report errors cleanly.</p>
+<pre class="code">public class Program
+{
+    <span class="cmt">// Method to find the maximum number in an array</span>
+    public static int FindMax(int[] numbers)
+    {
+        <span class="cmt">// Error check 1: array is null</span>
+        if (numbers == null)
+        {
+            throw new ArgumentNullException(nameof(numbers), "Input array cannot be null.");
+        }
+        <span class="cmt">// Error check 2: array is empty</span>
+        if (numbers.Length == 0)
+        {
+            throw new ArgumentException("The array cannot be empty.");
+        }
+        <span class="cmt">// Initialize max to the first element</span>
+        int max = numbers[0];
+        <span class="cmt">// Loop through the array starting from the second element</span>
+        for (int i = 1; i &lt; numbers.Length; i++)
+        {
+            <span class="cmt">// Error check 3: check for int.MinValue overflow</span>
+            if (numbers[i] &lt; int.MinValue || numbers[i] &gt; int.MaxValue)
+            {
+                throw new OverflowException("Array contains an out-of-range integer.");
+            }
+            if (numbers[i] &gt; max)
+            {
+                max = numbers[i];
+            }
+        }
+        return max;
+    }
+
+    public static void Main()
+    {
+        try
+        {
+            <span class="cmt">// Test array</span>
+            int[] myNumbers = { -5, -10, -3, -8, -2 };
+            <span class="cmt">// Uncomment the following lines one at a time to test different errors:</span>
+            <span class="cmt">// int[] myNumbers = null;             // Triggers ArgumentNullException</span>
+            <span class="cmt">// int[] myNumbers = { };              // Triggers ArgumentException</span>
+            <span class="cmt">// int[] myNumbers = new int[1000000]; // Simulated size check (if needed)</span>
+            int maxNumber = FindMax(myNumbers);
+            Console.WriteLine("The maximum number is: " + maxNumber);
+        }
+        catch (ArgumentNullException ex)
+        {
+            Console.WriteLine("Null Error: " + ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine("Argument Error: " + ex.Message);
+        }
+        catch (OverflowException ex)
+        {
+            Console.WriteLine("Overflow Error: " + ex.Message);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Unexpected Error: " + ex.Message);
+        }
+    }
+}</pre>
+    <div class="callout">
+      <strong>📝 Note:</strong> the <code class="inline">int.MinValue</code>/<code class="inline">int.MaxValue</code>
+      check can never be <code class="inline">true</code> for an <code class="inline">int</code> (every
+      <code class="inline">int</code> is in range by definition) — it's a deliberate <strong>placeholder</strong>
+      showing <em>where</em> a range check would go if you later widened the input type or parsed values yourself.
+    </div>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="card">
+    <p>Run the program and confirm the fix:</p>
+<pre class="code">dotnet run</pre>
+<pre class="code">The maximum number is: -2</pre>
+    <div class="callout ok">
+      Uncomment the <code class="inline">null</code> or <code class="inline">{ }</code> test line and you'll instead
+      see a clean, caught message (<code class="inline">Null Error: …</code> or <code class="inline">Argument Error: …</code>)
+      rather than an unhandled crash.
+    </div>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>You can explain <strong>why</strong> the original returns <code class="inline">0</code> for an all-negative array</li>
+      <li><code class="inline">max</code> is seeded with <code class="inline">numbers[0]</code> and the loop starts at index <code class="inline">1</code></li>
+      <li>Running on <code class="inline">{ -5, -10, -3, -8, -2 }</code> prints <code class="inline">The maximum number is: -2</code></li>
+      <li>Guard clauses throw <code class="inline">ArgumentNullException</code> / <code class="inline">ArgumentException</code> for null / empty input</li>
+      <li><code class="inline">Main</code> wraps the call in <code class="inline">try</code>/<code class="inline">catch</code> and reports each error type distinctly</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Logical errors run silently</strong> — the buggy code compiles and <em>executes</em> fine; it just
+        returns the wrong value. Only checking output against an expected answer reveals it.</li>
+      <li><strong>Never seed an aggregate with a magic constant</strong> — initializing <code class="inline">max</code>
+        to <code class="inline">0</code> assumes the answer is at least <code class="inline">0</code>. Seed from the
+        data itself (<code class="inline">numbers[0]</code>) so every input value can win.</li>
+      <li><strong>Off-by-one awareness</strong> — once <code class="inline">max = numbers[0]</code>, the loop must
+        start at <code class="inline">i = 1</code>; re-comparing element <code class="inline">0</code> against itself
+        is harmless here but signals sloppy bounds.</li>
+      <li><strong>Fail fast with guard clauses</strong> — validate null and empty <em>before</em> touching
+        <code class="inline">numbers[0]</code>, so the method throws a clear exception instead of an
+        <code class="inline">IndexOutOfRangeException</code>.</li>
+      <li><strong>Debugger as evidence</strong> — breakpoints and variable inspection turn "I think it's wrong"
+        into "I can see <code class="inline">max</code> never changes," which is how you locate a logical bug.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Create a Responsive Web Page Using CSS — Course 3 · Module 2</title>
+<style>
+  :root {
+    --hdr: #ea580c;      /* header / create  */
+    --pld: #f59e0b;      /* payload / decode */
+    --sig: #f43f5e;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 3 — Introduction to Web Development · Module 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Create a Responsive Web Page Using CSS</h1>
+    <p class="lead">
+      Build a <strong>responsive personal portfolio webpage</strong> from scratch. You will lay out a
+      header, nav bar, main content, sidebar, and footer with semantic HTML, then make it adapt to any
+      screen using <strong>CSS Flexbox</strong> and <strong>media queries</strong> — so the layout
+      reflows and <code>stacks vertically</code> on phones (under 768px).
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Create a single-page portfolio that uses semantic HTML5 structure and modern CSS
+      layout (<strong>Flexbox</strong>, with <strong>Grid</strong> available for more complex sections)
+      plus <strong>media queries</strong>, so the page looks polished on desktop and gracefully
+      <strong>stacks vertically</strong> on small screens.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A two-file static site:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>index.html</code></td><td>Semantic structure — <code>header</code>, <code>nav</code>, <code>main</code> (<code>section</code> + <code>aside</code>), <code>footer</code></td></tr>
+        <tr><td><code>styles.css</code></td><td>Reset, typography, Flexbox layout, and a <code>max-width: 768px</code> media query</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">index.html</span> <span class="ar">→</span>
+      <span class="c">links</span> <span class="ar">→</span>
+      <span class="t">styles.css</span> <span class="ar">→</span>
+      <span class="d">Flexbox layout</span> <span class="ar">→</span>
+      <span class="t">media query</span> <span class="ar">→</span>
+      <span class="ar">responsive page</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>A code editor (Visual Studio Code recommended)</li>
+      <li>A modern web browser (Chrome, Edge, or Firefox)</li>
+      <li>Basic familiarity with HTML tags and CSS selectors</li>
+      <li>No build tools or installs — these are plain <code class="inline">.html</code> and <code class="inline">.css</code> files</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Create a new HTML file</h3>
+    <ul class="plain">
+      <li>Select <strong>New File</strong>.</li>
+      <li>Name the file <code class="inline">index.html</code>.</li>
+      <li>Press <strong>Enter</strong>, then select <strong>OK</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Build the HTML structure</h3>
+    <p class="scenario">Create a structured HTML document with these semantic elements.</p>
+    <ul class="plain">
+      <li><strong>Header</strong> — a <code class="inline">&lt;header&gt;</code> section with your name and tagline.</li>
+      <li><strong>Navigation bar</strong> — a <code class="inline">&lt;nav&gt;</code> element with three links (About, Projects, Contact).</li>
+      <li><strong>Main content</strong> — a <code class="inline">&lt;main&gt;</code> section containing a <code class="inline">&lt;section&gt;</code> that introduces you and an <code class="inline">&lt;aside&gt;</code> with your top skills.</li>
+      <li><strong>Footer</strong> — a <code class="inline">&lt;footer&gt;</code> containing copyright text.</li>
+    </ul>
+<pre class="code">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+    &lt;meta charset="UTF-8" /&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;
+    &lt;title&gt;Dima's Portfolio&lt;/title&gt;
+    &lt;link rel="stylesheet" href="styles.css" /&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;header&gt;
+        &lt;div class="header-container"&gt;
+            &lt;h1&gt;Dima&lt;/h1&gt;
+            &lt;p&gt;Aspiring Web Developer &amp;amp; Tech Enthusiast&lt;/p&gt;
+        &lt;/div&gt;
+    &lt;/header&gt;
+    &lt;nav&gt;
+        &lt;a href="#about"&gt;About&lt;/a&gt;
+        &lt;a href="#projects"&gt;Projects&lt;/a&gt;
+        &lt;a href="#contact"&gt;Contact&lt;/a&gt;
+    &lt;/nav&gt;
+    &lt;main&gt;
+        &lt;section&gt;
+            &lt;h2 id="about"&gt;About Me&lt;/h2&gt;
+            &lt;p&gt;
+                Hello! I'm Dima, a passionate learner with a growing interest in full-stack development.
+                I enjoy exploring modern web technologies and continuously improving my skills by building fun and
+                useful projects.
+            &lt;/p&gt;
+        &lt;/section&gt;
+        &lt;aside&gt;
+            &lt;h3&gt;Top Skills&lt;/h3&gt;
+            &lt;ul&gt;
+                &lt;li&gt;HTML &amp;amp; CSS&lt;/li&gt;
+                &lt;li&gt;JavaScript&lt;/li&gt;
+                &lt;li&gt;C# / ASP.NET Core&lt;/li&gt;
+                &lt;li&gt;Git &amp;amp; GitHub&lt;/li&gt;
+                &lt;li&gt;Problem Solving&lt;/li&gt;
+            &lt;/ul&gt;
+        &lt;/aside&gt;
+    &lt;/main&gt;
+    &lt;footer&gt;
+        &lt;p&gt;&amp;copy; 2025 Dima. All rights reserved.&lt;/p&gt;
+    &lt;/footer&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Apply CSS for layout and responsiveness</h3>
+    <p class="scenario">Create a <code class="inline">styles.css</code> file and link it to your HTML
+      document (the <code class="inline">&lt;link&gt;</code> in <code class="inline">&lt;head&gt;</code>
+      already does this).</p>
+    <ul class="plain">
+      <li><strong>Basic styling</strong> — reset margins and padding with the <code class="inline">*</code> selector and set a consistent font using <code class="inline">box-sizing: border-box</code>.</li>
+      <li><strong>Layout styling</strong> — use <strong>Flexbox</strong> to align and space the header, navigation, and main sections; reach for <strong>Grid</strong> if a section needs a more complex layout.</li>
+      <li><strong>Media queries</strong> — adapt the layout for screens under <code class="inline">768px</code> and <strong>stack elements vertically</strong> (like the sidebar) when the screen is small.</li>
+    </ul>
+<pre class="code">* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+}
+header {
+    background-color: #2c3e50;
+    color: #ffffff;
+    padding: 40px 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+.header-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+nav {
+    background-color: #1f1f1f;
+    display: flex;
+    justify-content: center;
+    padding: 12px 0;
+    gap: 30px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+nav a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s ease;
+    padding: 6px 10px;
+}
+nav a:hover {
+    color: #4a90e2;
+}
+main {
+    display: flex;
+    gap: 24px;
+    padding: 40px 20px;
+    max-width: 1200px;
+    margin: auto;
+}
+section {
+    flex: 3;
+    background-color: #ffffff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+aside {
+    flex: 1;
+    background-color: #f0f4ff;
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid #d3e0f0;
+}
+footer {
+    background-color: #1f1f1f;
+    color: white;
+    text-align: center;
+    padding: 20px 10px;
+    font-size: 0.9rem;
+    margin-top: 60px;
+}
+ul {
+    padding-left: 15px;
+}
+@media (max-width: 768px) {
+    .header-container {
+        text-align: center;
+    }
+    nav {
+        flex-direction: column;
+        gap: 12px;
+        padding: 10px 16px;
+    }
+    nav a {
+        padding: 10px 0;
+    }
+    main {
+        flex-direction: column;
+        padding: 30px 16px;
+    }
+    section,
+    aside {
+        width: 100%;
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Test your page</h3>
+    <ul class="plain">
+      <li>Open your HTML document in the browser (double-click <code class="inline">index.html</code>, or use a live-server extension).</li>
+      <li>Resize the browser window to test the responsiveness.</li>
+      <li>Ensure the content <strong>stacks vertically</strong> and remains readable on small screens.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    On a wide screen the <code class="inline">section</code> and <code class="inline">aside</code> sit
+    <strong>side by side</strong> (a 3:1 Flexbox split) under a centered header and a horizontal nav bar.
+    Narrow the window below <strong>768px</strong> and the nav switches to a vertical stack, the main area
+    collapses to a single column, and the sidebar drops beneath the intro — the page stays readable at any width.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">index.html</code> contains semantic <code class="inline">header</code>, <code class="inline">nav</code>, <code class="inline">main</code> (<code class="inline">section</code> + <code class="inline">aside</code>), and <code class="inline">footer</code></li>
+      <li>The viewport <code class="inline">&lt;meta&gt;</code> tag is present and <code class="inline">styles.css</code> is linked from <code class="inline">&lt;head&gt;</code></li>
+      <li><code class="inline">styles.css</code> resets margins/padding with <code class="inline">*</code> and sets <code class="inline">box-sizing: border-box</code></li>
+      <li>Header, nav, and main use <strong>Flexbox</strong> for alignment and spacing</li>
+      <li>A <code class="inline">@media (max-width: 768px)</code> query stacks nav and main <strong>vertically</strong></li>
+      <li>Resizing the browser confirms the layout reflows and stays readable on mobile</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Semantic HTML</strong> — <code class="inline">header</code>, <code class="inline">nav</code>,
+        <code class="inline">main</code>, <code class="inline">section</code>, <code class="inline">aside</code>,
+        and <code class="inline">footer</code> describe the page's meaning, improving accessibility and SEO over generic <code class="inline">&lt;div&gt;</code>s.</li>
+      <li><strong>Flexbox for layout</strong> — <code class="inline">display: flex</code> with
+        <code class="inline">flex: 3</code> / <code class="inline">flex: 1</code> gives a fluid two-column split,
+        while <code class="inline">justify-content</code> and <code class="inline">gap</code> handle alignment and spacing without float hacks.</li>
+      <li><strong>Mobile-first responsiveness</strong> — the <code class="inline">viewport</code> meta tag plus a
+        <code class="inline">max-width: 768px</code> media query let the same markup reflow from desktop to phone by switching <code class="inline">flex-direction</code> to <code class="inline">column</code>.</li>
+      <li><strong>CSS reset + <code class="inline">box-sizing</code></strong> — zeroing default margins/padding and
+        using <code class="inline">border-box</code> makes sizing predictable so padding and borders never blow out an element's width.</li>
+      <li><strong>Separation of concerns</strong> — structure lives in <code class="inline">index.html</code> and
+        presentation in <code class="inline">styles.css</code>, linked via <code class="inline">&lt;link rel="stylesheet"&gt;</code>, keeping content and styling independently maintainable.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

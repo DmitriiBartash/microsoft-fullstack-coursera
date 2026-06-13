@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DesAndSec Middleware — Course 5 · Module 4</title>
+<style>
+  :root {
+    --hdr: #2563eb;      /* header / create  */
+    --pld: #0891b2;      /* payload / decode */
+    --sig: #3b82f6;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 5 — Back-End Development with .NET · Module 4 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Designing and Securing Middleware Components</h1>
+    <p class="lead">
+      Build an ASP.NET Core Web API whose request pipeline is <strong>just middleware</strong> — no
+      controllers. You'll layer five <code>Use</code> components that <strong>enforce a simulated HTTPS rule</strong>,
+      block unauthorized paths, sanitize input, gate unauthenticated users, process work asynchronously,
+      and <strong>log every security event</strong> — then prove each one with a targeted request.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Design, implement, and secure middleware components within an ASP.NET Core Web API so the
+      pipeline meets clear <strong>performance</strong> (async, short-circuiting) and <strong>security</strong>
+      (HTTPS enforcement, input validation, authentication, event logging) requirements.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A minimal Web API named <code class="inline">MiddlewareOptimizationApp</code> that listens on plain HTTP
+      and runs this ordered middleware chain in <code class="inline">Program.cs</code>:</p>
+    <table>
+      <thead><tr><th>Order</th><th>Middleware</th><th>Responsibility</th><th>Blocks with</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Simulated HTTPS</td><td>Require <code>?secure=true</code>; otherwise reject as non-HTTPS</td><td><code>400</code></td></tr>
+        <tr><td>2</td><td>Unauthorized short-circuit</td><td>Stop any request to <code>/unauthorized</code> before it reaches the app</td><td><code>401</code></td></tr>
+        <tr><td>3</td><td>Input validation</td><td>Reject <code>?input=</code> values containing HTML/script markup (<code>&lt;...&gt;</code>)</td><td><code>400</code></td></tr>
+        <tr><td>4</td><td>Authentication gate</td><td>Require <code>?authenticated=true</code>; otherwise deny access</td><td><code>403</code></td></tr>
+        <tr><td>5</td><td>Async processing</td><td><code>await</code> an I/O-style delay, then write the early response chunk</td><td>—</td></tr>
+        <tr><td>—</td><td>Terminal endpoint</td><td><code>app.Map("/")</code> writes the final response</td><td>—</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Request</span> <span class="ar">→</span>
+      <span class="c">HTTPS check</span> <span class="ar">→</span>
+      <span class="c">/unauthorized check</span> <span class="ar">→</span>
+      <span class="c">input check</span> <span class="ar">→</span>
+      <span class="c">auth check</span> <span class="ar">→</span>
+      <span class="t">async stage</span> <span class="ar">→</span>
+      <span class="d">Map("/")</span> <span class="ar">→</span>
+      <span class="ar">Response</span>
+    </div>
+    <p style="margin:14px 0 0; color:var(--muted); font-size:.9rem;"><em>(The original includes a diagram of the middleware pipeline here.)</em></p>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (with the integrated terminal)</li>
+      <li>A way to send requests: a browser, <strong>Postman</strong>, or <strong><code class="inline">curl</code></strong></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Set up a new ASP.NET Core Web API project</h3>
+    <p class="scenario">Create a folder for the project, then scaffold and enter the Web API.</p>
+<pre class="code">dotnet new webapi -o MiddlewareOptimizationApp
+cd MiddlewareOptimizationApp</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> — this is the only file you will modify.</li>
+      <li>Delete any controller files in the <code class="inline">Controllers</code> folder so the focus stays purely on middleware.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Configure HTTP only</h3>
+    <p class="scenario">Listen on <strong>HTTP only</strong> by removing the HTTPS-specific code, so you can test
+      without a secure connection. Configure Kestrel to listen on <code class="inline">http://localhost:5294</code>.</p>
+<pre class="code">var builder = WebApplication.CreateBuilder(args);
+
+<span class="cmt">// Configure to listen on HTTP only for simplicity</span>
+builder.WebHost.ConfigureKestrel(options =&gt;
+{
+    options.ListenLocalhost(5294);
+});
+
+var app = builder.Build();</pre>
+    <p style="margin:12px 0 0">This setup makes the app respond only to HTTP requests on <code class="inline">http://localhost:5294</code>.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Design middleware for performance optimization and security</h3>
+    <p class="scenario">Each <code class="inline">app.Use(...)</code> runs in order and either <strong>short-circuits</strong>
+      (writes a response and <code class="inline">return</code>s) or calls <code class="inline">await next()</code> to pass
+      control down the pipeline. The chain must cover:</p>
+    <ul class="plain">
+      <li><strong>Simulated HTTPS enforcement</strong> — use <code class="inline">secure=true</code> to simulate HTTPS; if missing, block as non-HTTPS.</li>
+      <li><strong>Short-circuit unauthorized access</strong> — stop further processing for unauthorized requests.</li>
+      <li><strong>Asynchronous processing</strong> — use <code class="inline">async</code> methods so I/O doesn't block other requests.</li>
+      <li><strong>Input validation</strong> — validate incoming data and reject unsafe input.</li>
+      <li><strong>Authentication checks</strong> — add an early check to restrict unauthenticated users.</li>
+      <li><strong>Security event logging</strong> — log security events for any blocked or failed request.</li>
+    </ul>
+    <h4>Complete Program.cs</h4>
+<pre class="code">using System.Text.RegularExpressions;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(options =&gt;
+{
+    options.ListenLocalhost(5294);
+});
+
+var app = builder.Build();
+
+<span class="cmt">// 1. Simulated HTTPS enforcement — require ?secure=true</span>
+app.Use(async (context, next) =&gt;
+{
+    if (!context.Request.Query.TryGetValue("secure", out var secure) || secure != "true")
+    {
+        context.Response.StatusCode = 400;
+        await context.Response.WriteAsync("Simulated HTTPS Required");
+        Console.WriteLine($"Security Event: {context.Request.Path} - Status Code: 400");
+        return;
+    }
+    await next();
+});
+
+<span class="cmt">// 2. Short-circuit unauthorized access to /unauthorized</span>
+app.Use(async (context, next) =&gt;
+{
+    if (context.Request.Path.StartsWithSegments("/unauthorized"))
+    {
+        context.Response.StatusCode = 401;
+        await context.Response.WriteAsync("Unauthorized Access");
+        Console.WriteLine($"Security Event: {context.Request.Path} - Status Code: 401");
+        return;
+    }
+    await next();
+});
+
+<span class="cmt">// 3. Input validation — reject HTML/script markup in ?input=</span>
+app.Use(async (context, next) =&gt;
+{
+    if (context.Request.Query.TryGetValue("input", out var input))
+    {
+        if (Regex.IsMatch(input.ToString(), "&lt;.*?&gt;"))
+        {
+            context.Response.StatusCode = 400;
+            await context.Response.WriteAsync("Invalid Input");
+            Console.WriteLine($"Security Event: {context.Request.Path} - Status Code: 400");
+            return;
+        }
+    }
+    await next();
+});
+
+<span class="cmt">// 4. Authentication gate — require ?authenticated=true</span>
+app.Use(async (context, next) =&gt;
+{
+    if (!context.Request.Query.TryGetValue("authenticated", out var authenticated) || authenticated != "true")
+    {
+        context.Response.StatusCode = 403;
+        await context.Response.WriteAsync("Access Denied");
+        Console.WriteLine($"Security Event: {context.Request.Path} - Status Code: 403");
+        return;
+    }
+    await next();
+});
+
+<span class="cmt">// 5. Asynchronous processing — non-blocking I/O simulation</span>
+app.Use(async (context, next) =&gt;
+{
+    await Task.Delay(100);
+    await context.Response.WriteAsync("Processed Asynchronously\n");
+    await next();
+});
+
+<span class="cmt">// Terminal endpoint</span>
+app.Map("/", async context =&gt;
+{
+    await context.Response.WriteAsync("Final Response from Application");
+});
+
+app.Run();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Test middleware performance and security</h3>
+    <p class="scenario">Run the app, then exercise each middleware with a targeted request. Use <strong>Postman</strong>,
+      <strong><code class="inline">curl</code></strong>, or paste the URLs into your browser.</p>
+<pre class="code">dotnet run</pre>
+    <table>
+      <thead><tr><th>Test</th><th>URL</th><th>Expected output</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Async processing (happy path)</td><td><code>http://localhost:5294/?secure=true</code></td><td><code>Processed Asynchronously</code> then <code>Final Response from Application</code></td><td><code>200</code></td></tr>
+        <tr><td>Simulated HTTPS enforcement</td><td><code>http://localhost:5294/?secure=true&amp;authenticated=true</code></td><td><code>Simulated HTTPS Required</code></td><td><code>400</code></td></tr>
+        <tr><td>Unauthorized access</td><td><code>http://localhost:5294/unauthorized?secure=true</code></td><td><code>Unauthorized Access</code></td><td><code>401</code></td></tr>
+        <tr><td>Invalid input</td><td><code>http://localhost:5294/?secure=true&amp;input=&lt;script&gt;</code></td><td><code>Invalid Input</code></td><td><code>400</code></td></tr>
+        <tr><td>Access denied (unauthenticated)</td><td><code>http://localhost:5294/?secure=true</code></td><td><code>Access Denied</code></td><td><code>403</code></td></tr>
+        <tr><td>Security event log</td><td>Any request that returns <code>400</code>+</td><td>Console: <code>Security Event: /unauthorized - Status Code: 401</code></td><td>—</td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      Because the middleware runs <strong>in order</strong>, one URL can hit different checks depending on which
+      query parameters are present — e.g. <code class="inline">?secure=true</code> alone clears the HTTPS check but is
+      later denied (<code class="inline">403</code>) by the authentication gate.
+    </div>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Each request lands on exactly the middleware meant to handle it: the happy path returns
+    <strong>Processed Asynchronously</strong> + <strong>Final Response from Application</strong>, while missing
+    <code class="inline">secure</code>, the <code class="inline">/unauthorized</code> path, unsafe
+    <code class="inline">input</code>, and missing <code class="inline">authenticated</code> are each short-circuited
+    with their own status code — and <strong>every blocked request prints a <code class="inline">Security Event:</code>
+    line</strong> to the Visual Studio Code console.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">MiddlewareOptimizationApp</code> Web API created and controller files removed</li>
+      <li>Kestrel configured for <strong>HTTP only</strong> on <code class="inline">http://localhost:5294</code></li>
+      <li><code class="inline">?secure=true</code> is required, otherwise <code class="inline">400 Simulated HTTPS Required</code></li>
+      <li>Requests to <code class="inline">/unauthorized</code> are short-circuited with <code class="inline">401</code></li>
+      <li><code class="inline">?input=</code> containing <code class="inline">&lt;...&gt;</code> markup is rejected with <code class="inline">400 Invalid Input</code></li>
+      <li><code class="inline">?authenticated=true</code> is required, otherwise <code class="inline">403 Access Denied</code></li>
+      <li>Async middleware writes <code class="inline">Processed Asynchronously</code> before the terminal response</li>
+      <li>Every blocked request logs a <code class="inline">Security Event:</code> line to the console</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Order is the contract</strong> — middleware runs top-to-bottom, so placing HTTPS and auth checks <em>early</em> short-circuits bad requests before any expensive work runs.</li>
+      <li><strong>Short-circuiting vs <code class="inline">next()</code></strong> — writing a response and <code class="inline">return</code>ing ends the pipeline; calling <code class="inline">await next()</code> passes control on. That choice <em>is</em> the security gate.</li>
+      <li><strong>Async by default</strong> — <code class="inline">await</code>ing I/O (<code class="inline">Task.Delay</code>, <code class="inline">WriteAsync</code>) frees the thread to serve other requests instead of blocking, which is the performance win.</li>
+      <li><strong>Defense in depth</strong> — independent layers for transport, input, and identity mean one weak check doesn't expose the whole app; each failure is also logged for auditing.</li>
+      <li><strong>Simulation for learning</strong> — query flags (<code class="inline">secure</code>, <code class="inline">authenticated</code>) stand in for real TLS and auth so you can focus on <em>pipeline behavior</em>; production would use real HTTPS redirection and an authentication scheme.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

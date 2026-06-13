@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing CRUD Operations in EF Core — Course 6 · Module 1</title>
+<style>
+  :root {
+    --hdr: #059669;      /* header / create  */
+    --pld: #0d9488;      /* payload / decode */
+    --sig: #10b981;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 6 — Database Integration &amp; Management · Module 1 · Lesson 4
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing CRUD Operations in EF Core</h1>
+    <p class="lead">
+      Build a small .NET console app that performs the four basic data operations —
+      <strong>Create, Read, Update, Delete</strong> — against a MySQL database using
+      <strong>Entity Framework Core</strong>. A <code>Product</code> entity is mapped to a table,
+      a migration builds the schema, and <code>Program.cs</code> exercises every CRUD path end-to-end.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity you will be able to perform basic
+      <strong>CRUD</strong> (Create, Read, Update, Delete) operations using <strong>Entity Framework
+      Core</strong> with a <strong>MySQL</strong> database in a .NET console application on Linux (Ubuntu).</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A console project named <code class="inline">CRUDWithMySQL</code> backed by a MySQL database
+      called <code class="inline">ProductDB</code>:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Models/Product.cs</code></td><td>The <code>Product</code> entity (<code>Id</code>, <code>Name</code>, <code>Price</code>)</td></tr>
+        <tr><td><code>Data/ApplicationDbContext.cs</code></td><td>The EF Core <code>DbContext</code> — exposes <code>DbSet&lt;Product&gt;</code> and the MySQL connection</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Runs Create → Read → Update → Delete against the database</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">Product entity</span> <span class="ar">→</span>
+      <span class="d">ApplicationDbContext</span> <span class="ar">→</span>
+      <span class="t">migration</span> <span class="ar">→</span>
+      <span class="t">ProductDB table</span> <span class="ar">→</span>
+      <span class="c">CRUD in Program.cs</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (<code class="inline">code .</code>)</li>
+      <li>A running <strong>MySQL Server</strong> instance on <code class="inline">localhost</code></li>
+      <li>NuGet packages: <code class="inline">Pomelo.EntityFrameworkCore.MySql</code>, <code class="inline">Microsoft.EntityFrameworkCore.Tools</code></li>
+      <li>The <code class="inline">dotnet-ef</code> CLI tool (installed locally via a tool manifest below)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Create the console app, open it in VS Code, and add the EF Core packages and tooling.</p>
+<pre class="code"><span class="cmt"># Scaffold the project and move into it</span>
+dotnet new console -n CRUDWithMySQL
+cd CRUDWithMySQL
+
+<span class="cmt"># Open the folder in VS Code</span>
+code .
+
+<span class="cmt"># Add the MySQL provider and EF Core tools</span>
+dotnet add package Pomelo.EntityFrameworkCore.MySql
+dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.0.2
+
+<span class="cmt"># Install the dotnet-ef CLI as a local tool</span>
+dotnet new tool-manifest
+dotnet tool install dotnet-ef</pre>
+    <p class="scenario">Create the database in MySQL:</p>
+<pre class="code"><span class="cmt"># Open the MySQL CLI (enter the password when prompted)</span>
+mysql -u root -p</pre>
+<pre class="code">CREATE DATABASE ProductDB;</pre>
+    <ul class="plain">
+      <li>Inside the project, create a folder named <code class="inline">Models</code> and a folder named <code class="inline">Data</code>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Define the data model</h3>
+    <p class="scenario">Create <code class="inline">Models/Product.cs</code> and define the
+      <code>Product</code> entity: <code>Id</code> (primary key), <code>Name</code>, and <code>Price</code>.
+      EF Core treats a property named <code>Id</code> as the primary key by convention.</p>
+<pre class="code">namespace CRUDWithMySQL.Models;
+
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Set up the database context</h3>
+    <p class="scenario">Create <code class="inline">Data/ApplicationDbContext.cs</code>. The context
+      inherits from <code>DbContext</code>, exposes a <code>DbSet&lt;Product&gt;</code> to manage the
+      <code>Products</code> table, and configures the MySQL connection in <code>OnConfiguring</code>.</p>
+<pre class="code">using Microsoft.EntityFrameworkCore;
+using CRUDWithMySQL.Models;
+
+namespace CRUDWithMySQL.Data;
+
+public class ApplicationDbContext : DbContext
+{
+    public DbSet&lt;Product&gt; Products { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        var connectionString =
+            "Server=localhost;Database=ProductDB;User=efuser;Password=efpassword;";
+
+        optionsBuilder.UseMySql(
+            connectionString,
+            new MySqlServerVersion(new Version(8, 0, 36))
+        );
+    }
+}</pre>
+    <div class="callout">
+      <strong>Note:</strong> The connection string above uses a dedicated <code class="inline">efuser</code>.
+      Make sure that MySQL user exists and has privileges on <code class="inline">ProductDB</code>, or swap in
+      credentials that do (for example <code class="inline">root</code> with your local password).
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Initialize the database</h3>
+    <p class="scenario">Create and apply a migration to generate the schema, then confirm the
+      <code class="inline">Products</code> table exists in <code class="inline">ProductDB</code>.</p>
+<pre class="code">dotnet ef migrations add InitialCreate
+dotnet ef database update</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Implement the CRUD operations</h3>
+    <p class="scenario">Replace the contents of <code class="inline">Program.cs</code> with the code below.
+      It walks through every operation in one run:</p>
+    <ul class="plain">
+      <li><strong>Create</strong> — build a new <code>Product</code>, <code class="inline">Add</code> it to the <code>Products</code> <code>DbSet</code>, then <code class="inline">SaveChanges</code>.</li>
+      <li><strong>Read</strong> — list all products with <code class="inline">ToList</code>, and fetch one by key with <code class="inline">Find</code>.</li>
+      <li><strong>Update</strong> — <code class="inline">Find</code> the product, change <code>Price</code>, then <code class="inline">SaveChanges</code>.</li>
+      <li><strong>Delete</strong> — <code class="inline">Find</code> the product, <code class="inline">Remove</code> it, then <code class="inline">SaveChanges</code>.</li>
+    </ul>
+<pre class="code">using System.Globalization;
+using CRUDWithMySQL.Data;
+using CRUDWithMySQL.Models;
+
+var mdl = new CultureInfo("ro-MD");
+
+using (var context = new ApplicationDbContext())
+{
+    <span class="cmt">// === CREATE ===</span>
+    var newProduct = new Product { Name = "Laptop", Price = 1200.50m };
+    context.Products.Add(newProduct);
+    context.SaveChanges();
+    Console.WriteLine($"✅ Product created: {newProduct.Name}");
+
+    <span class="cmt">// === READ (all) ===</span>
+    var products = context.Products.ToList();
+    Console.WriteLine("\n📋 All products:");
+    foreach (var p in products)
+        Console.WriteLine($"{p.Id}: {p.Name} - {p.Price.ToString("C", mdl)}");
+
+    <span class="cmt">// === READ (by id) ===</span>
+    var product = context.Products.Find(newProduct.Id);
+    if (product != null)
+        Console.WriteLine($"\n🔍 Found product: {product.Name} - {product.Price.ToString("C", mdl)}");
+
+    <span class="cmt">// === UPDATE ===</span>
+    if (product != null)
+    {
+        product.Price = 999.99m;
+        context.SaveChanges();
+        Console.WriteLine($"\n✏️ Updated product: {product.Name} - {product.Price.ToString("C", mdl)}");
+    }
+
+    <span class="cmt">// === DELETE ===</span>
+    if (product != null)
+    {
+        context.Products.Remove(product);
+        context.SaveChanges();
+        Console.WriteLine($"\n🗑 Deleted product: {product.Name}");
+    }
+
+    Console.WriteLine("\n📋 Final list:");
+    foreach (var p in context.Products.ToList())
+        Console.WriteLine($"{p.Id}: {p.Name} - {p.Price.ToString("C", mdl)}");
+}</pre>
+    <p class="scenario">Run the program from the terminal:</p>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The console walks through the full lifecycle of a single <code class="inline">Laptop</code> product:
+    it is <strong>created</strong>, <strong>listed</strong>, <strong>found by <code>Id</code></strong>,
+    <strong>updated</strong> to a new price, and finally <strong>deleted</strong> — so the closing list is
+    empty again. Prices are formatted with the <code class="inline">ro-MD</code> culture.
+  </div>
+<pre class="code">✅ Product created: Laptop
+
+📋 All products:
+1: Laptop - 1.200,50 L
+
+🔍 Found product: Laptop - 1.200,50 L
+
+✏️ Updated product: Laptop - 999,99 L
+
+🗑 Deleted product: Laptop
+
+📋 Final list:</pre>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">CRUDWithMySQL</code> console project created with <code class="inline">Pomelo.EntityFrameworkCore.MySql</code> and <code class="inline">Microsoft.EntityFrameworkCore.Tools</code> added</li>
+      <li><code class="inline">dotnet-ef</code> installed via a local tool manifest</li>
+      <li><code class="inline">ProductDB</code> database created in MySQL</li>
+      <li><code class="inline">Models/Product.cs</code> defines the <code>Product</code> entity with <code>Id</code>, <code>Name</code>, <code>Price</code></li>
+      <li><code class="inline">Data/ApplicationDbContext.cs</code> exposes <code class="inline">DbSet&lt;Product&gt;</code> and configures the MySQL connection</li>
+      <li><code class="inline">InitialCreate</code> migration applied with <code class="inline">dotnet ef database update</code></li>
+      <li><code class="inline">Program.cs</code> performs Create, Read, Update, and Delete and <code class="inline">dotnet run</code> prints the lifecycle output</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong><code class="inline">DbContext</code> is the gateway</strong> — it represents a session with the
+        database; its <code class="inline">DbSet&lt;T&gt;</code> properties map entity classes to tables, and
+        <code class="inline">SaveChanges</code> flushes tracked changes in a transaction.</li>
+      <li><strong>Convention over configuration</strong> — a property named <code class="inline">Id</code> becomes
+        the primary key automatically, so the entity stays a plain POCO with no attributes required.</li>
+      <li><strong>Migrations build and evolve the schema</strong> — <code class="inline">dotnet ef migrations add</code>
+        snapshots the model and <code class="inline">database update</code> applies it, keeping the database in step
+        with your C# classes.</li>
+      <li><strong>Change tracking drives CRUD</strong> — <code class="inline">Add</code>, <code class="inline">Find</code>
+        + property edits, and <code class="inline">Remove</code> simply mark entities; nothing hits the database until
+        <code class="inline">SaveChanges</code> is called.</li>
+      <li><strong>The provider is pluggable</strong> — <code class="inline">UseMySql</code> (Pomelo) plus a matching
+        <code class="inline">MySqlServerVersion</code> tells EF Core how to talk to MySQL; swapping providers is mostly a
+        connection-and-package change.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

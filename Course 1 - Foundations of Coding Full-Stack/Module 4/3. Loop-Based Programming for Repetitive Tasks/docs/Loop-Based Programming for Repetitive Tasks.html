@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Loop-Based Programming for Repetitive Tasks — Course 1 · Module 4</title>
+<style>
+  :root {
+    --hdr: #0d9488;      /* header / create  */
+    --pld: #0ea5e9;      /* payload / decode */
+    --sig: #22c55e;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 4 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Loop-Based Programming for Repetitive Tasks</h1>
+    <p class="lead">
+      Build a single C# console app (<code>Loop_Based</code>) that automates four repetitive tasks.
+      Each task lives in its own class and uses a <strong>loop</strong> — <code>for</code> or <code>while</code> —
+      combined with a control structure (<code>if-else</code>, <code>switch</code>). <code>Program.Main</code>
+      runs all four in sequence so you can see loops driving real work end-to-end.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this activity, you will be able to write simple loop-based programs using
+      <code class="inline">for</code> and <code class="inline">while</code> loops, and combine them with control
+      structures like <code class="inline">if-else</code> and <code class="inline">switch</code> statements to
+      automate repetitive tasks.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A console project named <code class="inline">Loop_Based</code> made of five files:</p>
+    <table>
+      <thead><tr><th>File</th><th>Loop + control structure</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>Step1TotalScore.cs</code></td><td><code>for</code></td><td>Sums an array of quiz scores</td></tr>
+        <tr><td><code>Step2CalcFactorials.cs</code></td><td><code>while</code></td><td>Calculates the factorial of a number</td></tr>
+        <tr><td><code>Step3PassOrFail.cs</code></td><td><code>for</code> + <code>if-else</code></td><td>Marks each student score Pass or Fail</td></tr>
+        <tr><td><code>Step4ComboLoopsSwitch.cs</code></td><td><code>for</code> + <code>switch</code></td><td>Assigns a task to each weekday</td></tr>
+        <tr><td><code>Program.cs</code></td><td>—</td><td>Runs all four tasks in order from <code>Main</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">Program.Main</span> <span class="ar">→</span>
+      <span class="t">Step1</span> <span class="ar">→</span>
+      <span class="t">Step2</span> <span class="ar">→</span>
+      <span class="t">Step3</span> <span class="ar">→</span>
+      <span class="t">Step4</span> <span class="ar">→</span>
+      <span class="d">console output</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (or any C# editor)</li>
+      <li>Basic familiarity with C# arrays and <code class="inline">Console.WriteLine()</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Using a <code>for</code> loop to calculate total scores</h3>
+    <p class="scenario">You are developing a program for a quiz system to calculate the total score of a student
+      based on individual quiz scores. The scores are stored in an array, and you use a <code class="inline">for</code>
+      loop to sum them up.</p>
+    <h4>Instructions</h4>
+    <ul class="plain">
+      <li>Define an array named <code class="inline">scores</code> containing the integers <code class="inline">85</code>, <code class="inline">90</code>, <code class="inline">78</code>, <code class="inline">92</code>, and <code class="inline">88</code>.</li>
+      <li>Use a <code class="inline">for</code> loop to iterate over each element in the array and calculate the total score.</li>
+      <li>Print the total score using <code class="inline">Console.WriteLine()</code>.</li>
+    </ul>
+<pre class="code">namespace Loop_Based
+{
+    public class Step1TotalScore
+    {
+        public static void Run()
+        {
+            int[] scores = [85, 90, 78, 92, 88];
+            int totalScore = 0;
+            for (int i = 0; i &lt; scores.Length; i++)
+            {
+                totalScore += scores[i];
+            }
+            Console.WriteLine($"Total Score: {totalScore}");
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Using a <code>while</code> loop to calculate factorials</h3>
+    <p class="scenario">Create a program that calculates the factorial of a given number using a
+      <code class="inline">while</code> loop. Declare the number, then multiply down to 1, decrementing after each iteration.</p>
+    <h4>Instructions</h4>
+    <ul class="plain">
+      <li>Declare an integer variable <code class="inline">number</code> and set its value to <code class="inline">5</code>.</li>
+      <li>Use a <code class="inline">while</code> loop to calculate the factorial of the number.</li>
+      <li>After each iteration, decrement the value of <code class="inline">number</code>.</li>
+      <li>Print the factorial using <code class="inline">Console.WriteLine()</code>.</li>
+    </ul>
+<pre class="code">namespace Loop_Based
+{
+    public class Step2CalcFactorials
+    {
+        public static void Run()
+        {
+            int number = 5;
+            int factorial = 1;
+            while (number &gt; 0)
+            {
+                factorial *= number;
+                number--;
+            }
+            Console.WriteLine($"Factorial: {factorial}");
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Combining loops and <code>if-else</code> to determine pass or fail</h3>
+    <p class="scenario">Write a program that uses a <code class="inline">for</code> loop with an
+      <code class="inline">if-else</code> structure to check if each student's score meets the passing criteria.
+      A student passes if their score is <code class="inline">50</code> or above.</p>
+    <h4>Instructions</h4>
+    <ul class="plain">
+      <li>Define an array named <code class="inline">studentScores</code> containing the integers <code class="inline">45</code>, <code class="inline">60</code>, <code class="inline">72</code>, <code class="inline">38</code>, and <code class="inline">55</code>.</li>
+      <li>Use a <code class="inline">for</code> loop to iterate over each element in the array.</li>
+      <li>Inside the loop, use an <code class="inline">if-else</code> statement to check if the score is <code class="inline">50</code> or above.</li>
+      <li>Print <code class="inline">Pass</code> if the score is <code class="inline">50</code> or above; otherwise, print <code class="inline">Fail</code>.</li>
+    </ul>
+<pre class="code">namespace Loop_Based
+{
+    public class Step3PassOrFail
+    {
+        public static void Run()
+        {
+            int[] studentScores = { 45, 60, 72, 38, 55 };
+            for (int i = 0; i &lt; studentScores.Length; i++)
+            {
+                if (studentScores[i] &gt;= 50)
+                {
+                    Console.WriteLine($"Score: {studentScores[i]} - Pass");
+                }
+                else
+                {
+                    Console.WriteLine($"Score: {studentScores[i]} - Fail");
+                }
+            }
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Combining loops and <code>switch</code> statements for task scheduling</h3>
+    <p class="scenario">Create a program that schedules weekly tasks using a <code class="inline">switch</code>
+      statement inside a <code class="inline">for</code> loop to assign a task for each day.</p>
+    <h4>Instructions</h4>
+    <ul class="plain">
+      <li>Define an array named <code class="inline">weekDays</code> containing the strings <code class="inline">"Monday"</code>, <code class="inline">"Tuesday"</code>, <code class="inline">"Wednesday"</code>, <code class="inline">"Thursday"</code>, <code class="inline">"Friday"</code>.</li>
+      <li>Use a <code class="inline">for</code> loop to iterate over each element in the array.</li>
+      <li>Inside the loop, use a <code class="inline">switch</code> statement to assign a task to each day:
+        Monday → <code class="inline">Team Meeting</code>, Tuesday → <code class="inline">Code Review</code>,
+        Wednesday → <code class="inline">Development</code>, Thursday → <code class="inline">Testing</code>,
+        Friday → <code class="inline">Deployment</code>.</li>
+    </ul>
+<pre class="code">namespace Loop_Based
+{
+    public class Step4ComboLoopsSwitch
+    {
+        public static void Run()
+        {
+            string[] weekDays = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" };
+            for (int i = 0; i &lt; weekDays.Length; i++)
+            {
+                string day = weekDays[i];
+                Console.Write($"{day}: ");
+                switch (day)
+                {
+                    case "Monday":
+                        Console.WriteLine("Team Meeting");
+                        break;
+                    case "Tuesday":
+                        Console.WriteLine("Code Review");
+                        break;
+                    case "Wednesday":
+                        Console.WriteLine("Development");
+                        break;
+                    case "Thursday":
+                        Console.WriteLine("Testing");
+                        break;
+                    case "Friday":
+                        Console.WriteLine("Deployment");
+                        break;
+                    default:
+                        Console.WriteLine("No task assigned.");
+                        break;
+                }
+            }
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Wire it all together in <code>Main</code></h3>
+    <p class="scenario"><code class="inline">Program.Main</code> calls each task's <code class="inline">Run()</code>
+      method in order, printing a header before each one so the output is easy to read.</p>
+<pre class="code">namespace Loop_Based
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Running Task 1: Total Score");
+            Step1TotalScore.Run();
+
+            Console.WriteLine("\nRunning Task 2: Factorial");
+            Step2CalcFactorials.Run();
+
+            Console.WriteLine("\nRunning Task 3: Pass or Fail");
+            Step3PassOrFail.Run();
+
+            Console.WriteLine("\nRunning Task 4: Weekly Task Scheduler");
+            Step4ComboLoopsSwitch.Run();
+        }
+    }
+}</pre>
+    <p style="margin:14px 0 0">Scaffold the project, drop in the five files above, and run it:</p>
+<pre class="code">dotnet new console -n Loop_Based
+cd Loop_Based
+dotnet run</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Running the app prints the result of each task in sequence — the total score, the factorial, a Pass/Fail line
+    per student, and a task per weekday.
+  </div>
+  <div class="card">
+<pre class="code">Running Task 1: Total Score
+Total Score: 433
+
+Running Task 2: Factorial
+Factorial: 120
+
+Running Task 3: Pass or Fail
+Score: 45 - Fail
+Score: 60 - Pass
+Score: 72 - Pass
+Score: 38 - Fail
+Score: 55 - Pass
+
+Running Task 4: Weekly Task Scheduler
+Monday: Team Meeting
+Tuesday: Code Review
+Wednesday: Development
+Thursday: Testing
+Friday: Deployment</pre>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">Loop_Based</code> console project created and runs with <code class="inline">dotnet run</code></li>
+      <li><code class="inline">Step1TotalScore</code> sums <code class="inline">scores</code> with a <code class="inline">for</code> loop and prints <code class="inline">Total Score: 433</code></li>
+      <li><code class="inline">Step2CalcFactorials</code> computes <code class="inline">5!</code> with a <code class="inline">while</code> loop and prints <code class="inline">Factorial: 120</code></li>
+      <li><code class="inline">Step3PassOrFail</code> uses <code class="inline">for</code> + <code class="inline">if-else</code> to print Pass/Fail for each score</li>
+      <li><code class="inline">Step4ComboLoopsSwitch</code> uses <code class="inline">for</code> + <code class="inline">switch</code> to print a task per weekday</li>
+      <li><code class="inline">Program.Main</code> calls all four <code class="inline">Run()</code> methods in order with labelled headers</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong><code class="inline">for</code> vs <code class="inline">while</code></strong> — use a <code class="inline">for</code> loop when you know the count (iterating an array by index); use a <code class="inline">while</code> loop when you loop until a condition changes (counting <code class="inline">number</code> down to 0).</li>
+      <li><strong>Loops + branching</strong> — a loop handles the <em>repetition</em>; an <code class="inline">if-else</code> or <code class="inline">switch</code> inside it handles the <em>decision</em> on each item, which is the core pattern for automating per-element work.</li>
+      <li><strong><code class="inline">switch</code> for discrete cases</strong> — a <code class="inline">switch</code> maps a fixed set of values (the weekdays) to actions more clearly than a long <code class="inline">if-else</code> chain, and a <code class="inline">default</code> case handles anything unexpected.</li>
+      <li><strong>Accumulator pattern</strong> — both the score sum (<code class="inline">totalScore += ...</code>) and the factorial (<code class="inline">factorial *= ...</code>) carry a running value across iterations, initialized before the loop (<code class="inline">0</code> for a sum, <code class="inline">1</code> for a product).</li>
+      <li><strong>One responsibility per class</strong> — splitting each task into its own class with a <code class="inline">Run()</code> method keeps <code class="inline">Main</code> readable and lets you test or reuse each piece independently.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

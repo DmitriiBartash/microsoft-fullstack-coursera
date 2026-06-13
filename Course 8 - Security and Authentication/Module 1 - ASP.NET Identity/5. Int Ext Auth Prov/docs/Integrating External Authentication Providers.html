@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Integrating External Authentication Providers — Course 8 · Module 1</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 1 · Lesson 5
+      <span class="pill">You Try It!</span></p>
+    <h1>Integrating External Authentication Providers</h1>
+    <p class="lead">
+      Simulate an end-to-end OAuth 2.0 <strong>Authorization Code</strong> flow on your own machine.
+      You build two ASP.NET Core apps — an <strong>OAuth Server</strong> (authorization server that issues
+      codes and tokens) and an <strong>OAuth Client</strong> (the consumer app) — then watch an
+      authorization <code>code</code> get exchanged for a signed access token.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Implement external authentication providers in ASP.NET Identity using
+      <strong>OAuth 2.0</strong> by standing up a local authorization server and a client app. By the end
+      you will trigger the <code class="inline">/authorize</code> → code → <code class="inline">/token</code>
+      exchange yourself and inspect the access token the client receives — making each moving part of the
+      OAuth process concrete.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>Two cooperating ASP.NET Core projects:</p>
+    <table>
+      <thead><tr><th>Project</th><th>Type</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>OAuthServer</code></td><td>Web API</td><td>Authorization server — <code>/authorize</code> issues a code, <code>/token</code> issues a JWT</td></tr>
+        <tr><td><code>OAuthClient</code></td><td>Razor Pages app</td><td>Consumer — sends the user to <code>/authorize</code>, then swaps the code for a token</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Client</span> <span class="ar">→</span>
+      <span class="c">Server /authorize</span> <span class="ar">→</span>
+      <span class="t">code</span> <span class="ar">→</span>
+      <span class="d">Client /callback</span> <span class="ar">→</span>
+      <span class="c">Server /token</span> <span class="ar">→</span>
+      <span class="t">access token</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (or any editor)</li>
+      <li>NuGet package for token generation: <code class="inline">System.IdentityModel.Tokens.Jwt</code></li>
+      <li>Two free local ports (the examples use <code class="inline">5001</code> for the server and <code class="inline">5002</code> for the client)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the OAuth Server</h3>
+    <p class="scenario">You'll create the OAuth server, which simulates an external authorization server
+      that issues authorization codes and tokens.</p>
+    <p>Scaffold the Web API project and add the JWT library:</p>
+<pre class="code">dotnet new webapi -o OAuthServer
+cd OAuthServer
+dotnet add package System.IdentityModel.Tokens.Jwt</pre>
+    <p>Pin the listening port so the client knows where to find it (or pass <code class="inline">--urls</code>):</p>
+<pre class="code">dotnet run --urls "http://localhost:5001"</pre>
+    <p>Create a controller named <code class="inline">OAuthController.cs</code> in a
+      <code class="inline">Controllers</code> folder. It exposes the two endpoints called out in the lab:</p>
+    <ul class="plain">
+      <li><code class="inline">/authorize</code> — simulates login and returns an authorization code.</li>
+      <li><code class="inline">/token</code> — exchanges the authorization code for an access token.</li>
+    </ul>
+<pre class="code"><span class="cmt">// Controllers/OAuthController.cs</span>
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+
+namespace OAuthServer.Controllers;
+
+[ApiController]
+[Route("[action]")] <span class="cmt">// exposes /authorize and /token at the root</span>
+public class OAuthController : ControllerBase
+{
+    <span class="cmt">// Demo only: a real server signs with a secret kept out of source control.</span>
+    private const string SecretKey = "super-secret-demo-signing-key-change-me-1234567890";
+
+    <span class="cmt">// In-memory store of issued authorization codes -&gt; the user they belong to.</span>
+    private static readonly Dictionary&lt;string, string&gt; IssuedCodes = new();
+
+    <span class="cmt">// GET /authorize?client_id=...&amp;redirect_uri=...</span>
+    <span class="cmt">// Simulates the login/consent screen and redirects back with a one-time code.</span>
+    [HttpGet]
+    public IActionResult Authorize([FromQuery] string redirect_uri)
+    {
+        <span class="cmt">// A real server authenticates the user here. We assume "demo-user" consented.</span>
+        var code = Guid.NewGuid().ToString("N");
+        IssuedCodes[code] = "demo-user";
+
+        var target = $"{redirect_uri}?code={code}";
+        return Redirect(target);
+    }
+
+    <span class="cmt">// POST /token  { "code": "..." }</span>
+    <span class="cmt">// Exchanges a valid authorization code for a signed access token.</span>
+    [HttpPost]
+    public IActionResult Token([FromBody] TokenRequest request)
+    {
+        if (request is null || !IssuedCodes.TryGetValue(request.Code, out var user))
+            return BadRequest(new { error = "invalid_grant" });
+
+        IssuedCodes.Remove(request.Code); <span class="cmt">// codes are single-use</span>
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SecretKey));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: "OAuthServer",
+            audience: "OAuthClient",
+            claims: new[]
+            {
+                new Claim(ClaimTypes.Name, user),
+                new Claim(JwtRegisteredClaimNames.Sub, user)
+            },
+            expires: DateTime.UtcNow.AddMinutes(15),
+            signingCredentials: creds);
+
+        var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+        return Ok(new { access_token = accessToken, token_type = "Bearer", expires_in = 900 });
+    }
+
+    public record TokenRequest(string Code);
+}</pre>
+    <p>Make sure <code class="inline">Program.cs</code> maps controllers (the <code class="inline">webapi</code>
+      template already adds Swagger):</p>
+<pre class="code"><span class="cmt">// Program.cs</span>
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+app.MapControllers();
+app.Run();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Prepare the OAuth Client</h3>
+    <p class="scenario">You'll create the OAuth client, which simulates a client app requesting an
+      authorization code and token.</p>
+    <p>Scaffold the Razor Pages app:</p>
+<pre class="code">dotnet new webapp -o OAuthClient
+cd OAuthClient</pre>
+    <p>Add a <strong>"Login with OAuth"</strong> button to the homepage that redirects users to the OAuth
+      Server's <code class="inline">/authorize</code> endpoint, passing the client's callback as
+      <code class="inline">redirect_uri</code>:</p>
+<pre class="code"><span class="cmt">&lt;!-- Pages/Index.cshtml --&gt;</span>
+@page
+@model IndexModel
+
+&lt;h1&gt;OAuth Client&lt;/h1&gt;
+
+&lt;a class="btn btn-primary"
+   href="http://localhost:5001/authorize?client_id=demo-client&amp;redirect_uri=http://localhost:5002/callback"&gt;
+   Login with OAuth
+&lt;/a&gt;
+
+@if (!string.IsNullOrEmpty(Model.AccessToken))
+{
+    &lt;h3&gt;Access token received:&lt;/h3&gt;
+    &lt;pre style="white-space:pre-wrap"&gt;@Model.AccessToken&lt;/pre&gt;
+}</pre>
+    <p>Add a <strong>callback endpoint</strong> to handle the authorization code and exchange it for a token.
+      A minimal-API endpoint registered in <code class="inline">Program.cs</code> keeps the round-trip in one place:</p>
+<pre class="code"><span class="cmt">// Program.cs</span>
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddRazorPages();
+builder.Services.AddHttpClient();
+
+var app = builder.Build();
+app.UseStaticFiles();
+app.MapRazorPages();
+
+<span class="cmt">// GET /callback?code=... — swaps the code for a token, then shows the home page.</span>
+app.MapGet("/callback", async (string code, IHttpClientFactory httpFactory) =&gt;
+{
+    var http = httpFactory.CreateClient();
+    var response = await http.PostAsJsonAsync(
+        "http://localhost:5001/token", new { code });
+
+    if (!response.IsSuccessStatusCode)
+        return Results.BadRequest("Token exchange failed.");
+
+    var payload = await response.Content.ReadFromJsonAsync&lt;TokenResponse&gt;();
+    <span class="cmt">// Render the token on the home page (for the demo we pass it via query string).</span>
+    return Results.Redirect($"/?token={Uri.EscapeDataString(payload!.access_token)}");
+});
+
+app.Run();
+
+record TokenResponse(string access_token, string token_type, int expires_in);</pre>
+    <p>Read the returned token back into the page model so the homepage can display it:</p>
+<pre class="code"><span class="cmt">// Pages/Index.cshtml.cs</span>
+using Microsoft.AspNetCore.Mvc.RazorPages;
+
+public class IndexModel : PageModel
+{
+    public string? AccessToken { get; private set; }
+
+    public void OnGet(string? token) =&gt; AccessToken = token;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Test the OAuth flow</h3>
+    <p class="scenario">Start <strong>both</strong> applications, each in its own terminal.</p>
+<pre class="code"><span class="cmt"># Terminal 1 — authorization server</span>
+dotnet run --project OAuthServer --urls "http://localhost:5001"</pre>
+<pre class="code"><span class="cmt"># Terminal 2 — client app</span>
+dotnet run --project OAuthClient --urls "http://localhost:5002"</pre>
+    <p>Then walk the flow:</p>
+    <ul class="plain">
+      <li>Open the OAuth Client app in your browser at <code class="inline">http://localhost:5002</code>.</li>
+      <li>Click the <strong>"Login with OAuth"</strong> button and follow the redirect to the server.</li>
+      <li>The server issues an authorization code and redirects back to <code class="inline">/callback</code>.</li>
+      <li>The client exchanges that code at <code class="inline">/token</code> and <strong>displays the access token</strong> it received.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Clicking <strong>Login with OAuth</strong> bounces the browser to the server's
+    <code class="inline">/authorize</code>, back to the client's <code class="inline">/callback</code> carrying a
+    <code class="inline">code</code>, and finally lands on the home page showing a signed <strong>JWT access token</strong>
+    (a <code class="inline">Bearer</code> token valid for 15 minutes). Seeing that token proves the
+    authorization-code-for-token exchange completed end to end.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">OAuthServer</code> Web API project created and <code class="inline">System.IdentityModel.Tokens.Jwt</code> added</li>
+      <li><code class="inline">OAuthController.cs</code> exposes <code class="inline">/authorize</code> (returns a code) and <code class="inline">/token</code> (returns a JWT)</li>
+      <li><code class="inline">OAuthClient</code> Razor Pages project created with a <strong>Login with OAuth</strong> button</li>
+      <li>A <code class="inline">/callback</code> endpoint exchanges the code for a token via the server's <code class="inline">/token</code></li>
+      <li>Both apps run (<code class="inline">:5001</code> server, <code class="inline">:5002</code> client) and the client displays the access token</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Authorization Code grant</strong> — the client never sees the user's credentials; it receives a
+        short-lived <em>code</em> and swaps it server-to-server for a token, which keeps the secret exchange off the browser.</li>
+      <li><strong>Two distinct roles</strong> — the <em>authorization server</em> (<code class="inline">OAuthServer</code>)
+        authenticates and issues tokens; the <em>client</em> (<code class="inline">OAuthClient</code>) consumes them.
+        External providers like Google or GitHub simply play the authorization-server role.</li>
+      <li><strong><code class="inline">redirect_uri</code> is the contract</strong> — the server only sends codes back to a
+        pre-agreed callback, which is what ties the issued code to the legitimate client.</li>
+      <li><strong>Codes are single-use and short-lived</strong> — exchanging a code consumes it; this limits the blast radius
+        if a code leaks. The resulting <strong>JWT is signed (HS256)</strong> so the client can trust its claims.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

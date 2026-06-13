@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Practical Coding Improvement — Course 2 · Module 5</title>
+<style>
+  :root {
+    --hdr: #7c3aed ;      /* header / create  */
+    --pld: #c026d3 ;      /* payload / decode */
+    --sig: #6366f1 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 2 — Introduction to Programming With C# · Module 5 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Practical Coding Improvement</h1>
+    <p class="lead">
+      The Library Management System <strong>works</strong>, but it leans on five hard-coded
+      <code>book1…book5</code> variables and a wall of repeated <code>if</code>/<code>else</code> checks.
+      In this exercise you use <strong>Microsoft Copilot</strong> to refactor it: kill the duplication,
+      tighten input validation, and fix the case-sensitivity bugs — without changing what the program does.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0 0 12px">Use <strong>Microsoft Copilot</strong> as a pair-programmer to improve an
+      existing C# console program's readability, remove repetition, and make it more efficient — then
+      confirm the refactored version behaves the same as the original, only cleaner. You will:</p>
+    <ul class="plain">
+      <li>Remove code duplication.</li>
+      <li>Improve input validation.</li>
+      <li>Address case-sensitivity issues for entering and removing books.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">🧾</span> What you will produce</h2>
+  <div class="card">
+    <p>A refactored <code class="inline">LibraryManager</code> that replaces the five
+      <code class="inline">string book1…book5</code> fields with a single collection and a handful of small,
+      single-purpose methods.</p>
+    <table>
+      <thead><tr><th>Smell in the starting code</th><th>Refactor applied</th></tr></thead>
+      <tbody>
+        <tr><td>Five separate <code>book1…book5</code> variables</td><td>One <code>List&lt;Book?&gt;</code> sized to a <code>MaxBooks</code> capacity</td></tr>
+        <tr><td>Repeated <code>if (string.IsNullOrEmpty(bookN))</code> chains for add/remove/display</td><td><code>Add</code>/<code>Remove</code>/<code>Display</code> helper methods that loop over the list</td></tr>
+        <tr><td><code>removeBook == bookN</code> — case-<strong>sensitive</strong> match</td><td><code>StringComparison.OrdinalIgnoreCase</code> comparisons</td></tr>
+        <tr><td>No guard on empty/whitespace titles</td><td><code>GetValidatedInput()</code> rejects blank input</td></tr>
+        <tr><td>Fixed capacity of 5, baked into the code</td><td><code>GetLibrarySize()</code> prompts for capacity (defaults to 5)</td></tr>
+        <tr><td>String literals compared inline (<code>"add"</code>, <code>"remove"</code>, <code>"exit"</code>)</td><td>A <code>Command</code> enum + <code>ParseCommand()</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">PrintMenu</span> <span class="ar">→</span>
+      <span class="c">ParseCommand(input)</span> <span class="ar">→</span>
+      <span class="t">Add / Remove / Exit</span> <span class="ar">→</span>
+      <span class="d">DisplayBooks</span> <span class="ar">→</span>
+      <span class="ar">loop</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code with the <strong>C# Dev Kit</strong> extension</li>
+      <li><strong>Microsoft Copilot</strong> (or GitHub Copilot Chat) available to ask for suggestions</li>
+      <li>The console application you created at the start of the course</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🔎</span> Walkthrough</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Run the starting code to confirm it works</h3>
+    <p class="scenario">Open your console application, clear <code class="inline">Program.cs</code>, and paste in
+      the <strong>starting code</strong>. Run it and verify the behavior (add a book, remove a book, list books,
+      exit) before changing anything — you need a known-good baseline to refactor against.</p>
+<pre class="code">class LibraryManager
+{
+    static void Main()
+    {
+        string book1 = "";
+        string book2 = "";
+        string book3 = "";
+        string book4 = "";
+        string book5 = "";
+        while (true)
+        {
+            Console.WriteLine("Would you like to add or remove a book? (add/remove/exit)");
+            string action = Console.ReadLine().ToLower();
+            if (action == "add")
+            {
+                if (!string.IsNullOrEmpty(book1) &amp;&amp; !string.IsNullOrEmpty(book2) &amp;&amp; !string.IsNullOrEmpty(book3) &amp;&amp; !string.IsNullOrEmpty(book4) &amp;&amp; !string.IsNullOrEmpty(book5))
+                {
+                    Console.WriteLine("The library is full. No more books can be added.");
+                }
+                else
+                {
+                    Console.WriteLine("Enter the title of the book to add:");
+                    string newBook = Console.ReadLine();
+                    if (string.IsNullOrEmpty(book1))
+                    {
+                        book1 = newBook;
+                    }
+                    else if (string.IsNullOrEmpty(book2))
+                    {
+                        book2 = newBook;
+                    }
+                    else if (string.IsNullOrEmpty(book3))
+                    {
+                        book3 = newBook;
+                    }
+                    else if (string.IsNullOrEmpty(book4))
+                    {
+                        book4 = newBook;
+                    }
+                    else if (string.IsNullOrEmpty(book5))
+                    {
+                        book5 = newBook;
+                    }
+                }
+            }
+            else if (action == "remove")
+            {
+                if (string.IsNullOrEmpty(book1) &amp;&amp; string.IsNullOrEmpty(book2) &amp;&amp; string.IsNullOrEmpty(book3) &amp;&amp; string.IsNullOrEmpty(book4) &amp;&amp; string.IsNullOrEmpty(book5))
+                {
+                    Console.WriteLine("The library is empty. No books to remove.");
+                }
+                else
+                {
+                    Console.WriteLine("Enter the title of the book to remove:");
+                    string removeBook = Console.ReadLine();
+                    if (removeBook == book1)
+                    {
+                        book1 = "";
+                    }
+                    else if (removeBook == book2)
+                    {
+                        book2 = "";
+                    }
+                    else if (removeBook == book3)
+                    {
+                        book3 = "";
+                    }
+                    else if (removeBook == book4)
+                    {
+                        book4 = "";
+                    }
+                    else if (removeBook == book5)
+                    {
+                        book5 = "";
+                    }
+                    else
+                    {
+                        Console.WriteLine("Book not found.");
+                    }
+                }
+            }
+            else if (action == "exit")
+            {
+                break;
+            }
+            else
+            {
+                Console.WriteLine("Invalid action. Please type 'add', 'remove', or 'exit'.");
+            }
+            // Display the list of books
+            Console.WriteLine("Available books:");
+            if (!string.IsNullOrEmpty(book1)) Console.WriteLine(book1);
+            if (!string.IsNullOrEmpty(book2)) Console.WriteLine(book2);
+            if (!string.IsNullOrEmpty(book3)) Console.WriteLine(book3);
+            if (!string.IsNullOrEmpty(book4)) Console.WriteLine(book4);
+            if (!string.IsNullOrEmpty(book5)) Console.WriteLine(book5);
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Ask Copilot to suggest improvements</h3>
+    <p class="scenario">Paste the starting code into <strong>Microsoft Copilot</strong> and ask it to reduce
+      repetition and improve readability. Useful prompts:</p>
+    <ul class="plain">
+      <li><em>"Refactor this so the five book variables become a single collection."</em></li>
+      <li><em>"Extract the add and remove logic into separate methods."</em></li>
+      <li><em>"Make the book lookup case-insensitive."</em></li>
+    </ul>
+    <p style="margin:0">Copilot will typically suggest replacing <code class="inline">book1…book5</code> with a
+      <code class="inline">List</code>, and pulling the repeated add/remove/display blocks into helper methods.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Simplify the code</h3>
+    <p class="scenario">Apply the suggestions: introduce a collection, extract helper methods, give variables
+      clear names, and fix the case-sensitivity bug. A <code class="inline">Book</code> class makes the intent
+      explicit, a <code class="inline">Command</code> enum removes the magic strings, and
+      <code class="inline">StringComparison.OrdinalIgnoreCase</code> makes removal case-insensitive. The full
+      refactored program is below.</p>
+<pre class="code">using System.Globalization;
+
+class Book(string title)
+{
+    public string Title { get; } = title;
+    public override string ToString() => Title;
+}
+
+enum Command
+{
+    Add,
+    Remove,
+    Exit,
+    Invalid
+}
+
+class LibraryManager
+{
+    private static int MaxBooks;
+    private static List&lt;Book?&gt;? books;
+
+    static void Main()
+    {
+        MaxBooks = GetLibrarySize();
+        books = [.. new Book?[MaxBooks]];
+        while (true)
+        {
+            PrintMenu();
+            string? actionInput = Console.ReadLine()?.Trim().ToLowerInvariant();
+            switch (ParseCommand(actionInput))
+            {
+                case Command.Add:
+                    AddBook();
+                    break;
+                case Command.Remove:
+                    RemoveBook();
+                    break;
+                case Command.Exit:
+                    Console.WriteLine("Exiting Library Manager...");
+                    return;
+                default:
+                    Console.WriteLine("Invalid input. Please enter 'add', 'remove', or 'exit'.");
+                    break;
+            }
+            DisplayBooks();
+        }
+    }
+
+    private static int GetLibrarySize()
+    {
+        Console.Write("Enter the maximum number of books in the library: ");
+        if (int.TryParse(Console.ReadLine(), out int size) &amp;&amp; size &gt; 0)
+            return size;
+        Console.WriteLine("Invalid number. Defaulting to 5.");
+        return 5;
+    }
+
+    private static Command ParseCommand(string? input) =&gt; input switch
+    {
+        "add" =&gt; Command.Add,
+        "remove" =&gt; Command.Remove,
+        "exit" =&gt; Command.Exit,
+        _ =&gt; Command.Invalid
+    };
+
+    private static void PrintMenu()
+    {
+        Console.WriteLine("\nLibrary Manager");
+        Console.WriteLine($"Books stored: {(books ?? []).Count(b =&gt; b != null)} / {MaxBooks}");
+        Console.Write("Choose an action (add / remove / exit): ");
+    }
+
+    private static void AddBook()
+    {
+        if (books == null || !books.Any(b =&gt; b == null))
+        {
+            Console.WriteLine("The library is full. Cannot add more books.");
+            return;
+        }
+        string? title = GetValidatedInput("Enter the book title to add: ");
+        if (title == null) return;
+        if (BookExists(title))
+        {
+            Console.WriteLine("This book already exists in the library.");
+            return;
+        }
+        int index = books.FindIndex(b =&gt; b == null);
+        books[index] = new Book(title);
+        Console.WriteLine($"Book \"{title}\" added to the library.");
+    }
+
+    private static void RemoveBook()
+    {
+        if (books == null || books.All(b =&gt; b == null))
+        {
+            Console.WriteLine("The library is empty. No books to remove.");
+            return;
+        }
+        string? title = GetValidatedInput("Enter the book title to remove: ");
+        if (title == null) return;
+        int index = books.FindIndex(b =&gt; b != null &amp;&amp; b!.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+        if (index &gt;= 0)
+        {
+            books[index] = null;
+            Console.WriteLine($"Book \"{title}\" removed from the library.");
+        }
+        else
+        {
+            Console.WriteLine("Book not found.");
+        }
+    }
+
+    private static void DisplayBooks()
+    {
+        Console.WriteLine("\nCurrent books in the library:");
+        var nonEmptyBooks = (books ?? []).Where(b =&gt; b != null).Select(b =&gt; b!.Title).ToList();
+        if (nonEmptyBooks.Count == 0)
+        {
+            Console.WriteLine("No books available.");
+        }
+        else
+        {
+            Console.WriteLine(string.Join("\n", nonEmptyBooks.Select(b =&gt; "- " + b)));
+        }
+    }
+
+    private static string? GetValidatedInput(string prompt)
+    {
+        Console.Write(prompt);
+        string? input = Console.ReadLine()?.Trim();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            Console.WriteLine("Book title cannot be empty.");
+            return null;
+        }
+        return NormalizeTitle(input);
+    }
+
+    private static string NormalizeTitle(string title)
+    {
+        return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(title.ToLowerInvariant());
+    }
+
+    private static bool BookExists(string title)
+    {
+        return books != null &amp;&amp; books.Any(b =&gt; b != null &amp;&amp; b.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Test the simplified program</h3>
+    <p class="scenario">Clear <code class="inline">Program.cs</code> again, paste in the refactored code, and run it:</p>
+<pre class="code">dotnet run</pre>
+    <p style="margin:0">Exercise the same paths as before — add, remove (try different casing this time), list,
+      and exit. The behavior should match the original, but the code is now far cleaner. When it works,
+      <strong>save your code: you will reuse it for the final project in this course.</strong></p>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The refactored app behaves like the original — add, remove, list, exit — but now adding
+    <strong>"The Hobbit"</strong> and later removing <strong>"the hobbit"</strong> works (matching is
+    case-insensitive), blank titles are rejected, the menu shows a live
+    <code class="inline">Books stored: n / MaxBooks</code> count, and there is no
+    <code class="inline">book1…book5</code> duplication left to maintain.
+  </div>
+<pre class="code">Enter the maximum number of books in the library: 3
+
+Library Manager
+Books stored: 0 / 3
+Choose an action (add / remove / exit): add
+Enter the book title to add: the hobbit
+Book "The Hobbit" added to the library.
+
+Current books in the library:
+- The Hobbit</pre>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>The starting code runs and its behavior is verified before refactoring.</li>
+      <li>The five <code class="inline">book1…book5</code> variables are replaced by a single collection.</li>
+      <li>Add, remove, and display logic live in dedicated helper methods (no repeated <code class="inline">if</code> chains).</li>
+      <li>Book matching is <strong>case-insensitive</strong> (<code class="inline">StringComparison.OrdinalIgnoreCase</code>).</li>
+      <li>Empty/whitespace titles are rejected by validation.</li>
+      <li>The refactored program runs via <code class="inline">dotnet run</code> and behaves the same as the original.</li>
+      <li>The final code is saved for reuse in the course's final project.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Remove duplication (DRY)</strong> — five parallel <code class="inline">book1…book5</code>
+        variables and their copy-pasted <code class="inline">if</code>/<code class="inline">else</code> blocks
+        become one <code class="inline">List&lt;Book?&gt;</code> plus small helper methods you write once.</li>
+      <li><strong>Validate at the boundary</strong> — <code class="inline">GetValidatedInput()</code> trims and
+        rejects blank input in one place, so no downstream code has to re-check for empty titles.</li>
+      <li><strong>Case-insensitive comparison</strong> — comparing titles with
+        <code class="inline">StringComparison.OrdinalIgnoreCase</code> fixes the bug where
+        <code class="inline">"hobbit"</code> would not match a stored <code class="inline">"Hobbit"</code>.</li>
+      <li><strong>Name things, drop magic strings</strong> — a <code class="inline">Command</code> enum and
+        <code class="inline">ParseCommand()</code> replace bare <code class="inline">"add"</code>/<code class="inline">"remove"</code>/<code class="inline">"exit"</code>
+        literals, making the control flow self-documenting.</li>
+      <li><strong>Refactor behind a safety net</strong> — verify the original works <em>first</em>, then change
+        structure only; the program's observable behavior must stay the same.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

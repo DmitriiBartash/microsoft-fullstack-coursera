@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Designing Role-Based Access Control (RBAC) Systems — Course 8 · Module 2</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 2 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Designing Role-Based Access Control (RBAC) Systems</h1>
+    <p class="lead">
+      Design the <strong>architecture</strong> of Role-Based Access Control for real-world
+      applications: define roles, assign permissions, and enforce secure access. You'll study
+      two worked examples (healthcare, e-commerce), then design RBAC systems of your own —
+      always applying the <strong>principle of least privilege</strong>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Develop and articulate an RBAC architecture for real-world applications by
+      defining roles, assigning permissions, and ensuring secure access control. Gain practice in
+      <strong>analyzing system requirements</strong> and creating RBAC designs tailored to specific scenarios.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">📦</span> What you'll produce</h2>
+  <div class="card">
+    <p>For each scenario, a short RBAC design consisting of:</p>
+    <table>
+      <thead><tr><th>Deliverable</th><th>What it contains</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Role definitions</strong></td><td>Each role and the responsibility it covers in the workflow</td></tr>
+        <tr><td><strong>Permission set</strong></td><td>The permissions granted to each role, with a justification for each</td></tr>
+        <tr><td><strong>Role/permission table</strong></td><td>A summary mapping every role to its permissions</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:14px 0 0">Each design is judged against the <strong>principle of least privilege</strong>: a role
+      gets only the access its job requires, and nothing more.</p>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🧭</span> Walkthrough</h2>
+  <p>Two fully worked examples show the method before you try it yourself.</p>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Example — Healthcare Management System</h3>
+    <p class="scenario">A healthcare system must securely manage access for a <strong>System Admin</strong>
+      (manages the system, users, and settings), a <strong>Doctor</strong> (manages care for assigned patients —
+      prescribing, viewing records), a <strong>Nurse</strong> (updates patient vitals but cannot see prescriptions
+      or test results), and a <strong>Patient</strong> (views only their own records and test results).</p>
+
+    <h4>Step 1 — Identify roles &amp; responsibilities</h4>
+    <ul class="plain">
+      <li><strong>System Admin</strong> — manages the overall system; adds users, assigns roles, configures
+        settings, so needs unrestricted access to all resources.</li>
+      <li><strong>Doctor</strong> — delivers direct care; accesses and updates records for <em>assigned</em>
+        patients, views their test results, prescribes medication. <em>Limiting to assigned patients reduces the
+        risk of exposing private information unnecessarily.</em></li>
+      <li><strong>Nurse</strong> — records and updates vitals; does <strong>not</strong> need test results or
+        prescriptions (handled by doctors). Limiting access reduces errors and unauthorized actions.</li>
+      <li><strong>Patient</strong> — views their own records to stay informed; restricting them to their own
+        data ensures privacy and security.</li>
+    </ul>
+
+    <h4>Step 2 — Assign permissions</h4>
+    <ul class="plain">
+      <li><strong>System Admin</strong> — full access to all system resources, including user management and
+        patient records (to maintain functionality and security comprehensively).</li>
+      <li><strong>Doctor</strong> — view/update assigned patient records, view test results for assigned
+        patients, prescribe medications for assigned patients.</li>
+      <li><strong>Nurse</strong> — view/update vitals for patients (responsibilities limited to assisting with
+        basic medical data).</li>
+      <li><strong>Patient</strong> — view their own medical records only (ensuring privacy, preventing access
+        to others' information).</li>
+    </ul>
+
+    <h4>Step 3 — Summarize the design</h4>
+    <table>
+      <thead><tr><th>Role</th><th>Permissions</th></tr></thead>
+      <tbody>
+        <tr><td><code>System Admin</code></td><td>Full access to all system resources, user management, patient records.</td></tr>
+        <tr><td><code>Doctor</code></td><td>View/update assigned patient records, view test results, prescribe medications.</td></tr>
+        <tr><td><code>Nurse</code></td><td>View/update vitals for patients.</td></tr>
+        <tr><td><code>Patient</code></td><td>View personal medical records.</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:14px 0 0"><strong>Why this design works.</strong> Roles map to distinct responsibilities in a
+      typical healthcare workflow — admins oversee the system, doctors deliver care, nurses support, patients access
+      their own data. Each permission is tied to what the role needs while minimizing access to unnecessary or
+      sensitive data (<strong>least privilege</strong>), so sensitive patient data is reachable only by those who
+      need it, minimizing breach risk.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Example — E-Commerce Platform</h3>
+    <p class="scenario">An e-commerce platform must securely manage access for a <strong>Super Admin</strong>
+      (manages users, inventory, and orders), <strong>Warehouse Staff</strong> (handles inventory and shipping but
+      cannot access customer data), a <strong>Customer Service Agent</strong> (manages customer orders and
+      communications), and a <strong>Customer</strong> (browses products, places orders, views their order history).</p>
+
+    <h4>Step 1 — Identify roles &amp; responsibilities</h4>
+    <ul class="plain">
+      <li><strong>Super Admin</strong> — oversees the entire platform (users, inventory, orders); requires
+        unrestricted access to manage operations.</li>
+      <li><strong>Warehouse Staff</strong> — handle inventory updates and shipping logistics; do <strong>not</strong>
+        need customer data, reducing the risk of exposing private information.</li>
+      <li><strong>Customer Service Agent</strong> — interact with customers, manage orders, resolve issues; do
+        <strong>not</strong> modify inventory or access backend data.</li>
+      <li><strong>Customer</strong> — browse products, place orders, view their own order history; restricting
+        access stops them viewing or modifying other users' data.</li>
+    </ul>
+
+    <h4>Step 2 — Assign permissions</h4>
+    <ul class="plain">
+      <li><strong>Super Admin</strong> — full permissions for user, inventory, and order management.</li>
+      <li><strong>Warehouse Staff</strong> — update inventory and manage shipping (backend stock/logistics only,
+        no customer data).</li>
+      <li><strong>Customer Service Agent</strong> — view/manage orders and access customer communications, but
+        not inventory or backend data.</li>
+      <li><strong>Customer</strong> — browse products, place orders, view personal order history (own data only).</li>
+    </ul>
+
+    <h4>Step 3 — Summarize the design</h4>
+    <table>
+      <thead><tr><th>Role</th><th>Permissions</th></tr></thead>
+      <tbody>
+        <tr><td><code>Super Admin</code></td><td>Full access to users, inventory, and orders.</td></tr>
+        <tr><td><code>Warehouse Staff</code></td><td>Update inventory, manage shipping.</td></tr>
+        <tr><td><code>Customer Service Agent</code></td><td>View/manage orders, access customer communications.</td></tr>
+        <tr><td><code>Customer</code></td><td>Browse products, place orders, view personal order history.</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:14px 0 0"><strong>Why this design works.</strong> Roles reflect the platform's primary
+      operations; permissions match each role's responsibilities while minimizing unnecessary access. Limiting roles
+      and permissions to specific tasks keeps customer data secure, reduces breach risk, and prevents unauthorized
+      actions.</p>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">✍️</span> Your turn</h2>
+  <p>Apply the same three-step method (roles → permissions → table) to design RBAC systems for the following. For
+    each, define the roles and their responsibilities, assign permissions based on the tasks each role performs, and
+    summarize the design in a role/permission table.</p>
+
+  <div class="card">
+    <h3>Task 1 — Learning Management System (LMS)</h3>
+    <p class="scenario">An LMS must securely manage access for:</p>
+    <ul class="plain">
+      <li><strong>Admin</strong> — manages users, courses, and settings.</li>
+      <li><strong>Instructor</strong> — manages their own courses, grades assignments, views enrolled students.</li>
+      <li><strong>Student</strong> — views their enrolled courses, assignments, and grades.</li>
+      <li><strong>Guest</strong> — views general course information but cannot enroll or access private data.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>Task 2 — Retail Bank</h3>
+    <p class="scenario">A retail bank must securely manage access for:</p>
+    <ul class="plain">
+      <li><strong>Admin</strong> — manages accounts, transactions, and customer data.</li>
+      <li><strong>Teller</strong> — processes transactions but cannot access full account histories.</li>
+      <li><strong>Auditor</strong> — reviews system logs and transactions without accessing sensitive customer details.</li>
+      <li><strong>Customer</strong> — views their own account details and transaction history.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">🌟</span> What good looks like</h2>
+  <div class="card">
+    <ul class="plain">
+      <li><strong>Every role is justified.</strong> Each role maps to a real responsibility in the workflow, and
+        each permission is explained in terms of the task that requires it.</li>
+      <li><strong>Least privilege is visible.</strong> No role can reach data outside its remit — tellers can't
+        open full account histories, warehouse staff can't read customer records, students can't grade, and guests
+        see only public catalog data (deny-by-default).</li>
+      <li><strong>Self-access is scoped to ownership.</strong> End users see <em>their own</em> data only (patient
+        records, personal orders, own grades); instructors edit <em>their own</em> courses; doctors act on
+        <em>assigned</em> patients — never anyone else's.</li>
+      <li><strong>Sensitive operations are separated.</strong> Auditors get <strong>read-only</strong> access so
+        they can't alter the records they review (audit integrity), keeping oversight independent from the operations
+        it checks — a classic segregation-of-duties control.</li>
+      <li><strong>Privacy regulations are respected.</strong> Scoping students to their own grades echoes
+        educational privacy rules (e.g., FERPA), and walling customer PII off from tellers and auditors echoes
+        financial/data rules (e.g., PCI DSS, GDPR).</li>
+      <li><strong>The table is the deliverable.</strong> A clean role → permissions table makes the access model
+        reviewable at a glance and easy to translate into policy.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Roles for <strong>each</strong> scenario defined, with their responsibilities described</li>
+      <li>Permissions assigned to every role, each with a justification</li>
+      <li>A role/permission <strong>table</strong> summarizes each design</li>
+      <li>Designs honor the <strong>principle of least privilege</strong> (no excess access)</li>
+      <li>End-user roles are restricted to <strong>their own</strong> data only</li>
+      <li>Sensitive data (test results, customer records, account histories) is walled off from roles that don't need it</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Role-Based Access Control</strong> — group permissions into roles and assign roles to users,
+        instead of granting permissions to individuals one by one.</li>
+      <li><strong>Principle of least privilege</strong> — a role receives only the access its job requires;
+        minimizing access reduces the attack surface and the chance of errors or breaches.</li>
+      <li><strong>Permission ↔ responsibility</strong> — every permission should trace back to a concrete task
+        the role must perform; if no task needs it, don't grant it.</li>
+      <li><strong>Data isolation</strong> — restricting roles to their core duties keeps sensitive data (patient
+        records, customer data, account histories) reachable only by those who genuinely need it.</li>
+      <li><strong>Requirements-driven design</strong> — roles and permissions are derived from analyzing the
+        system's real-world workflow, not assumed up front.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

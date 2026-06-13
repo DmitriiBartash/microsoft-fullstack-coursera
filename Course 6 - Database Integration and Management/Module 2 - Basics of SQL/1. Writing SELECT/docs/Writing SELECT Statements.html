@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Writing SELECT Statements — Course 6 · Module 2</title>
+<style>
+  :root {
+    --hdr: #059669 ;      /* header / create  */
+    --pld: #0d9488 ;      /* payload / decode */
+    --sig: #10b981 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 6 — Database Integration and Management · Module 2 · Lesson 1
+      <span class="pill">You Try It!</span></p>
+    <h1>Writing SELECT Statements</h1>
+    <p class="lead">
+      Stand up a sample <code>EmployeeDB</code> database in MySQL, then practice the three pillars of
+      reading data: <strong>SELECT</strong> to retrieve columns, <strong>WHERE</strong> to filter rows, and
+      <strong>ORDER BY</strong> to sort results — finishing by combining filtering and sorting into a
+      single query.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Retrieve and manipulate data with SQL by writing <code class="inline">SELECT</code>
+      statements that use <code class="inline">WHERE</code> clauses to filter and
+      <code class="inline">ORDER BY</code> to sort. By the end you will be able to query a table for exactly
+      the rows and columns you need, in the order you want them.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single MySQL database and table you will query throughout the lab:</p>
+    <table>
+      <thead><tr><th>Object</th><th>What it is</th></tr></thead>
+      <tbody>
+        <tr><td><code>EmployeeDB</code></td><td>The sample database that holds the lab data</td></tr>
+        <tr><td><code>Employees</code></td><td>A table of staff records you will <code>SELECT</code>, filter, and sort</td></tr>
+        <tr><td><code>lab_select.sql</code></td><td>The script that creates the schema, seeds data, and holds every query</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">CREATE DATABASE</span> <span class="ar">→</span>
+      <span class="c">CREATE TABLE</span> <span class="ar">→</span>
+      <span class="t">INSERT seed rows</span> <span class="ar">→</span>
+      <span class="d">SELECT / WHERE / ORDER BY</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>MySQL server installed and running</li>
+      <li>Visual Studio Code with a MySQL connection (e.g. the <strong>MySQL</strong> / <strong>SQLTools</strong> extension)</li>
+      <li>Ability to run SQL statements against your server</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the database setup</h3>
+    <p class="scenario">Create the sample database, switch to it, then create and populate the
+      <code class="inline">Employees</code> table.</p>
+    <ul class="plain">
+      <li>Open Visual Studio Code and connect to your MySQL database.</li>
+      <li>Create a new database called <code class="inline">EmployeeDB</code>:</li>
+    </ul>
+<pre class="code">CREATE DATABASE EmployeeDB;</pre>
+    <ul class="plain">
+      <li>Switch to the <code class="inline">EmployeeDB</code> database:</li>
+    </ul>
+<pre class="code">USE EmployeeDB;</pre>
+    <ul class="plain">
+      <li>Create a table named <code class="inline">Employees</code> with the following columns:</li>
+    </ul>
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Constraints</th></tr></thead>
+      <tbody>
+        <tr><td><code>ID</code></td><td><code>INT</code></td><td>Primary Key, Auto Increment</td></tr>
+        <tr><td><code>FirstName</code></td><td><code>VARCHAR(50)</code></td><td></td></tr>
+        <tr><td><code>LastName</code></td><td><code>VARCHAR(50)</code></td><td></td></tr>
+        <tr><td><code>Department</code></td><td><code>VARCHAR(50)</code></td><td></td></tr>
+        <tr><td><code>Salary</code></td><td><code>DECIMAL(10,2)</code></td><td></td></tr>
+        <tr><td><code>YearsExperience</code></td><td><code>INT</code></td><td></td></tr>
+      </tbody>
+    </table>
+    <ul class="plain">
+      <li>Use the following SQL to create and populate the <code class="inline">Employees</code> table:</li>
+    </ul>
+<pre class="code">CREATE TABLE Employees (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    Department VARCHAR(50),
+    Salary DECIMAL(10,2),
+    YearsExperience INT
+);
+
+INSERT INTO Employees (FirstName, LastName, Department, Salary, YearsExperience) VALUES
+('John', 'Doe', 'HR', 60000, 10),
+('Jane', 'Smith', 'Finance', 70000, 8),
+('Michael', 'Brown', 'IT', 50000, 5),
+('Emily', 'Davis', 'HR', 45000, 2),
+('Chris', 'Wilson', 'Finance', 80000, 15);</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Retrieve data using SELECT statements</h3>
+    <p class="scenario">Learn to retrieve data with basic <code class="inline">SELECT</code> statements.</p>
+    <ul class="plain">
+      <li>Retrieve <strong>all columns</strong> for <strong>all rows</strong> in the <code class="inline">Employees</code> table.</li>
+      <li>Retrieve only the <code class="inline">FirstName</code> and <code class="inline">LastName</code> of employees.</li>
+      <li>Retrieve <strong>unique</strong> department names using <code class="inline">DISTINCT</code>.</li>
+    </ul>
+<pre class="code"><span class="cmt">-- 2.1 Retrieve all columns</span>
+SELECT * FROM Employees;
+
+<span class="cmt">-- 2.2 Retrieve only first and last names</span>
+SELECT FirstName, LastName FROM Employees;
+
+<span class="cmt">-- 2.3 Retrieve unique department names</span>
+SELECT DISTINCT Department FROM Employees;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Filter data using WHERE clauses</h3>
+    <p class="scenario">Use the <code class="inline">WHERE</code> clause to filter rows based on conditions.</p>
+    <ul class="plain">
+      <li>Retrieve all employees from the <code class="inline">HR</code> department.</li>
+      <li>Find employees in the <code class="inline">Finance</code> department with a salary greater than <code class="inline">60,000</code>.</li>
+      <li>Find employees with more than <code class="inline">5</code> years of experience <strong>and</strong> a salary less than <code class="inline">70,000</code>.</li>
+    </ul>
+<pre class="code"><span class="cmt">-- 3.1 All employees from HR</span>
+SELECT * FROM Employees
+WHERE Department = 'HR';
+
+<span class="cmt">-- 3.2 Finance employees with salary &gt; 60000</span>
+SELECT * FROM Employees
+WHERE Department = 'Finance' AND Salary &gt; 60000;
+
+<span class="cmt">-- 3.3 Employees with more than 5 years experience and salary &lt; 70000</span>
+SELECT * FROM Employees
+WHERE YearsExperience &gt; 5 AND Salary &lt; 70000;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Sort data using ORDER BY</h3>
+    <p class="scenario">Organize query results with the <code class="inline">ORDER BY</code> clause.</p>
+    <ul class="plain">
+      <li>Retrieve all employees sorted by their <code class="inline">LastName</code> in <strong>ascending</strong> order (<code class="inline">ASC</code>).</li>
+      <li>Retrieve employees from the <code class="inline">HR</code> department, sorted by <code class="inline">Salary</code> in <strong>descending</strong> order (<code class="inline">DESC</code>).</li>
+      <li>Retrieve the <strong>top 3</strong> highest earners across all departments (using <code class="inline">LIMIT</code>).</li>
+    </ul>
+<pre class="code"><span class="cmt">-- 4.1 All employees sorted by last name ascending</span>
+SELECT * FROM Employees
+ORDER BY LastName ASC;
+
+<span class="cmt">-- 4.2 HR employees sorted by salary descending</span>
+SELECT * FROM Employees
+WHERE Department = 'HR'
+ORDER BY Salary DESC;
+
+<span class="cmt">-- 4.3 Top 3 employees by salary</span>
+SELECT * FROM Employees
+ORDER BY Salary DESC
+LIMIT 3;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Combine WHERE and ORDER BY</h3>
+    <p class="scenario">Combine filtering and sorting to write more advanced queries.</p>
+    <ul class="plain">
+      <li>Retrieve employees from the <code class="inline">IT</code> department with more than <code class="inline">3</code> years of experience, sorted by <code class="inline">YearsExperience</code> descending.</li>
+      <li>Retrieve employees with a salary <strong>between</strong> <code class="inline">50,000</code> and <code class="inline">75,000</code>, sorted by <code class="inline">FirstName</code> ascending.</li>
+    </ul>
+<pre class="code"><span class="cmt">-- 5.1 IT employees with &gt; 3 years experience, sorted by YearsExperience descending</span>
+SELECT * FROM Employees
+WHERE Department = 'IT' AND YearsExperience &gt; 3
+ORDER BY YearsExperience DESC;
+
+<span class="cmt">-- 5.2 Employees with salary between 50,000 and 75,000, sorted by FirstName ascending</span>
+SELECT * FROM Employees
+WHERE Salary BETWEEN 50000 AND 75000
+ORDER BY FirstName ASC;</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Each query returns the expected slice of the five seeded rows. For example:
+    <strong>2.3 DISTINCT</strong> returns <code class="inline">HR</code>, <code class="inline">Finance</code>,
+    <code class="inline">IT</code>; <strong>3.2 Finance &gt; 60000</strong> returns only Jane Smith (70000) and
+    Chris Wilson (80000); and <strong>4.3 Top 3 earners</strong> returns Chris Wilson (80000),
+    Jane Smith (70000), John Doe (60000), in that order.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">EmployeeDB</code> database created and selected with <code class="inline">USE</code></li>
+      <li><code class="inline">Employees</code> table created with all six columns and the five sample rows inserted</li>
+      <li><code class="inline">SELECT</code> queries return all columns, specific columns, and <code class="inline">DISTINCT</code> departments</li>
+      <li><code class="inline">WHERE</code> queries filter by department, salary, and experience (including <code class="inline">AND</code>)</li>
+      <li><code class="inline">ORDER BY</code> queries sort ascending and descending, and <code class="inline">LIMIT</code> returns the top 3 earners</li>
+      <li>Combined <code class="inline">WHERE</code> + <code class="inline">ORDER BY</code> queries (including <code class="inline">BETWEEN</code>) return the correct rows</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong><code class="inline">SELECT</code> projects columns</strong> — <code class="inline">SELECT *</code> returns every
+        column, while listing columns (<code class="inline">SELECT FirstName, LastName</code>) returns only what you ask for;
+        <code class="inline">DISTINCT</code> removes duplicate values.</li>
+      <li><strong><code class="inline">WHERE</code> filters rows</strong> — conditions compare columns to values, and
+        <code class="inline">AND</code> / <code class="inline">OR</code> combine multiple conditions;
+        <code class="inline">BETWEEN x AND y</code> is shorthand for an inclusive range.</li>
+      <li><strong><code class="inline">ORDER BY</code> sorts results</strong> — <code class="inline">ASC</code> (default) sorts
+        low-to-high, <code class="inline">DESC</code> high-to-low, and you can sort on any column independent of what you select.</li>
+      <li><strong><code class="inline">LIMIT</code> caps the rows returned</strong> — pairing
+        <code class="inline">ORDER BY Salary DESC</code> with <code class="inline">LIMIT 3</code> is the idiomatic MySQL way to get a "top N" result.</li>
+      <li><strong>Clause order matters</strong> — SQL expects
+        <code class="inline">SELECT … FROM … WHERE … ORDER BY … LIMIT</code>; writing them out of order is a syntax error.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

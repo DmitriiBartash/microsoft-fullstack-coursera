@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing Encryption and Decryption — Course 8 · Module 3</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 3 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Encryption and Decryption</h1>
+    <p class="lead">
+      Build a small <strong>ASP.NET Core Razor Pages</strong> app that lets a user upload a file,
+      <strong>encrypt</strong> it with <strong>AES</strong>, and later <strong>decrypt</strong> it back to the
+      original. The encryption logic lives in a dedicated <code>EncryptionService</code>, and the Razor page
+      just collects the file and calls the service.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Create an ASP.NET Core web application that allows users to encrypt and decrypt files.
+      This exercise demonstrates how to implement basic encryption and decryption techniques using the
+      <code class="inline">System.Security.Cryptography</code> <strong>AES</strong> primitives together with
+      file I/O.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A Razor Pages project named <code class="inline">EncryptionApp</code> with these pieces:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>EncryptionService.cs</code></td><td>Encrypt and decrypt files with a symmetric <strong>AES</strong> key</td></tr>
+        <tr><td><code>Pages/Index.cshtml</code></td><td>Upload form with <strong>Encrypt</strong> and <strong>Decrypt</strong> buttons</td></tr>
+        <tr><td><code>Pages/Index.cshtml.cs</code></td><td>Handle the upload, call the service, write results to <code>wwwroot</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Upload file</span> <span class="ar">→</span>
+      <span class="c">EncryptionService.EncryptFile()</span> <span class="ar">→</span>
+      <span class="t">.enc in wwwroot</span> <span class="ar">→</span>
+      <span class="d">EncryptionService.DecryptFile()</span> <span class="ar">→</span>
+      <span class="ar">recovered file</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code with the C# extension</li>
+      <li>A terminal open at the folder where you want the project</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Scaffold a Razor Pages app, move into it, restore, build, and run it once to confirm the setup.</p>
+<pre class="code">dotnet new razor -n EncryptionApp
+cd EncryptionApp
+dotnet restore
+dotnet build
+dotnet run</pre>
+    <p>Open <code class="inline">http://localhost:5xxx</code> in a browser to confirm the default page loads, then
+      stop the app (<code class="inline">Ctrl+C</code>). You'll edit <code class="inline">Pages/Index.cshtml</code>
+      shortly to add a file-upload form.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create an encryption service</h3>
+    <p class="scenario">Create <code class="inline">EncryptionService.cs</code> in the project root with one method to
+      <strong>encrypt</strong> a file with a symmetric AES key and one to <strong>decrypt</strong> it. The AES IV is
+      generated per encryption and written to the front of the output file so decryption can read it back.</p>
+<pre class="code">using System.Security.Cryptography;
+
+namespace EncryptionApp;
+
+public class EncryptionService
+{
+    <span class="cmt">// Demo key only. In production, load this from configuration / a key vault,</span>
+    <span class="cmt">// never hard-code it. AES-256 needs a 32-byte key.</span>
+    private static readonly byte[] Key = SHA256.HashData(
+        System.Text.Encoding.UTF8.GetBytes("super-secret-demo-passphrase"));
+
+    <span class="cmt">// Encrypt a file using a symmetric key; prefix the output with the IV.</span>
+    public async Task EncryptFileAsync(string inputPath, string outputPath)
+    {
+        using var aes = Aes.Create();
+        aes.Key = Key;
+        aes.GenerateIV();
+
+        await using var output = new FileStream(outputPath, FileMode.Create);
+        <span class="cmt">// Store the IV (16 bytes) at the start so we can decrypt later.</span>
+        await output.WriteAsync(aes.IV);
+
+        await using var crypto = new CryptoStream(output, aes.CreateEncryptor(), CryptoStreamMode.Write);
+        await using var input = new FileStream(inputPath, FileMode.Open);
+        await input.CopyToAsync(crypto);
+    }
+
+    <span class="cmt">// Decrypt a previously encrypted file by reading the IV back off the front.</span>
+    public async Task DecryptFileAsync(string inputPath, string outputPath)
+    {
+        using var aes = Aes.Create();
+        aes.Key = Key;
+
+        await using var input = new FileStream(inputPath, FileMode.Open);
+        var iv = new byte[aes.IV.Length];
+        await input.ReadExactlyAsync(iv);
+        aes.IV = iv;
+
+        await using var crypto = new CryptoStream(input, aes.CreateDecryptor(), CryptoStreamMode.Read);
+        await using var output = new FileStream(outputPath, FileMode.Create);
+        await crypto.CopyToAsync(output);
+    }
+}</pre>
+    <p>Register the service for dependency injection in <code class="inline">Program.cs</code>:</p>
+<pre class="code">builder.Services.AddSingleton&lt;EncryptionService&gt;();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Add UI for file upload</h3>
+    <p class="scenario">Replace the body of <code class="inline">Pages/Index.cshtml</code> with a form that has a file
+      input and two submit buttons — one for <strong>Encrypt</strong> and one for <strong>Decrypt</strong>.</p>
+<pre class="code">@page
+@model IndexModel
+
+&lt;h2&gt;File Encryption / Decryption&lt;/h2&gt;
+
+&lt;form method="post" enctype="multipart/form-data"&gt;
+    &lt;input type="file" name="upload" /&gt;
+    &lt;button type="submit" asp-page-handler="Encrypt"&gt;Encrypt&lt;/button&gt;
+    &lt;button type="submit" asp-page-handler="Decrypt"&gt;Decrypt&lt;/button&gt;
+&lt;/form&gt;
+
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    &lt;p&gt;@Model.Message&lt;/p&gt;
+}
+@if (!string.IsNullOrEmpty(Model.DownloadFile))
+{
+    &lt;a href="@Model.DownloadFile" download&gt;Download result&lt;/a&gt;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Implement file encryption</h3>
+    <p class="scenario">Update <code class="inline">Pages/Index.cshtml.cs</code> to handle the upload and call the
+      service. The <code class="inline">OnPostEncryptAsync</code> handler saves the upload to a temp file, runs AES
+      encryption, and writes the encrypted file to the <code class="inline">wwwroot</code> directory so it can be
+      served back to the user.</p>
+<pre class="code">using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+
+namespace EncryptionApp.Pages;
+
+public class IndexModel : PageModel
+{
+    private readonly EncryptionService _crypto;
+    private readonly IWebHostEnvironment _env;
+
+    public IndexModel(EncryptionService crypto, IWebHostEnvironment env)
+    {
+        _crypto = crypto;
+        _env = env;
+    }
+
+    public string? Message { get; set; }
+    public string? DownloadFile { get; set; }
+
+    public async Task&lt;IActionResult&gt; OnPostEncryptAsync(IFormFile? upload)
+    {
+        if (upload is null || upload.Length == 0)
+        {
+            Message = "Please choose a file first.";
+            return Page();
+        }
+
+        var tempPath = Path.GetTempFileName();
+        await using (var stream = System.IO.File.Create(tempPath))
+        {
+            await upload.CopyToAsync(stream);
+        }
+
+        var outputName = upload.FileName + ".enc";
+        var outputPath = Path.Combine(_env.WebRootPath, outputName);
+        await _crypto.EncryptFileAsync(tempPath, outputPath);
+        System.IO.File.Delete(tempPath);
+
+        Message = $"Encrypted to wwwroot/{outputName}";
+        DownloadFile = "/" + outputName;
+        return Page();
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Implement file decryption</h3>
+    <p class="scenario">Add a matching <code class="inline">OnPostDecryptAsync</code> handler to the same
+      <code class="inline">IndexModel</code>. It reads the uploaded <code class="inline">.enc</code> file, calls
+      <code class="inline">DecryptFileAsync</code>, and saves the recovered file to
+      <code class="inline">wwwroot</code> for download.</p>
+<pre class="code">    public async Task&lt;IActionResult&gt; OnPostDecryptAsync(IFormFile? upload)
+    {
+        if (upload is null || upload.Length == 0)
+        {
+            Message = "Please choose an encrypted (.enc) file first.";
+            return Page();
+        }
+
+        var tempPath = Path.GetTempFileName();
+        await using (var stream = System.IO.File.Create(tempPath))
+        {
+            await upload.CopyToAsync(stream);
+        }
+
+        var outputName = "decrypted-" + Path.GetFileNameWithoutExtension(upload.FileName);
+        var outputPath = Path.Combine(_env.WebRootPath, outputName);
+        await _crypto.DecryptFileAsync(tempPath, outputPath);
+        System.IO.File.Delete(tempPath);
+
+        Message = $"Decrypted to wwwroot/{outputName}";
+        DownloadFile = "/" + outputName;
+        return Page();
+    }</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Test the application</h3>
+    <p class="scenario">Run the app and verify the full round trip.</p>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Create a test file: open Notepad (or any editor), type some text such as
+        <code class="inline">This is a test file</code>, and save it as <code class="inline">testfile.txt</code>.</li>
+      <li>In the app, choose <code class="inline">testfile.txt</code> and click <strong>Encrypt</strong> — confirm
+        <code class="inline">testfile.txt.enc</code> appears in the <code class="inline">wwwroot</code> directory.</li>
+      <li>Choose the <code class="inline">.enc</code> file and click <strong>Decrypt</strong> — open the recovered
+        file from <code class="inline">wwwroot</code> and confirm its contents match the original.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Uploading <code class="inline">testfile.txt</code> and clicking <strong>Encrypt</strong> writes an unreadable
+    <code class="inline">testfile.txt.enc</code> into <code class="inline">wwwroot</code>. Feeding that
+    <code class="inline">.enc</code> file back through <strong>Decrypt</strong> reproduces the original text exactly —
+    proving the AES encrypt/decrypt round trip works end to end.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">EncryptionApp</code> Razor Pages project created, builds, and runs</li>
+      <li><code class="inline">EncryptionService.cs</code> encrypts a file with a symmetric <strong>AES</strong> key</li>
+      <li><code class="inline">EncryptionService.cs</code> decrypts a previously encrypted file back to the original</li>
+      <li><code class="inline">Index.cshtml</code> shows a file input with <strong>Encrypt</strong> and <strong>Decrypt</strong> buttons</li>
+      <li><code class="inline">Index.cshtml.cs</code> handles uploads and writes results to the <code class="inline">wwwroot</code> directory</li>
+      <li>A <code class="inline">.txt</code> file survives an encrypt → decrypt round trip with identical contents</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Symmetric encryption (AES)</strong> — the <em>same</em> key encrypts and decrypts.
+        <code class="inline">Aes.Create()</code> from <code class="inline">System.Security.Cryptography</code> gives you
+        a vetted, hardware-accelerated implementation; never roll your own cipher.</li>
+      <li><strong>The IV is not secret, but must be unique</strong> — generate a fresh initialization vector per
+        encryption and store it alongside the ciphertext (here, at the front of the file) so decryption can
+        reconstruct it. Reusing an IV with the same key leaks information.</li>
+      <li><strong><code class="inline">CryptoStream</code> streams the work</strong> — wrapping a
+        <code class="inline">FileStream</code> in a <code class="inline">CryptoStream</code> encrypts/decrypts data as
+        it flows, so large files never have to be fully loaded into memory.</li>
+      <li><strong>Keep keys out of source</strong> — the demo derives a key from a passphrase for clarity, but real
+        apps load keys from configuration, environment variables, or a key vault, and rotate them.</li>
+      <li><strong>Separation of concerns</strong> — the cryptography lives in <code class="inline">EncryptionService</code>,
+        while the Razor page only handles HTTP and file I/O, so the crypto logic is reusable and testable on its own.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

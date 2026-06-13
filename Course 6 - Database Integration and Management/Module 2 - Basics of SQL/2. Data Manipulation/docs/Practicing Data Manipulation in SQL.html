@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Practicing Data Manipulation in SQL — Course 6 · Module 2</title>
+<style>
+  :root {
+    --hdr: #059669 ;      /* header / create  */
+    --pld: #0d9488 ;      /* payload / decode */
+    --sig: #10b981 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 6 — Database Integration and Management · Module 2 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Practicing Data Manipulation in SQL</h1>
+    <p class="lead">
+      Build a small MySQL practice database and run the three core data-manipulation statements —
+      <strong>INSERT</strong>, <strong>UPDATE</strong>, and <strong>DELETE</strong> — against a
+      <code>Users</code> table. The closing step drives home the most important habit in SQL: always
+      scope writes with a <code>WHERE</code> clause, and wrap risky changes in a transaction you can
+      <code>ROLLBACK</code>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Practice the core SQL data-manipulation operations against a real MySQL table by
+      adding, modifying, and removing rows, and learn to perform these changes <strong>safely</strong> using
+      the <code class="inline">WHERE</code> clause and transactions so a single statement can never silently
+      rewrite every row.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A MySQL database named <code class="inline">SampleDB</code> containing one table,
+      <code class="inline">Users</code>, that you will exercise with each data-manipulation statement:</p>
+    <table>
+      <thead><tr><th>Operation</th><th>Statement</th><th>What it does in this lab</th></tr></thead>
+      <tbody>
+        <tr><td>Create rows</td><td><code>INSERT</code></td><td>Add <strong>Arjun Patel</strong> to the <code>Users</code> table</td></tr>
+        <tr><td>Modify rows</td><td><code>UPDATE</code></td><td>Change <strong>Mei</strong>'s age to <code>26</code></td></tr>
+        <tr><td>Remove rows</td><td><code>DELETE</code></td><td>Delete the user whose <code>LastName</code> is <strong><code>Garcia</code></strong></td></tr>
+        <tr><td>Stay safe</td><td><code>WHERE</code> + <code>ROLLBACK</code></td><td>Undo an unscoped update, then redo it correctly</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">CREATE DATABASE</span> <span class="ar">→</span>
+      <span class="c">CREATE TABLE</span> <span class="ar">→</span>
+      <span class="t">INSERT</span> <span class="ar">→</span>
+      <span class="t">UPDATE</span> <span class="ar">→</span>
+      <span class="t">DELETE</span> <span class="ar">→</span>
+      <span class="d">START TRANSACTION</span> <span class="ar">→</span>
+      <span class="d">ROLLBACK</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>MySQL Server installed and running</li>
+      <li>Visual Studio Code (with an integrated terminal or a MySQL client extension)</li>
+      <li>The <code class="inline">mysql</code> command-line client available on your <code class="inline">PATH</code></li>
+      <li>A MySQL user account with privileges to create databases and tables</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">You will create a small application to manage a sample database using MySQL. The
+      application lets you perform <code class="inline">INSERT</code>, <code class="inline">UPDATE</code>, and
+      <code class="inline">DELETE</code> operations on a table called <code class="inline">Users</code>.</p>
+    <ul class="plain">
+      <li>Open <strong>Visual Studio Code</strong> and connect it to a MySQL database using the terminal.</li>
+      <li>Create a new database called <code class="inline">SampleDB</code>, then switch to it.</li>
+      <li>Create a table named <code class="inline">Users</code> and populate it with sample data.</li>
+    </ul>
+<pre class="code"><span class="cmt">-- Create the database and select it</span>
+CREATE DATABASE SampleDB;
+USE SampleDB;
+
+<span class="cmt">-- Create the Users table</span>
+CREATE TABLE Users (
+    UserID    INT AUTO_INCREMENT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    LastName  VARCHAR(50),
+    Email     VARCHAR(100),
+    Age       INT
+);
+
+<span class="cmt">-- Populate with sample data</span>
+INSERT INTO Users (FirstName, LastName, Email, Age) VALUES
+    ('Aisha',  'Khan',   'aisha.khan@example.com',   29),
+    ('Carlos', 'Garcia', 'carlos.garcia@example.com', 35),
+    ('Mei',    'Chen',   'mei.chen@example.com',      24);</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Implement an <code>INSERT</code> operation</h3>
+    <p class="scenario">Write a query to add a new user to the <code class="inline">Users</code> table, then
+      confirm it landed.</p>
+    <table>
+      <thead><tr><th>Field</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><code>FirstName</code></td><td><code>Arjun</code></td></tr>
+        <tr><td><code>LastName</code></td><td><code>Patel</code></td></tr>
+        <tr><td><code>Email</code></td><td><code>arjun.patel@example.com</code></td></tr>
+        <tr><td><code>Age</code></td><td><code>41</code></td></tr>
+      </tbody>
+    </table>
+<pre class="code">INSERT INTO Users (FirstName, LastName, Email, Age)
+VALUES ('Arjun', 'Patel', 'arjun.patel@example.com', 41);
+
+<span class="cmt">-- Ensure the user was added</span>
+SELECT * FROM Users;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement an <code>UPDATE</code> operation</h3>
+    <p class="scenario">Write a query to update the age of an existing user. Update the age of the user whose
+      <code class="inline">FirstName</code> is <code class="inline">Mei</code> to <code class="inline">26</code>,
+      then confirm <strong>only</strong> that row changed.</p>
+<pre class="code">UPDATE Users
+SET Age = 26
+WHERE FirstName = 'Mei';
+
+<span class="cmt">-- Ensure only the targeted record was updated</span>
+SELECT * FROM Users WHERE FirstName = 'Mei';</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Implement a <code>DELETE</code> operation</h3>
+    <p class="scenario">Write a query to delete a user from the <code class="inline">Users</code> table. Delete
+      the user with the <code class="inline">LastName</code> <code class="inline">Garcia</code>, then verify the
+      row is gone.</p>
+<pre class="code">DELETE FROM Users
+WHERE LastName = 'Garcia';
+
+<span class="cmt">-- Verify the record was deleted</span>
+SELECT * FROM Users;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Practice safety measures</h3>
+    <p class="scenario">Practice safe SQL by using the <code class="inline">WHERE</code> clause to avoid
+      unintentional changes. Wrap the risky update in a transaction so it can be undone.</p>
+    <ul class="plain">
+      <li>Attempt to update the age of <strong>all</strong> users to <code class="inline">30</code>
+        <strong>without</strong> a <code class="inline">WHERE</code> clause, and observe the behavior — every row changes.</li>
+      <li>Roll back the changes with <code class="inline">ROLLBACK</code>.</li>
+      <li>Retry the update for a specific user, this time <strong>with</strong> a <code class="inline">WHERE</code> clause.</li>
+    </ul>
+<pre class="code"><span class="cmt">-- Danger: updates EVERY row because there is no WHERE clause.</span>
+<span class="cmt">-- Run it inside a transaction so it can be rolled back.</span>
+START TRANSACTION;
+
+UPDATE Users
+SET Age = 30;
+
+<span class="cmt">-- Observe the behavior: all rows now show Age = 30</span>
+SELECT * FROM Users;
+
+<span class="cmt">-- Undo the unscoped change</span>
+ROLLBACK;
+
+<span class="cmt">-- Verify the rollback worked (ages are restored)</span>
+SELECT * FROM Users;
+
+<span class="cmt">-- Safe update: scoped to a single user with WHERE</span>
+UPDATE Users
+SET Age = 42
+WHERE FirstName = 'Arjun';
+
+<span class="cmt">-- Verify the safe update</span>
+SELECT * FROM Users WHERE FirstName = 'Arjun';</pre>
+    <div class="callout">
+      <strong>Note:</strong> If <code class="inline">autocommit</code> is on, an unscoped
+      <code class="inline">UPDATE</code> is committed immediately and <strong>cannot</strong> be rolled back.
+      Opening the change with <code class="inline">START TRANSACTION</code> is what makes
+      <code class="inline">ROLLBACK</code> possible.
+    </div>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    After Step 2, <code class="inline">SELECT * FROM Users</code> lists <strong>four</strong> users including the
+    new <strong>Arjun Patel</strong> row. After Step 3, <strong>Mei</strong>'s <code class="inline">Age</code>
+    reads <code class="inline">26</code> with every other row unchanged. After Step 4,
+    <strong>Carlos Garcia</strong> is gone. In Step 5 the unscoped <code class="inline">UPDATE</code> sets every
+    <code class="inline">Age</code> to <code class="inline">30</code>; after <code class="inline">ROLLBACK</code>
+    the original ages return; the final scoped <code class="inline">UPDATE</code> changes
+    <strong>only Arjun</strong> to <code class="inline">42</code>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">SampleDB</code> database and <code class="inline">Users</code> table created and seeded with the three sample users</li>
+      <li><code class="inline">INSERT</code> adds <strong>Arjun Patel</strong> and a follow-up <code class="inline">SELECT</code> confirms four rows</li>
+      <li><code class="inline">UPDATE</code> sets <strong>Mei</strong>'s age to <code class="inline">26</code> and changes no other row</li>
+      <li><code class="inline">DELETE</code> removes the user with <code class="inline">LastName</code> <code class="inline">Garcia</code></li>
+      <li>An unscoped <code class="inline">UPDATE</code> is undone with <code class="inline">ROLLBACK</code>, then redone safely with a <code class="inline">WHERE</code> clause</li>
+      <li>Each operation is verified with a <code class="inline">SELECT</code> query</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong><code class="inline">INSERT</code> / <code class="inline">UPDATE</code> / <code class="inline">DELETE</code> are DML</strong> — they change the <em>data</em> in a table, unlike DDL (<code class="inline">CREATE</code>, <code class="inline">DROP</code>) which changes the table's <em>structure</em>.</li>
+      <li><strong><code class="inline">WHERE</code> scopes a write</strong> — an <code class="inline">UPDATE</code> or <code class="inline">DELETE</code> with no <code class="inline">WHERE</code> clause affects <strong>every row</strong>. Treat it as a required safety belt, not an optional filter.</li>
+      <li><strong>Transactions make changes reversible</strong> — wrap risky statements in <code class="inline">START TRANSACTION</code>; <code class="inline">ROLLBACK</code> discards them and <code class="inline">COMMIT</code> makes them permanent. With autocommit on, there is nothing to roll back.</li>
+      <li><strong>Verify with <code class="inline">SELECT</code></strong> — after every mutation, read the table back to prove the change did exactly what you intended and nothing more.</li>
+      <li><strong>Target by a stable key</strong> — filtering on a unique column (here <code class="inline">UserID</code>, or a known <code class="inline">FirstName</code>/<code class="inline">LastName</code>) prevents accidentally matching rows you did not mean to touch.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

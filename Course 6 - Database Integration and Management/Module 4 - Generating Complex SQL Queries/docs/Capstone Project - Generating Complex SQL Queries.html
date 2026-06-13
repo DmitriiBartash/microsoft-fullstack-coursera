@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Capstone Project - Generating Complex SQL Queries — Course 6 · Module 4</title>
+<style>
+  :root {
+    --hdr: #059669 ;      /* header / create  */
+    --pld: #0d9488 ;      /* payload / decode */
+    --sig: #10b981 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 6 — Database Integration and Management · Module 4
+      <span class="pill">Capstone Activity</span></p>
+    <h1>Capstone Project — Generating Complex SQL Queries</h1>
+    <p class="lead">
+      Build the <strong>SmartShop Inventory System</strong> end-to-end with
+      <strong>Microsoft Copilot</strong> as your pair-programmer. Across three activities you'll go
+      from basic <code>SELECT</code>s → multi-table <code>JOIN</code>s, subqueries and aggregation →
+      debugging and performance tuning, finishing with a set of high-performing queries for a
+      fictional retailer.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Use Microsoft Copilot to <strong>create, debug, and optimize</strong> SQL queries for
+      SmartShop's inventory database — retrieving and filtering product data, analyzing sales and supplier
+      trends across multiple tables, and tuning the final queries so they stay accurate and fast on large
+      datasets.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will produce</h2>
+  <div class="card">
+    <p>A progressively richer query set, one deliverable per activity:</p>
+    <table>
+      <thead><tr><th>Activity</th><th>Focus</th><th>Deliverable</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1</strong></td><td>Basic retrieval</td><td><code>SELECT</code> + <code>WHERE</code> + <code>ORDER BY</code> queries over <code>Products</code></td></tr>
+        <tr><td><strong>2</strong></td><td>Complex analysis</td><td>Multi-table <code>JOIN</code>s, subqueries, aggregate reports</td></tr>
+        <tr><td><strong>3</strong></td><td>Debug &amp; optimize</td><td>Corrected, indexed, validated final queries</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="t">Products</span> <span class="ar">→</span>
+      <span class="c">+ Sales + Suppliers (JOIN)</span> <span class="ar">→</span>
+      <span class="d">subqueries + SUM/AVG/MAX</span> <span class="ar">→</span>
+      <span class="ar">debug</span> <span class="ar">→</span>
+      <span class="d">index &amp; tune</span>
+    </div>
+    <div class="callout">
+      This is a Copilot-guided exercise — you don't need real rows in the tables. Reason about the schema and
+      intent of each query, prompt Copilot to draft the SQL, then read and refine what it returns.
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>A SQL sandbox environment (e.g. Azure Data Studio, SSMS, or any T-SQL-compatible engine)</li>
+      <li>Access to <strong>Microsoft Copilot</strong> to draft and refine queries</li>
+      <li>Working knowledge of <code class="inline">SELECT</code>, <code class="inline">WHERE</code>, <code class="inline">ORDER BY</code>, <code class="inline">JOIN</code>, <code class="inline">GROUP BY</code>, and subqueries</li>
+    </ul>
+    <h4>The SmartShop schema (reference)</h4>
+    <p class="scenario">The scenario assumes three core tables. Use this shape when prompting Copilot.</p>
+<pre class="code"><span class="cmt">-- Products: one row per product per store</span>
+Products(ProductID, ProductName, Category, Price, StockLevel, StoreLocation, SupplierID)
+
+<span class="cmt">-- Sales: one row per sale line</span>
+Sales(SaleID, ProductID, SaleDate, StoreLocation, UnitsSold)
+
+<span class="cmt">-- Suppliers: one row per supplier</span>
+Suppliers(SupplierID, SupplierName, DeliveredStock, DeliveryDelayDays)</pre>
+  </div>
+
+  <!-- ===================== ACTIVITY 1 ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Activity 1 — Writing basic SQL queries</h2>
+
+  <div class="callout">
+    <strong>Scenario.</strong> You are a database engineer building the SmartShop Inventory System for a
+    fictional retailer. The system manages inventory across multiple stores and must give real-time insight
+    into stock levels, sales trends, and supplier information. SmartShop's initial requirements: retrieve
+    product details (name, price, stock), filter by category and availability, and sort data for readability.
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Review the scenario</h3>
+    <p class="scenario">Confirm what Activity 1 must deliver.</p>
+    <ul class="plain">
+      <li>Retrieve product details such as <strong>name, price, and stock levels</strong>.</li>
+      <li>Filter products based on <strong>categories and availability</strong>.</li>
+      <li><strong>Sort</strong> data for better readability.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Generate basic <code>SELECT</code> queries with Copilot</h3>
+    <p class="scenario">Prompt Copilot to write a query returning <code class="inline">ProductName</code>,
+      <code class="inline">Category</code>, <code class="inline">Price</code>, and <code class="inline">StockLevel</code>.</p>
+<pre class="code">SELECT ProductName,
+       Category,
+       Price,
+       StockLevel
+FROM Products;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement filtering and sorting</h3>
+    <p class="scenario">Ask Copilot for queries that filter, then add an <code class="inline">ORDER BY</code>.</p>
+<pre class="code"><span class="cmt">-- Products in a specific category</span>
+SELECT ProductName, Category, Price, StockLevel
+FROM Products
+WHERE Category = 'Beverages';
+
+<span class="cmt">-- Products with low stock levels</span>
+SELECT ProductName, Category, StockLevel
+FROM Products
+WHERE StockLevel &lt; 10;
+
+<span class="cmt">-- Sort all products by Price, ascending</span>
+SELECT ProductName, Category, Price, StockLevel
+FROM Products
+ORDER BY Price ASC;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Save your work</h3>
+    <p style="margin:0">By the end of Activity 1 you will have written basic SQL queries with Copilot to retrieve
+      and organize inventory data, ready for extension in Activity 2. <strong>Save every query in your sandbox
+      environment</strong> — they are the starting point for the next activity.</p>
+  </div>
+
+  <!-- ===================== ACTIVITY 2 ===================== -->
+  <h2 class="section"><span class="em">🔗</span> Activity 2 — Creating complex SQL queries</h2>
+
+  <div class="callout">
+    <strong>Recap &amp; new requirements.</strong> With the basics in place, SmartShop now wants to analyze
+    sales trends by joining product and sales data, report on supplier performance with aggregate functions,
+    and combine data across stores for consolidated reporting — tracking sales by date and store, identifying
+    top suppliers by delivered stock, and consolidating inventory.
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Review the recap and new requirements</h3>
+    <p class="scenario">New needs to satisfy.</p>
+    <ul class="plain">
+      <li><strong>Track</strong> product sales by date and store.</li>
+      <li><strong>Identify</strong> top-performing suppliers based on delivered stock.</li>
+      <li><strong>Combine</strong> inventory data across stores for consolidated reporting.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Write multi-table <code>JOIN</code> queries with Copilot</h3>
+    <p class="scenario">Prompt Copilot to join <code class="inline">Products</code>, <code class="inline">Sales</code>,
+      and <code class="inline">Suppliers</code>, displaying <code class="inline">ProductName</code>,
+      <code class="inline">SaleDate</code>, <code class="inline">StoreLocation</code>, and <code class="inline">UnitsSold</code>.</p>
+<pre class="code">SELECT p.ProductName,
+       s.SaleDate,
+       s.StoreLocation,
+       s.UnitsSold
+FROM Sales AS s
+JOIN Products  AS p   ON p.ProductID   = s.ProductID
+JOIN Suppliers AS sup ON sup.SupplierID = p.SupplierID
+ORDER BY s.SaleDate, s.StoreLocation;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement nested queries and aggregation</h3>
+    <p class="scenario">Use Copilot to write subqueries and aggregate functions
+      (<code class="inline">SUM</code>, <code class="inline">AVG</code>, <code class="inline">MAX</code>).</p>
+<pre class="code"><span class="cmt">-- Total units sold per product (aggregation)</span>
+SELECT p.ProductName,
+       SUM(s.UnitsSold) AS TotalUnitsSold
+FROM Products AS p
+JOIN Sales    AS s ON s.ProductID = p.ProductID
+GROUP BY p.ProductName;
+
+<span class="cmt">-- Suppliers with the most delayed deliveries (subquery filter)</span>
+SELECT SupplierName, DeliveryDelayDays
+FROM Suppliers
+WHERE DeliveryDelayDays = (SELECT MAX(DeliveryDelayDays) FROM Suppliers);
+
+<span class="cmt">-- Average price per category for trend analysis</span>
+SELECT Category,
+       AVG(Price) AS AvgPrice,
+       MAX(Price) AS MaxPrice
+FROM Products
+GROUP BY Category;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Save your work</h3>
+    <p style="margin:0">By the end of Activity 2 you will have generated complex SQL queries that meet SmartShop's
+      advanced requirements — a set ready for debugging and optimization. <strong>Save all complex queries in your
+      sandbox</strong>; they are debugged and optimized in Activity 3.</p>
+  </div>
+
+  <!-- ===================== ACTIVITY 3 ===================== -->
+  <h2 class="section"><span class="em">🐛</span> Activity 3 — Debugging and optimizing SQL queries</h2>
+
+  <div class="callout">
+    <strong>Recap.</strong> The complex queries from Activity 2 may carry inefficiencies or errors: slow
+    execution on large datasets, incorrect <code class="inline">JOIN</code>/<code class="inline">WHERE</code>
+    clauses, or inefficient aggregate use.
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Review the recap</h3>
+    <p class="scenario">Common problems to watch for.</p>
+    <ul class="plain">
+      <li>Slow execution times for large datasets.</li>
+      <li>Incorrect <code class="inline">JOIN</code> or <code class="inline">WHERE</code> clauses causing errors.</li>
+      <li>Inefficient use of aggregate functions.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Debug errors in SQL queries</h3>
+    <p class="scenario">Use Copilot to identify and correct errors in <code class="inline">JOIN</code> statements
+      that produce mismatched results and nested queries with incorrect syntax. A typical fix — an unqualified or
+      missing join condition causing a Cartesian product.</p>
+<pre class="code"><span class="cmt">-- Before: missing join predicate explodes rows (accidental CROSS JOIN)</span>
+SELECT p.ProductName, s.UnitsSold
+FROM Products p, Sales s;
+
+<span class="cmt">-- After: explicit, correct join key</span>
+SELECT p.ProductName, s.UnitsSold
+FROM Products p
+JOIN Sales s ON s.ProductID = p.ProductID;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Optimize query performance with Copilot</h3>
+    <p class="scenario">Ask Copilot to suggest and implement optimizations.</p>
+    <ul class="plain">
+      <li><strong>Add indexes</strong> on frequently queried columns.</li>
+      <li><strong>Restructure</strong> queries for better execution plans.</li>
+      <li><strong>Reduce</strong> unnecessary computations.</li>
+    </ul>
+<pre class="code"><span class="cmt">-- Index the columns used in JOIN and WHERE clauses</span>
+CREATE INDEX IX_Sales_ProductID     ON Sales(ProductID);
+CREATE INDEX IX_Products_Category   ON Products(Category);
+CREATE INDEX IX_Products_SupplierID ON Products(SupplierID);</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Test and validate the optimized queries</h3>
+    <p class="scenario">Use Copilot to test and validate.</p>
+    <ul class="plain">
+      <li><strong>Run</strong> the optimized queries and compare performance with the original versions.</li>
+      <li><strong>Ensure</strong> results are accurate and execution time is reduced.</li>
+    </ul>
+<pre class="code"><span class="cmt">-- Inspect the execution plan / timing (SQL Server)</span>
+SET STATISTICS TIME ON;
+SET STATISTICS IO ON;
+<span class="cmt">-- ...run the optimized query here...</span>
+SET STATISTICS TIME OFF;
+SET STATISTICS IO OFF;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Save your work</h3>
+    <p style="margin:0">By the end of Activity 3 you will have debugged and optimized the complex queries — a final
+      set of high-performing queries. <strong>Save them in your sandbox</strong>; they are the final deliverables for
+      the SmartShop Inventory System.</p>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">▶️</span> What good looks like</h2>
+  <div class="callout ok">
+    Activity 1 queries return clean, sorted product data and correctly filter by category and stock level;
+    Activity 2 <strong><code class="inline">JOIN</code>s</strong> combine <code class="inline">Products</code>,
+    <code class="inline">Sales</code>, and <code class="inline">Suppliers</code> without duplicate or missing rows,
+    with aggregates reporting the right totals; and Activity 3 queries produce <strong>identical results</strong> to
+    their Activity 2 versions but run <strong>measurably faster</strong> — verified by comparing execution time
+    before and after indexing.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><strong>Activity 1</strong> — basic <code class="inline">SELECT</code>, <code class="inline">WHERE</code> (category + low stock), and <code class="inline">ORDER BY Price ASC</code> queries saved</li>
+      <li><strong>Activity 2</strong> — <code class="inline">Products</code>/<code class="inline">Sales</code>/<code class="inline">Suppliers</code> <code class="inline">JOIN</code> returning <code class="inline">ProductName</code>, <code class="inline">SaleDate</code>, <code class="inline">StoreLocation</code>, <code class="inline">UnitsSold</code></li>
+      <li><strong>Activity 2</strong> — subqueries for per-product totals and most-delayed supplier, plus <code class="inline">SUM</code>/<code class="inline">AVG</code>/<code class="inline">MAX</code> aggregates</li>
+      <li><strong>Activity 3</strong> — <code class="inline">JOIN</code>/syntax errors fixed and indexes added to frequently queried columns</li>
+      <li><strong>Activity 3</strong> — optimized queries validated: same results, reduced execution time</li>
+      <li>All queries saved in the sandbox as the final SmartShop deliverables</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Copilot as a drafting partner</strong> — describe the table, columns, and intent in plain language;
+        Copilot drafts the SQL, but you stay responsible for reading, correcting, and validating it.</li>
+      <li><strong>Layered query complexity</strong> — start with <code class="inline">SELECT</code>/<code class="inline">WHERE</code>/<code class="inline">ORDER BY</code>,
+        then build up to multi-table <code class="inline">JOIN</code>s, subqueries, and aggregates as the business questions get harder.</li>
+      <li><strong>Aggregation tells the story</strong> — <code class="inline">SUM</code>, <code class="inline">AVG</code>, and <code class="inline">MAX</code>
+        over <code class="inline">GROUP BY</code> turn raw sales and supplier rows into the trends and rankings SmartShop actually needs.</li>
+      <li><strong>Correctness before speed</strong> — fix mismatched <code class="inline">JOIN</code>/<code class="inline">WHERE</code> logic first
+        (an unqualified join is an accidental cross product); only then optimize.</li>
+      <li><strong>Indexing for performance</strong> — indexes on <code class="inline">JOIN</code> keys and filtered columns are the
+        highest-leverage tuning move; always confirm the optimized query returns the same results, just faster.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

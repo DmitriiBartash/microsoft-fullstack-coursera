@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RoutingAndDI — Course 5 · Module 2</title>
+<style>
+  :root {
+    --hdr: #2563eb;      /* header / create  */
+    --pld: #0891b2;      /* payload / decode */
+    --sig: #3b82f6;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 5 — Back-End Development with .NET · Module 2 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Routing and Dependency Injection</h1>
+    <p class="lead">
+      Build a minimal ASP.NET Core Web API that makes <strong>dependency injection</strong> visible.
+      You register the <em>same</em> service contract under three different <strong>lifetimes</strong> —
+      <code>Singleton</code>, <code>Scoped</code>, and <code>Transient</code> — then log a unique instance ID
+      from middleware and from a route handler. Watching which IDs repeat tells you exactly when the
+      container creates a new instance.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Implement dependency injection in an ASP.NET Core application by
+      <strong>creating services</strong>, <strong>defining their lifetimes</strong>, and
+      <strong>injecting them</strong> into application components such as middleware and minimal-API
+      route handlers — and observe how each lifetime changes the number of instances created per request.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A single-project Web API named <code class="inline">DependencyInjectionDemo</code>. Everything lives in
+      <code class="inline">Program.cs</code>: three service contracts, their implementations, the DI registrations,
+      two middleware components, and one root endpoint.</p>
+    <table>
+      <thead><tr><th>Component</th><th>Lifetime</th><th>What you should observe</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>IMyServiceSingleton</code> → <code>MyServiceSingleton</code></td>
+          <td><code>Singleton</code></td>
+          <td>One instance ID for the <strong>entire application</strong> lifetime</td>
+        </tr>
+        <tr>
+          <td><code>IMyServiceScoped</code> → <code>MyServiceScoped</code></td>
+          <td><code>Scoped</code></td>
+          <td>One instance ID <strong>per HTTP request</strong> (shared across middleware)</td>
+        </tr>
+        <tr>
+          <td><code>IMyServiceTransient</code> → <code>MyServiceTransient</code></td>
+          <td><code>Transient</code></td>
+          <td>A <strong>new</strong> instance ID every time it is resolved</td>
+        </tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">HTTP request</span> <span class="ar">→</span>
+      <span class="c">Middleware 1</span> <span class="ar">→</span>
+      <span class="c">Middleware 2</span> <span class="ar">→</span>
+      <span class="d">GET /</span> <span class="ar">→</span>
+      <span class="t">joined log output</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (with the C# Dev Kit extension)</li>
+      <li>Basic familiarity with the ASP.NET Core minimal-API hosting model</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Scaffold a new ASP.NET Core Web API project, move into it, and clear
+      <code class="inline">Program.cs</code> so you can build the structure up from scratch.</p>
+<pre class="code">dotnet new webapi -n DependencyInjectionDemo
+cd DependencyInjectionDemo</pre>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> and <strong>remove any existing content</strong> — you will rewrite it completely.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Create the service interfaces and implementations</h3>
+    <p class="scenario">Define a service contract and a class that implements it. Each implementation stores a
+      private <code class="inline">_serviceId</code> initialized with a <strong>random six-digit number</strong>
+      (<code class="inline">new Random().Next(100000, 999999)</code>), so a fresh instance always reports a new ID.
+      <code class="inline">LogCreation</code> writes a line to the console; <code class="inline">GetInfo</code>
+      returns that same line. Create <strong>three</strong> parallel contracts/classes that differ only in the
+      label they print.</p>
+<pre class="code">public interface IMyServiceSingleton
+{
+    void LogCreation(string source);
+    string GetInfo(string source);
+}
+
+public interface IMyServiceScoped
+{
+    void LogCreation(string source);
+    string GetInfo(string source);
+}
+
+public interface IMyServiceTransient
+{
+    void LogCreation(string source);
+    string GetInfo(string source);
+}
+
+public class MyServiceSingleton : IMyServiceSingleton
+{
+    private readonly int _serviceId = new Random().Next(100000, 999999);
+
+    public void LogCreation(string source)
+    {
+        Console.WriteLine(GetInfo(source));
+    }
+
+    public string GetInfo(string source)
+    {
+        return $"[Singleton | ID: {_serviceId}] → {source} | Explanation: Same instance across the whole application lifetime";
+    }
+}
+
+public class MyServiceScoped : IMyServiceScoped
+{
+    private readonly int _serviceId = new Random().Next(100000, 999999);
+
+    public void LogCreation(string source)
+    {
+        Console.WriteLine(GetInfo(source));
+    }
+
+    public string GetInfo(string source)
+    {
+        return $"[Scoped | ID: {_serviceId}] → {source} | Explanation: Same instance reused within one HTTP request";
+    }
+}
+
+public class MyServiceTransient : IMyServiceTransient
+{
+    private readonly int _serviceId = new Random().Next(100000, 999999);
+
+    public void LogCreation(string source)
+    {
+        Console.WriteLine(GetInfo(source));
+    }
+
+    public string GetInfo(string source)
+    {
+        return $"[Transient | ID: {_serviceId}] → {source} | Explanation: Always a new instance, even within the same request";
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Register the services with their lifetimes</h3>
+    <p class="scenario">In the builder section, register each contract against its implementation using the
+      matching lifetime method. <code class="inline">AddControllers()</code> keeps the standard MVC services
+      available even though this demo only uses a minimal-API endpoint.</p>
+<pre class="code">var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();
+builder.Services.AddSingleton&lt;IMyServiceSingleton, MyServiceSingleton&gt;();
+builder.Services.AddScoped&lt;IMyServiceScoped, MyServiceScoped&gt;();
+builder.Services.AddTransient&lt;IMyServiceTransient, MyServiceTransient&gt;();
+
+var app = builder.Build();</pre>
+    <div class="callout">
+      <strong>Lifetime in one line:</strong> <code class="inline">AddSingleton</code> creates one instance for the
+      app, <code class="inline">AddScoped</code> one per request, and <code class="inline">AddTransient</code> one
+      per resolution — this single difference drives the whole experiment.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Add middleware that resolves the services</h3>
+    <p class="scenario">Add two middleware components <strong>before</strong> the endpoint. Because middleware is part
+      of the application pipeline (not an injectable handler), pull each service from
+      <code class="inline">context.RequestServices.GetRequiredService&lt;T&gt;()</code> and log a message from each.</p>
+<pre class="code">app.Use(async (context, next) =>
+{
+    context.RequestServices.GetRequiredService&lt;IMyServiceSingleton&gt;().LogCreation("Middleware 1");
+    context.RequestServices.GetRequiredService&lt;IMyServiceScoped&gt;().LogCreation("Middleware 1");
+    context.RequestServices.GetRequiredService&lt;IMyServiceTransient&gt;().LogCreation("Middleware 1");
+    await next.Invoke();
+});
+
+app.Use(async (context, next) =>
+{
+    context.RequestServices.GetRequiredService&lt;IMyServiceSingleton&gt;().LogCreation("Middleware 2");
+    context.RequestServices.GetRequiredService&lt;IMyServiceScoped&gt;().LogCreation("Middleware 2");
+    context.RequestServices.GetRequiredService&lt;IMyServiceTransient&gt;().LogCreation("Middleware 2");
+    await next.Invoke();
+});</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Inject the services into the root endpoint</h3>
+    <p class="scenario">Map a <code class="inline">GET /</code> handler and let the framework <strong>inject</strong>
+      all three services as parameters. Collect each <code class="inline">GetInfo("Root endpoint")</code> line and
+      return them joined, so the browser response mirrors what the console logged.</p>
+<pre class="code">app.MapGet("/", (
+    IMyServiceSingleton singleton,
+    IMyServiceScoped scoped,
+    IMyServiceTransient transient) =>
+{
+    var output = new List&lt;string&gt;();
+    output.Add(singleton.GetInfo("Root endpoint"));
+    output.Add(scoped.GetInfo("Root endpoint"));
+    output.Add(transient.GetInfo("Root endpoint"));
+    return string.Join("\n", output);
+});
+
+app.Run();</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Run and compare the lifetimes</h3>
+    <p class="scenario">Run the application, hit the root route a couple of times, and read the console output.</p>
+<pre class="code">dotnet run</pre>
+    <ul class="plain">
+      <li>Open the printed URL (or run <code class="inline">curl http://localhost:5000/</code>) and <strong>refresh twice</strong>.</li>
+      <li>Watch the IDs across <code class="inline">Middleware 1</code>, <code class="inline">Middleware 2</code>, and <code class="inline">Root endpoint</code>:
+        <ul class="plain">
+          <li><strong>Singleton</strong> — the same ID on every line, on every request.</li>
+          <li><strong>Scoped</strong> — the same ID within one request, a different ID on the next request.</li>
+          <li><strong>Transient</strong> — a different ID on (almost) every line, even inside one request.</li>
+        </ul>
+      </li>
+    </ul>
+    <div class="callout">
+      <strong>Assembling Program.cs:</strong> the full file is the snippets from Steps 3, 4, 5, then 2 in that
+      order — builder + registrations, the two middleware components, the endpoint and
+      <code class="inline">app.Run()</code>, followed by the interface and class definitions.
+    </div>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Each request prints seven lines to the console — three from each middleware and three from the endpoint — and
+    the browser shows the endpoint's three lines. The <strong>Singleton</strong> ID is identical everywhere, the
+    <strong>Scoped</strong> ID is stable within the request, and the <strong>Transient</strong> ID changes line to
+    line — proving the container honors each declared lifetime.
+  </div>
+<pre class="code">[Singleton | ID: 482915] → Middleware 1 | Explanation: Same instance across the whole application lifetime
+[Scoped    | ID: 731220] → Middleware 1 | Explanation: Same instance reused within one HTTP request
+[Transient | ID: 905471] → Middleware 1 | Explanation: Always a new instance, even within the same request
+[Singleton | ID: 482915] → Middleware 2 | <span class="cmt">Explanation: ...</span>
+[Scoped    | ID: 731220] → Middleware 2 | <span class="cmt">Explanation: ...</span>
+[Transient | ID: 118364] → Middleware 2 | <span class="cmt">Explanation: ...</span>
+[Singleton | ID: 482915] → Root endpoint | <span class="cmt">Explanation: ...</span>
+[Scoped    | ID: 731220] → Root endpoint | <span class="cmt">Explanation: ...</span>
+[Transient | ID: 660093] → Root endpoint | <span class="cmt">Explanation: ...</span></pre>
+    <p class="scenario" style="margin:6px 0 0">Actual ID numbers will differ on every run.</p>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">DependencyInjectionDemo</code> Web API project created and <code class="inline">Program.cs</code> cleared</li>
+      <li>Three interfaces and three implementations defined, each with a random <code class="inline">_serviceId</code></li>
+      <li>Services registered with <code class="inline">AddSingleton</code>, <code class="inline">AddScoped</code>, and <code class="inline">AddTransient</code></li>
+      <li>Two middleware components resolve the services via <code class="inline">context.RequestServices.GetRequiredService&lt;T&gt;()</code></li>
+      <li><code class="inline">GET /</code> endpoint receives all three services through <strong>parameter injection</strong></li>
+      <li><code class="inline">dotnet run</code> shows Singleton IDs constant, Scoped IDs per-request, Transient IDs per-resolution</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Service lifetimes decide instance count</strong> — <code class="inline">Singleton</code> (one per app),
+        <code class="inline">Scoped</code> (one per request), and <code class="inline">Transient</code> (one per resolution)
+        are the three lifetimes the built-in container offers, and choosing the wrong one is a classic source of bugs.</li>
+      <li><strong>Two ways to obtain a service</strong> — minimal-API handlers receive services as <strong>method
+        parameters</strong> (the framework injects them), while middleware reaches into
+        <code class="inline">context.RequestServices</code> to resolve them manually from the request scope.</li>
+      <li><strong>A <code class="inline">Scoped</code> service is bounded by the HTTP request</strong> — every component
+        in the same request shares one instance, which is why it is the default home for things like
+        <code class="inline">DbContext</code>.</li>
+      <li><strong>Prefer the interface, not the concrete type</strong> — registering <code class="inline">IMyService</code> →
+        <code class="inline">MyService</code> lets consumers depend on the abstraction, keeping the code testable and swappable.</li>
+      <li><strong>Don't capture shorter lifetimes in longer ones</strong> — injecting a <code class="inline">Scoped</code> (or
+        <code class="inline">Transient</code>) service into a <code class="inline">Singleton</code> would pin a single instance
+        for the app's life; resolve per-request dependencies from the request scope instead.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

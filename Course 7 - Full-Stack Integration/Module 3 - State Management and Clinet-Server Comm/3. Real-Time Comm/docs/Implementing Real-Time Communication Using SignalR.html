@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing Real-Time Communication Using SignalR — Course 7 · Module 3</title>
+<style>
+  :root {
+    --hdr: #db2777 ;      /* header / create  */
+    --pld: #9333ea ;      /* payload / decode */
+    --sig: #ec4899 ;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 7 — Full-Stack Integration · Module 3 · Lesson 3
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Real-Time Communication Using SignalR</h1>
+    <p class="lead">
+      Build a real-time chat app across a <strong>Blazor Server</strong> host, a
+      <strong>Blazor WebAssembly</strong> client, and a <strong>shared</strong> class library.
+      A SignalR <em>hub</em> broadcasts every message to all connected clients, so a note typed
+      in one browser tab appears instantly in the others — no refresh, no polling.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this lab you will be able to implement real-time communication
+      in a full-stack application using <strong>SignalR</strong>. You will configure SignalR, create a
+      <strong>hub</strong> for communication, and test live updates in a client-server environment.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A solution named <code class="inline">RealTimeChatApp</code> made of three projects plus a SignalR hub:</p>
+    <table>
+      <thead><tr><th>Project / file</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>Server</code> (Blazor Server)</td><td>Hosts the SignalR hub, applies CORS, maps <code>/chathub</code></td></tr>
+        <tr><td><code>Client</code> (Blazor WebAssembly)</td><td>Chat UI that sends and receives messages live</td></tr>
+        <tr><td><code>Shared</code> (class library)</td><td>The <code>ChatMessage</code> model shared by both ends</td></tr>
+        <tr><td><code>Hubs/ChatHub.cs</code></td><td>Broadcasts each <code>SendMessage</code> to <strong>all</strong> clients as <code>ReceiveMessage</code></td></tr>
+        <tr><td><code>ChatService.cs</code></td><td>Wraps the SignalR <code>HubConnection</code> for the UI</td></tr>
+        <tr><td><code>Pages/Chat.razor</code></td><td>Input box + live message list, bound to <code>ChatService</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Chat.razor</span> <span class="ar">→</span>
+      <span class="c">ChatService.SendMessage</span> <span class="ar">→</span>
+      <span class="d">ChatHub.SendMessage</span> <span class="ar">→</span>
+      <span class="t">Clients.All "ReceiveMessage"</span> <span class="ar">→</span>
+      <span class="ar">every Chat.razor</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code (with the C# / C# Dev Kit extension)</li>
+      <li>NuGet packages: <code class="inline">Microsoft.AspNetCore.SignalR</code> (server) and
+        <code class="inline">Microsoft.AspNetCore.SignalR.Client</code> (client)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">You will create a real-time chat application using Visual Studio Code. This sets up
+      the server, client, and shared components required for the later steps.</p>
+    <h4>Create the solution</h4>
+<pre class="code">mkdir RealTimeChatApp
+cd RealTimeChatApp
+dotnet new sln</pre>
+    <h4>Create the Server project (Blazor Server)</h4>
+<pre class="code">dotnet new blazor -n Server
+dotnet sln add Server/Server.csproj</pre>
+    <h4>Create the Client project (Blazor WebAssembly)</h4>
+<pre class="code">dotnet new blazorwasm -n Client
+dotnet sln add Client/Client.csproj</pre>
+    <h4>Create the Shared project (class library)</h4>
+<pre class="code">dotnet new classlib -n Shared
+dotnet sln add Shared/Shared.csproj</pre>
+    <h4>Reference Shared from both projects</h4>
+<pre class="code">dotnet add Server/Server.csproj reference Shared/Shared.csproj
+dotnet add Client/Client.csproj reference Shared/Shared.csproj</pre>
+    <h4>Install SignalR</h4>
+<pre class="code">dotnet add Server/Server.csproj package Microsoft.AspNetCore.SignalR
+dotnet add Client/Client.csproj package Microsoft.AspNetCore.SignalR.Client</pre>
+    <h4>Verify the setup</h4>
+<pre class="code">dotnet build</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Implement a shared model</h3>
+    <p class="scenario">Create a shared model for consistent data handling between the client and server.</p>
+    <ul class="plain">
+      <li>In the <code class="inline">Shared</code> project, create a folder named <code class="inline">Models</code>.</li>
+      <li>Add a new file named <code class="inline">ChatMessage.cs</code> inside <code class="inline">Models</code>.</li>
+      <li>Define the <code class="inline">ChatMessage</code> class with properties for <strong>User</strong>,
+        <strong>Message</strong>, and <strong>Timestamp</strong>.</li>
+    </ul>
+<pre class="code">namespace Shared.Models;
+
+public class ChatMessage
+{
+    public string User { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}</pre>
+    <p>Because both the server and the client reference <code class="inline">Shared</code>, they serialize
+      and deserialize the <em>same</em> type — no shape drift between the two ends.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Create a SignalR hub</h3>
+    <p class="scenario">Create a SignalR hub to manage real-time communication between the server and
+      connected clients.</p>
+    <ul class="plain">
+      <li>In the <code class="inline">Server</code> project, create a folder named <code class="inline">Hubs</code>.</li>
+      <li>Add a new file named <code class="inline">ChatHub.cs</code> inside <code class="inline">Hubs</code>.</li>
+      <li>Define a <code class="inline">ChatHub</code> class that broadcasts messages to <strong>all</strong> connected clients.</li>
+    </ul>
+<pre class="code">using Microsoft.AspNetCore.SignalR;
+using Shared.Models;
+
+namespace Server.Hubs;
+
+public class ChatHub : Hub
+{
+    <span class="cmt">// Broadcasts an incoming message to every connected client.</span>
+    public async Task SendMessage(ChatMessage message)
+    {
+        message.Timestamp = DateTime.UtcNow;
+        await Clients.All.SendAsync("ReceiveMessage", message);
+    }
+
+    public override async Task OnConnectedAsync()
+    {
+        await Clients.All.SendAsync("UserConnected", Context.ConnectionId);
+        await base.OnConnectedAsync();
+    }
+
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        await Clients.All.SendAsync("UserDisconnected", Context.ConnectionId);
+        await base.OnDisconnectedAsync(exception);
+    }
+}</pre>
+    <p><code class="inline">SendMessage</code> is the <strong>client → server</strong> call;
+      <code class="inline">"ReceiveMessage"</code> is the <strong>server → all clients</strong> broadcast
+      the UI listens for.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Configure the server</h3>
+    <p class="scenario">Set up the SignalR hub in the server so the client and server can communicate.</p>
+    <ul class="plain">
+      <li>Open <code class="inline">Program.cs</code> in the <code class="inline">Server</code> project.</li>
+      <li>Register SignalR, add a <strong>CORS</strong> policy that allows the client origin (with credentials),
+        and map the hub to <code class="inline">/chathub</code>.</li>
+    </ul>
+<pre class="code">using Server.Hubs;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+
+<span class="cmt">// Register the SignalR services.</span>
+builder.Services.AddSignalR();
+
+<span class="cmt">// Allow the Blazor WebAssembly client to call the hub (credentials required for SignalR).</span>
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("CorsPolicy", policy =>
+    {
+        policy.WithOrigins("https://localhost:7002", "http://localhost:5002")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseAntiforgery();
+
+app.UseCors("CorsPolicy");
+
+app.MapRazorComponents&lt;App&gt;()
+    .AddInteractiveServerRenderMode();
+
+<span class="cmt">// Expose the hub endpoint the client connects to.</span>
+app.MapHub&lt;ChatHub&gt;("/chathub");
+
+app.Run();</pre>
+    <div class="callout">
+      <strong>Note:</strong> match the origins above to the URLs your client actually runs on — see them
+      printed by <code class="inline">dotnet run</code>, or in <code class="inline">Client/Properties/launchSettings.json</code>.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Build the client interface</h3>
+    <p class="scenario">Create a simple chat interface in the client project to send and receive messages,
+      and register the <code class="inline">ChatService</code> in the DI container.</p>
+    <p>First, create a new file <code class="inline">ChatService.cs</code> in the <strong>root</strong> of the
+      <code class="inline">Client</code> project. It opens the <code class="inline">HubConnection</code>, listens
+      for <code class="inline">"ReceiveMessage"</code>, and exposes <code class="inline">SendMessageAsync</code> to the UI:</p>
+<pre class="code">using Microsoft.AspNetCore.SignalR.Client;
+using Shared.Models;
+
+namespace Client;
+
+public class ChatService : IAsyncDisposable
+{
+    private readonly HubConnection _hubConnection;
+    private readonly List&lt;ChatMessage&gt; _messages = new();
+
+    public IReadOnlyList&lt;ChatMessage&gt; Messages => _messages;
+    public bool IsConnected => _hubConnection.State == HubConnectionState.Connected;
+
+    public event Action? OnMessagesChanged;
+
+    public ChatService()
+    {
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl("https://localhost:7001/chathub")
+            .WithAutomaticReconnect()
+            .Build();
+
+        <span class="cmt">// Server → client broadcast handler.</span>
+        _hubConnection.On&lt;ChatMessage&gt;("ReceiveMessage", message =>
+        {
+            _messages.Add(message);
+            OnMessagesChanged?.Invoke();
+        });
+    }
+
+    public async Task StartAsync()
+    {
+        if (_hubConnection.State == HubConnectionState.Disconnected)
+            await _hubConnection.StartAsync();
+    }
+
+    public async Task SendMessageAsync(string user, string message)
+    {
+        if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(message))
+            return;
+
+        var chatMessage = new ChatMessage { User = user, Message = message };
+        await _hubConnection.SendAsync("SendMessage", chatMessage);
+    }
+
+    public async ValueTask DisposeAsync() => await _hubConnection.DisposeAsync();
+}</pre>
+    <div class="callout">
+      Point <code class="inline">WithUrl(...)</code> at the <strong>server's</strong> HTTPS URL +
+      <code class="inline">/chathub</code> — the host you configured in Step 4, not the client's own address.
+    </div>
+    <h4>Register the ChatService in the DI container</h4>
+    <p>Open <code class="inline">Program.cs</code> in the <code class="inline">Client</code> project and add it as a singleton:</p>
+<pre class="code">builder.Services.AddSingleton&lt;ChatService&gt;();</pre>
+    <h4>Create the chat interface</h4>
+    <p>In the <code class="inline">Client</code> project, go to the <code class="inline">Pages</code> folder and
+      create a new Razor component named <code class="inline">Chat.razor</code>. Use <code class="inline">@inject</code>
+      to pull in the <code class="inline">ChatService</code>, accept user input, and render messages dynamically:</p>
+<pre class="code">@page "/chat"
+@using Shared.Models
+@inject ChatService ChatService
+@implements IDisposable
+
+&lt;h3&gt;General Chat&lt;/h3&gt;
+
+&lt;div class="messages"&gt;
+    @if (!ChatService.Messages.Any())
+    {
+        &lt;p&gt;&lt;em&gt;No messages yet. Be the first to say hi!&lt;/em&gt;&lt;/p&gt;
+    }
+    else
+    {
+        @foreach (var msg in ChatService.Messages)
+        {
+            &lt;div class="message"&gt;
+                &lt;strong&gt;@msg.User&lt;/strong&gt;
+                &lt;span class="time"&gt;@msg.Timestamp.ToLocalTime().ToString("HH:mm")&lt;/span&gt;
+                &lt;div&gt;@msg.Message&lt;/div&gt;
+            &lt;/div&gt;
+        }
+    }
+&lt;/div&gt;
+
+&lt;div class="composer"&gt;
+    &lt;input @bind="_user" @bind:event="oninput" placeholder="Your name" /&gt;
+    &lt;input @bind="_message" @bind:event="oninput"
+           @onkeypress="HandleKeyPress" placeholder="Type a message..." /&gt;
+    &lt;button @onclick="Send" disabled="@(!ChatService.IsConnected)"&gt;Send&lt;/button&gt;
+&lt;/div&gt;
+
+@code {
+    private string _user = string.Empty;
+    private string _message = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ChatService.OnMessagesChanged += OnMessagesChanged;
+        await ChatService.StartAsync();
+    }
+
+    private async Task Send()
+    {
+        await ChatService.SendMessageAsync(_user, _message);
+        _message = string.Empty;
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await Send();
+    }
+
+    private void OnMessagesChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => ChatService.OnMessagesChanged -= OnMessagesChanged;
+}</pre>
+    <p>The <code class="inline">@inject</code> directive binds the interface to the
+      <code class="inline">ChatService</code>; the <code class="inline">OnMessagesChanged</code> event triggers
+      <code class="inline">StateHasChanged()</code> so each new broadcast re-renders the list automatically.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Test real-time communication</h3>
+    <p class="scenario">Run and test the application to ensure messages are synchronized across all clients.</p>
+    <h4>Start the server</h4>
+<pre class="code">dotnet run --project Server/Server.csproj</pre>
+    <h4>Start the client (second terminal)</h4>
+<pre class="code">dotnet run --project Client/Client.csproj</pre>
+    <ul class="plain">
+      <li>Open the client application in <strong>two</strong> browser tabs and navigate to <code class="inline">/chat</code>.</li>
+      <li>Send a message from one tab and verify it appears in the other tab <strong>in real time</strong>.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Both tabs are connected to the hub. A message sent from one tab is broadcast by
+    <strong>ChatHub</strong> and <strong>appears instantly in every open tab</strong> — sender name, text,
+    and timestamp — with no page refresh.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">RealTimeChatApp</code> solution holds <code class="inline">Server</code>,
+        <code class="inline">Client</code>, and <code class="inline">Shared</code>, all building with <code class="inline">dotnet build</code></li>
+      <li>Both projects reference <code class="inline">Shared</code>; SignalR server + client packages are installed</li>
+      <li><code class="inline">Shared/Models/ChatMessage.cs</code> defines <code class="inline">User</code>,
+        <code class="inline">Message</code>, and <code class="inline">Timestamp</code></li>
+      <li><code class="inline">Server/Hubs/ChatHub.cs</code> broadcasts <code class="inline">SendMessage</code>
+        to all clients as <code class="inline">ReceiveMessage</code></li>
+      <li>Server <code class="inline">Program.cs</code> registers SignalR + CORS and maps
+        <code class="inline">MapHub&lt;ChatHub&gt;("/chathub")</code></li>
+      <li><code class="inline">ChatService</code> connects to the hub; <code class="inline">Chat.razor</code>
+        injects it and is registered as a singleton</li>
+      <li>A message sent in one browser tab appears live in another</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>A hub is the contract</strong> — clients call server methods (<code class="inline">SendMessage</code>)
+        and the server pushes to clients by name (<code class="inline">Clients.All.SendAsync("ReceiveMessage", …)</code>);
+        both ends just agree on the strings.</li>
+      <li><strong>Shared model = one source of truth</strong> — putting <code class="inline">ChatMessage</code> in the
+        <code class="inline">Shared</code> library means server and client serialize the identical type, eliminating
+        drift between the two ends.</li>
+      <li><strong>Persistent connection, not polling</strong> — <code class="inline">HubConnection</code> holds an open
+        channel (WebSockets when available), so the server can <em>push</em> updates the instant they happen instead
+        of the client asking.</li>
+      <li><strong>CORS + credentials are mandatory for cross-origin SignalR</strong> — the WebAssembly client lives on a
+        different origin than the hub, so the policy must list that origin and <code class="inline">AllowCredentials()</code>.</li>
+      <li><strong>Resilience for free</strong> — <code class="inline">WithAutomaticReconnect()</code> re-establishes the
+        connection after a drop, which is why the UI gates sending on <code class="inline">IsConnected</code>.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

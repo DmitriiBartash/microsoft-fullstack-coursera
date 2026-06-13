@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Debugging a Task Manager — Course 1 · Module 6</title>
+<style>
+  :root {
+    --hdr: #0d9488 ;     /* header / create  */
+    --pld: #0ea5e9 ;     /* payload / decode */
+    --sig: #22c55e ;     /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 1 — Foundations of Coding Full-Stack · Module 6 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Debugging a Task Manager</h1>
+    <p class="lead">
+      A pre-written C# task manager <em>looks</em> fine but misbehaves at runtime: it crashes
+      when you view tasks, marks the wrong task complete, and blows up on bad input.
+      Your job is to <strong>hunt down the logical errors</strong> and fix them so tasks are stored,
+      completed, and displayed correctly.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Debug a pre-existing task manager program. Identify and fix the
+      <strong>logical errors</strong> in the task-addition and task-completion functions so that tasks are
+      stored correctly, marked as completed accurately, and displayed without crashing — including the
+      awkward boundary cases (no tasks yet, an out-of-range number, non-numeric input).</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">🧩</span> What you will produce</h2>
+  <div class="card">
+    <p>A corrected version of the console <code class="inline">TaskManager</code> that survives every path
+      through the menu:</p>
+    <table>
+      <thead><tr><th>Area</th><th>Bug to fix</th></tr></thead>
+      <tbody>
+        <tr><td><code>ViewTasks()</code></td><td>Loop runs one index too far (<code class="inline">&lt;=</code>) → <code class="inline">ArgumentOutOfRangeException</code></td></tr>
+        <tr><td><code>CompleteTask()</code></td><td>Treats the user's <strong>1-based</strong> choice as a <strong>0-based</strong> index (off-by-one)</td></tr>
+        <tr><td><code>CompleteTask()</code></td><td><code class="inline">int.Parse</code> crashes on non-numeric input — needs <code class="inline">int.TryParse</code></td></tr>
+        <tr><td>Boundary cases</td><td>No graceful handling for an <strong>empty</strong> task list</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Menu</span> <span class="ar">→</span>
+      <span class="c">Add / Complete / View</span> <span class="ar">→</span>
+      <span class="t">validate input</span> <span class="ar">→</span>
+      <span class="d">update list</span> <span class="ar">→</span>
+      <span class="ar">back to Menu</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>A C# runner — this lab uses <strong><a href="https://dotnetfiddle.net">.NET Fiddle</a></strong> (no local install needed)</li>
+      <li>Familiarity with C# <code class="inline">List&lt;T&gt;</code>, <code class="inline">for</code> loops, and <code class="inline">switch</code> statements</li>
+      <li>The starter program below (it compiles, but contains the bugs)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🐞</span> Walkthrough</h2>
+
+  <div class="card">
+    <h4>The starter program (buggy)</h4>
+    <p class="scenario">This is the code you are given. Read it first and predict where it breaks.</p>
+<pre class="code">using System;
+using System.Collections.Generic;
+
+class TaskManager
+{
+    static List&lt;string&gt; tasks = new List&lt;string&gt;();
+    static List&lt;bool&gt; taskStatus = new List&lt;bool&gt;();
+
+    static void Main(string[] args)
+    {
+        while (true)
+        {
+            Console.WriteLine("Task Manager");
+            Console.WriteLine("1. Add Task");
+            Console.WriteLine("2. Mark Task as Completed");
+            Console.WriteLine("3. View Tasks");
+            Console.WriteLine("4. Exit");
+            Console.WriteLine("What would you like to do? (choose 1-4)");
+            string choice = Console.ReadLine();
+
+            switch (choice)
+            {
+                case "1":
+                    AddTask();
+                    break;
+                case "2":
+                    CompleteTask();
+                    break;
+                case "3":
+                    ViewTasks();
+                    break;
+                case "4":
+                    return;
+                default:
+                    Console.WriteLine("Invalid choice, try again.");
+                    break;
+            }
+        }
+    }
+
+    static void AddTask()
+    {
+        Console.WriteLine("Enter task description:");
+        string task = Console.ReadLine();
+        tasks.Add(task);
+        taskStatus.Add(false);  <span class="cmt">// Marking as not completed by default</span>
+        Console.WriteLine("Task added successfully.");
+    }
+
+    static void CompleteTask()
+    {
+        Console.WriteLine("Enter task number to mark as completed:");
+        int taskNumber = int.Parse(Console.ReadLine());        <span class="cmt">// 💥 crashes on bad input</span>
+        if (taskNumber &lt; 0 || taskNumber &gt;= tasks.Count)       <span class="cmt">// 💥 wrong bounds (0-based vs 1-based)</span>
+        {
+            Console.WriteLine("Invalid task number.");
+            return;
+        }
+        taskStatus[taskNumber] = true;                         <span class="cmt">// 💥 off-by-one: marks the wrong task</span>
+        Console.WriteLine($"Task '{tasks[taskNumber]}' marked as completed.");
+    }
+
+    static void ViewTasks()
+    {
+        Console.WriteLine("Tasks:");
+        for (int i = 0; i &lt;= tasks.Count; i++)                 <span class="cmt">// 💥 &lt;= runs past the last index</span>
+        {
+            string status = taskStatus[i] ? "Completed" : "Pending";
+            Console.WriteLine($"{i + 1}. {tasks[i]} - {status}");
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3>Bug 1 — <code>ViewTasks()</code> loops one index too far</h3>
+    <p>The loop condition is <code class="inline">i &lt;= tasks.Count</code>. For a list of 3 tasks the valid
+      indices are <code class="inline">0, 1, 2</code>, but <code class="inline">&lt;=</code> lets
+      <code class="inline">i</code> reach <code class="inline">3</code>, so <code class="inline">tasks[3]</code>
+      throws <code class="inline">ArgumentOutOfRangeException</code> the moment you try to view your tasks.</p>
+<pre class="code"><span class="cmt">// before</span>
+for (int i = 0; i &lt;= tasks.Count; i++)
+<span class="cmt">// after — stop one short of Count</span>
+for (int i = 0; i &lt; tasks.Count; i++)</pre>
+    <div class="callout">
+      The display already prints <code class="inline">{i + 1}</code> to show a friendly
+      <strong>1-based</strong> number to the user. Remember that detail — it is the root of Bug 2.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Bug 2 — <code>CompleteTask()</code> mixes 1-based and 0-based numbering</h3>
+    <p>The menu shows tasks as <code class="inline">1. … 2. … 3. …</code>, so a user naturally types
+      <strong>1</strong> to complete the first task. But the code uses that value <em>directly</em> as a list
+      index. Typing <code class="inline">1</code> actually marks <code class="inline">taskStatus[1]</code> — the
+      <strong>second</strong> task — and typing <code class="inline">3</code> (a valid display number for 3 tasks)
+      hits index <code class="inline">3</code>, which is out of range.</p>
+    <p>Fix the bounds check <strong>and</strong> convert the user's 1-based choice into a 0-based index:</p>
+<pre class="code"><span class="cmt">// validate against the 1..Count range the user actually sees</span>
+if (taskNumber &lt; 1 || taskNumber &gt; tasks.Count)
+{
+    Console.WriteLine("Invalid task number.");
+    return;
+}
+int index = taskNumber - 1;        <span class="cmt">// convert 1-based → 0-based</span>
+taskStatus[index] = true;
+Console.WriteLine($"Task '{tasks[index]}' marked as completed.");</pre>
+  </div>
+
+  <div class="card">
+    <h3>Bug 3 — bad input crashes the program</h3>
+    <p><code class="inline">int.Parse(Console.ReadLine())</code> throws a
+      <code class="inline">FormatException</code> if the user types <code class="inline">abc</code> or just presses
+      Enter. The instructions call for <code class="inline">int.TryParse</code>, which returns
+      <code class="inline">false</code> instead of throwing so you can show a friendly message and return to
+      the menu:</p>
+<pre class="code">if (!int.TryParse(Console.ReadLine(), out int taskNumber))
+{
+    Console.WriteLine("Please enter a valid number.");
+    return;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3>Bug 4 — empty-list boundary case</h3>
+    <p>If the user picks <strong>View</strong> or <strong>Mark Complete</strong> before adding anything, the
+      program should say so rather than loop over nothing or read a number that can't be valid. Guard the empty
+      case up front:</p>
+<pre class="code">if (tasks.Count == 0)
+{
+    Console.WriteLine("No tasks yet. Add one first.");
+    return;
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3>The corrected program</h3>
+    <p class="scenario">Putting all four fixes together:</p>
+<pre class="code">using System;
+using System.Collections.Generic;
+
+class TaskManager
+{
+    static List&lt;string&gt; tasks = new List&lt;string&gt;();
+    static List&lt;bool&gt; taskStatus = new List&lt;bool&gt;();
+
+    static void Main(string[] args)
+    {
+        while (true)
+        {
+            Console.WriteLine("Task Manager");
+            Console.WriteLine("1. Add Task");
+            Console.WriteLine("2. Mark Task as Completed");
+            Console.WriteLine("3. View Tasks");
+            Console.WriteLine("4. Exit");
+            Console.WriteLine("What would you like to do? (choose 1-4)");
+            string choice = Console.ReadLine();
+
+            switch (choice)
+            {
+                case "1":
+                    AddTask();
+                    break;
+                case "2":
+                    CompleteTask();
+                    break;
+                case "3":
+                    ViewTasks();
+                    break;
+                case "4":
+                    return;
+                default:
+                    Console.WriteLine("Invalid choice, try again.");
+                    break;
+            }
+
+            Console.WriteLine();   <span class="cmt">// blank line, then back to the menu</span>
+        }
+    }
+
+    static void AddTask()
+    {
+        Console.WriteLine("Enter task description:");
+        string task = Console.ReadLine();
+        tasks.Add(task);
+        taskStatus.Add(false);  <span class="cmt">// not completed by default</span>
+        Console.WriteLine("Task added successfully.");
+    }
+
+    static void CompleteTask()
+    {
+        if (tasks.Count == 0)
+        {
+            Console.WriteLine("No tasks yet. Add one first.");
+            return;
+        }
+
+        Console.WriteLine("Enter task number to mark as completed:");
+        if (!int.TryParse(Console.ReadLine(), out int taskNumber))
+        {
+            Console.WriteLine("Please enter a valid number.");
+            return;
+        }
+
+        if (taskNumber &lt; 1 || taskNumber &gt; tasks.Count)
+        {
+            Console.WriteLine("Invalid task number.");
+            return;
+        }
+
+        int index = taskNumber - 1;           <span class="cmt">// 1-based input → 0-based index</span>
+        taskStatus[index] = true;
+        Console.WriteLine($"Task '{tasks[index]}' marked as completed.");
+    }
+
+    static void ViewTasks()
+    {
+        if (tasks.Count == 0)
+        {
+            Console.WriteLine("No tasks to show.");
+            return;
+        }
+
+        Console.WriteLine("Tasks:");
+        for (int i = 0; i &lt; tasks.Count; i++)  <span class="cmt">// strictly less than Count</span>
+        {
+            string status = taskStatus[i] ? "Completed" : "Pending";
+            Console.WriteLine($"{i + 1}. {tasks[i]} - {status}");
+        }
+    }
+}</pre>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">🚀</span> Your turn</h2>
+  <div class="card">
+    <p>Paste your corrected code into <strong>.NET Fiddle</strong> (delete the page's sample code, paste yours
+      on the left, and click <strong>Run</strong>), then exercise every path:</p>
+    <ul class="plain">
+      <li>Add several tasks, then <strong>View</strong> them — confirm the numbering starts at <code class="inline">1</code> and nothing crashes.</li>
+      <li><strong>Mark complete</strong> by number and re-view — the <em>correct</em> task should flip to <code class="inline">Completed</code>.</li>
+      <li>Try invalid input: a letter, a negative number, <code class="inline">0</code>, and a number larger than the task count — each should produce a friendly message and return you to the menu.</li>
+      <li>Pick <strong>View</strong> and <strong>Mark Complete</strong> with <strong>zero tasks</strong> — both should report there are none.</li>
+      <li>Choose <strong>Exit</strong> and confirm the program ends cleanly.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Viewing three tasks (the first marked complete) prints them cleanly, numbered from
+    <code class="inline">1</code>:
+  </div>
+  <div class="card">
+<pre class="code">Tasks:
+1. Buy groceries - Completed
+2. Write report - Pending
+3. Call the bank - Pending</pre>
+    <p style="margin:12px 0 0">The program loops through the menu indefinitely, stores every task with its
+      status, marks the task the user <em>actually</em> chose, and handles empty lists and bad input without
+      throwing.</p>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">ViewTasks()</code> loop uses <code class="inline">i &lt; tasks.Count</code> and no longer throws on <strong>View</strong></li>
+      <li><code class="inline">CompleteTask()</code> validates <code class="inline">1 ≤ number ≤ Count</code> and converts to a <code class="inline">number - 1</code> index</li>
+      <li>Marking a task complete flips the <strong>correct</strong> task's status</li>
+      <li><code class="inline">int.TryParse</code> replaces <code class="inline">int.Parse</code>, so non-numeric input is handled gracefully</li>
+      <li>Empty task list is handled in both <strong>View</strong> and <strong>Mark Complete</strong></li>
+      <li>Program returns to the main menu after each action and <strong>Exit</strong> ends it cleanly</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Off-by-one errors</strong> — <code class="inline">&lt;=</code> vs <code class="inline">&lt;</code>
+        and 1-based vs 0-based indexing are the classic source of list bugs; a loop or index that is off by one
+        either crashes or touches the wrong element.</li>
+      <li><strong>Parallel lists stay in sync</strong> — <code class="inline">tasks</code> and
+        <code class="inline">taskStatus</code> share the same index, so every fix must keep their indices aligned
+        when adding, reading, and updating.</li>
+      <li><strong>Validate before you index</strong> — check bounds (and parse safely with
+        <code class="inline">int.TryParse</code>) <em>before</em> using a value as an index, so bad input fails
+        gracefully instead of throwing.</li>
+      <li><strong>Boundary cases are first-class</strong> — empty collections and out-of-range numbers are normal
+        user behaviour; handle them explicitly rather than letting the runtime decide.</li>
+      <li><strong>Read the contract the UI promises</strong> — because the menu shows
+        <code class="inline">1, 2, 3</code>, the logic must accept <code class="inline">1, 2, 3</code>; mismatched
+        assumptions between display and data cause subtle, hard-to-spot bugs.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

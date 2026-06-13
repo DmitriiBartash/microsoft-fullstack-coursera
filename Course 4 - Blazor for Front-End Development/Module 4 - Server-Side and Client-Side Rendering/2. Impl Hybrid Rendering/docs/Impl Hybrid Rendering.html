@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Impl Hybrid Rendering — Course 4 · Module 4</title>
+<style>
+  :root {
+    --hdr: #6d28d9 ;
+    --pld: #4f46e5 ;
+    --sig: #8b5cf6 ;
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 4 — Blazor for Front-End Development · Module 4 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Hybrid Rendering</h1>
+    <p class="lead">
+      Build a Blazor app that mixes <strong>server-side</strong> and <strong>client-side</strong>
+      render modes in one page, then measure and tune it. You'll combine <strong>SSR</strong>,
+      <strong>Interactive Server</strong>, and <strong>Interactive Auto (WebAssembly)</strong>
+      components, add <code>ILogger</code> timing around the component lifecycle, and apply
+      <em>lazy loading</em> so heavy UI is rendered only on demand.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">By the end of this lab you will be able to <strong>implement hybrid rendering</strong>
+      in Blazor by composing components with different <code class="inline">@rendermode</code> values,
+      <strong>analyze performance</strong> with <code class="inline">Stopwatch</code> and
+      <code class="inline">ILogger</code> instrumentation, and <strong>apply optimization strategies</strong> —
+      chiefly lazy loading — to improve responsiveness.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU WILL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you will build</h2>
+  <div class="card">
+    <p>A Blazor app named <code class="inline">BlazorPerformanceApp</code> whose home page hosts several
+      components, each running under a different render mode so you can compare their behaviour side by side.</p>
+    <table>
+      <thead><tr><th>Component</th><th>Render mode</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>SSRPane.razor</code></td><td>Static SSR</td><td>Renders mock data once on the server (no interactivity)</td></tr>
+        <tr><td><code>ServerClock.razor</code></td><td><code>InteractiveServer</code></td><td>Live server-driven clock via a <code>System.Timers.Timer</code></td></tr>
+        <tr><td><code>SlowList.razor</code></td><td><code>InteractiveAuto</code></td><td>Heavy list (WASM) used to expose render cost</td></tr>
+        <tr><td><code>HybridComponent.razor</code></td><td><code>InteractiveServer</code></td><td>Combines all panes + logs lifecycle timings</td></tr>
+        <tr><td><code>Home.razor</code></td><td><code>InteractiveServer</code></td><td>Landing page that <strong>lazy-loads</strong> the hybrid component</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="ar">Home</span> <span class="ar">→</span>
+      <span class="c">click "Load Hybrid Inline"</span> <span class="ar">→</span>
+      <span class="t">HybridComponent renders</span> <span class="ar">→</span>
+      <span class="d">OnInitialized → OnInitializedAsync → OnAfterRender</span> <span class="ar">→</span>
+      <span class="ar">timings logged</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code> (use a current LTS such as .NET 8/9, since <code class="inline">@rendermode</code> and <code class="inline">InteractiveAuto</code> require the Blazor Web App model)</li>
+      <li>Visual Studio Code with the <strong>C# Dev Kit</strong> extension</li>
+      <li>A browser to open the running app</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Create the project, open it, and confirm the default app runs. This app becomes the
+      foundation for the render-mode and performance work that follows.</p>
+<pre class="code">dotnet new blazorwasm -o BlazorPerformanceApp
+cd BlazorPerformanceApp
+code .
+dotnet run</pre>
+    <ul class="plain">
+      <li>Copy the URL shown in the terminal (e.g. <code class="inline">http://localhost:5000</code>) and open it in your browser.</li>
+      <li>Verify the default Blazor application loads successfully.</li>
+      <li>In the <code class="inline">Pages</code> folder, review the default Razor components and locate
+        <code class="inline">Home.razor</code> — this is the file you will modify in the next steps.</li>
+    </ul>
+    <div class="callout">
+      <strong>Note:</strong> the <code class="inline">@rendermode</code> directive,
+      <code class="inline">AddInteractiveServerComponents</code>, and <code class="inline">InteractiveAuto</code>
+      used below are features of the <strong>Blazor Web App</strong> project model (.NET 8+). If your template
+      only produces a pure WebAssembly app, create the project with the interactive Blazor Web App template
+      instead so server and auto render modes are available:
+<pre class="code">dotnet new blazor -o BlazorPerformanceApp --interactivity Auto</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Implement hybrid rendering</h3>
+    <p class="scenario">Add hybrid rendering by combining server-side and client-side Blazor features inside a new
+      <code>HybridComponent</code>, using mock data to simulate the scenario.</p>
+    <ul class="plain">
+      <li>In the <code class="inline">Pages</code> folder, create a new Razor component named <code class="inline">HybridComponent.razor</code>.</li>
+      <li>Add <code>HybridComponent</code> to <code class="inline">Home.razor</code> so you can confirm it renders.</li>
+      <li>Register the interactive server services in <code class="inline">Program.cs</code>. After <code class="inline">builder</code>
+        is declared and <strong>before</strong> <code class="inline">await builder.Build().RunAsync();</code>, add:</li>
+    </ul>
+<pre class="code">builder.Services.AddInteractiveServerComponents();</pre>
+    <p>The supporting panes used by the hybrid component are defined here. Create each file in the
+      <code class="inline">Components</code> (or <code class="inline">Pages</code>) folder.</p>
+    <h4><code>SSRPane.razor</code> — static, server-rendered mock data</h4>
+<pre class="code">@code {
+    private readonly DateTime _renderedAt = DateTime.UtcNow;
+    private readonly string[] _mock = new[] { "Alpha", "Bravo", "Charlie", "Delta" };
+}
+
+&lt;div class="element"&gt;
+    &lt;p&gt;Rendered at (UTC): @_renderedAt:HH:mm:ss&lt;/p&gt;
+    &lt;ul&gt;
+        @foreach (var s in _mock)
+        {
+            &lt;li&gt;@s&lt;/li&gt;
+        }
+    &lt;/ul&gt;
+&lt;/div&gt;</pre>
+    <h4><code>ServerClock.razor</code> — interactive server clock (ticks once a second, disposes its timer)</h4>
+<pre class="code">@using System.Timers
+@implements IDisposable
+
+&lt;div class="element"&gt;
+    &lt;p&gt;Server time&lt;/p&gt;
+    &lt;h3&gt;@_now.ToLongTimeString()&lt;/h3&gt;
+&lt;/div&gt;
+
+@code {
+    private DateTime _now = DateTime.Now;
+    private Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        _timer = new Timer(1000);
+        _timer.Elapsed += (_, __) =&gt;
+        {
+            _now = DateTime.Now;
+            InvokeAsync(StateHasChanged);
+        };
+        _timer.Start();
+    }
+
+    public void Dispose()
+    {
+        _timer?.Stop();
+        _timer?.Dispose();
+    }
+}</pre>
+    <h4><code>SlowList.razor</code> — a deliberately heavy list (WASM via <code>InteractiveAuto</code>) to surface render cost</h4>
+<pre class="code">@code {
+    [Parameter] public int ItemsCount { get; set; } = 50;
+    private List&lt;string&gt; _items = new();
+
+    protected override void OnInitialized()
+    {
+        for (int i = 0; i &lt; ItemsCount; i++)
+        {
+            _items.Add($"Item {i:D3}");
+        }
+    }
+
+    private void Shuffle()
+    {
+        var rnd = new Random();
+        for (int i = _items.Count - 1; i &gt; 0; i--)
+        {
+            int j = rnd.Next(i + 1);
+            (_items[i], _items[j]) = (_items[j], _items[i]);
+        }
+    }
+}
+
+&lt;div class="element"&gt;
+    &lt;button class="btn" @onclick="Shuffle"&gt;Shuffle&lt;/button&gt;
+    &lt;ul&gt;
+        @foreach (var it in _items)
+        {
+            &lt;li&gt;@it&lt;/li&gt;
+        }
+    &lt;/ul&gt;
+&lt;/div&gt;</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Monitor and analyze performance</h3>
+    <p class="scenario">Use .NET's built-in diagnostics to measure how the component behaves. Inject
+      <code>ILogger</code> into <code>HybridComponent</code>, start a <code>Stopwatch</code> in
+      <code class="inline">OnInitialized</code>, and log key lifecycle events so you can read the elapsed
+      milliseconds in the console.</p>
+    <h4><code>HybridComponent.razor</code> — composes the panes under three render modes and logs timings</h4>
+<pre class="code">@using System.Diagnostics
+@page "/hybrid"
+@rendermode InteractiveServer
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using BlazorPerf.Components
+@using BlazorPerf.Client.Components
+@inject ILogger&lt;HybridComponent&gt; Logger
+
+&lt;PageTitle&gt;Hybrid Component&lt;/PageTitle&gt;
+
+&lt;section class="hybrid"&gt;
+  &lt;header class="hybrid__head"&gt;
+    &lt;h1&gt;Hybrid Component&lt;/h1&gt;
+  &lt;/header&gt;
+  &lt;div class="cards"&gt;
+    &lt;div class="card"&gt;
+      &lt;h3&gt;SSR-only&lt;/h3&gt;
+      &lt;SSRPane /&gt;
+    &lt;/div&gt;
+    &lt;div class="card"&gt;
+      &lt;h3&gt;Interactive Server&lt;/h3&gt;
+      &lt;ServerClock @rendermode="InteractiveServer" /&gt;
+    &lt;/div&gt;
+    &lt;div class="card"&gt;
+      &lt;h3&gt;Interactive Auto (WASM)&lt;/h3&gt;
+      &lt;SlowList @rendermode="InteractiveAuto" ItemsCount="300" /&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/section&gt;
+
+@code {
+    private readonly Stopwatch _sw = new();
+
+    protected override void OnInitialized()
+    {
+        _sw.Start();
+        Logger.LogInformation("HybridComponent OnInitialized at {Utc}", DateTime.UtcNow);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("HybridComponent OnInitializedAsync start at {Utc}", DateTime.UtcNow);
+        await Task.Yield();
+        Logger.LogInformation("HybridComponent OnInitializedAsync end at {Utc} (elapsed {Ms} ms)", DateTime.UtcNow, _sw.ElapsedMilliseconds);
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            Logger.LogInformation("HybridComponent first render complete at {Utc} (elapsed {Ms} ms)", DateTime.UtcNow, _sw.ElapsedMilliseconds);
+        return Task.CompletedTask;
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Apply optimization techniques</h3>
+    <p class="scenario">Optimize <code>HybridComponent</code> for performance by adding <strong>lazy loading</strong>:
+      instead of rendering the component on page load, render it only when the user clicks a button.</p>
+    <ul class="plain">
+      <li>Update <code class="inline">Home.razor</code> to replace the direct inclusion of
+        <code>HybridComponent</code> with a lazy-loading approach guarded by a flag.</li>
+    </ul>
+    <h4><code>Home.razor</code> — lazy-loads the hybrid component behind a button</h4>
+<pre class="code">@page "/"
+@rendermode InteractiveServer
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using BlazorPerf.Components
+@using BlazorPerf.Client.Components
+@inject NavigationManager Nav
+
+&lt;PageTitle&gt;Home&lt;/PageTitle&gt;
+
+&lt;section class="hero"&gt;
+  &lt;div class="hero__content"&gt;
+    &lt;h1 class="title"&gt;Blazor Hybrid Rendering Lab&lt;/h1&gt;
+    &lt;p class="subtitle"&gt;SSR • Interactive Server • Interactive WebAssembly&lt;/p&gt;
+    &lt;button class="btn" @onclick="LoadHybrid"&gt;Load Hybrid Inline&lt;/button&gt;
+    &lt;a class="btn btn--ghost" href="/hybrid" style="margin-left:8px;"&gt;Open Full Page&lt;/a&gt;
+  &lt;/div&gt;
+&lt;/section&gt;
+
+&lt;section class="preview"&gt;
+  &lt;h2 class="preview__title"&gt;Live Preview&lt;/h2&gt;
+  &lt;div class="cards"&gt;
+    &lt;div class="card"&gt;
+      &lt;h3&gt;SSR-only&lt;/h3&gt;
+      &lt;SSRPane /&gt;
+    &lt;/div&gt;
+    &lt;div class="card"&gt;
+      &lt;h3&gt;Interactive Server&lt;/h3&gt;
+      &lt;ServerClock @rendermode="InteractiveServer" /&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/section&gt;
+
+@if (showHybrid)
+{
+  &lt;section class="lazy" id="hybrid-host"&gt;
+    &lt;h2 class="preview__title"&gt;Hybrid (lazy)&lt;/h2&gt;
+    &lt;article class="lazy__host"&gt;
+      &lt;HybridComponent /&gt;
+    &lt;/article&gt;
+  &lt;/section&gt;
+}
+
+@code {
+    private bool showHybrid;
+
+    private async Task LoadHybrid()
+    {
+        if (!showHybrid) { showHybrid = true; await Task.Yield(); }
+        Nav.NavigateTo("#hybrid-host");
+    }
+}</pre>
+    <ul class="plain">
+      <li>Rebuild and run the application, then click the <strong>"Load Hybrid Inline"</strong> button to verify the lazy-loading functionality works.</li>
+    </ul>
+<pre class="code">dotnet run</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Validate and reassess</h3>
+    <p class="scenario">Re-evaluate the application after the optimization to confirm performance has improved.</p>
+    <ul class="plain">
+      <li><strong>Rerun performance measurements:</strong> observe the app's behaviour before and after clicking the
+        <strong>"Load Hybrid Inline"</strong> button, and compare the logged <code class="inline">OnInitialized</code> /
+        <code class="inline">OnInitializedAsync</code> / first-render timings.</li>
+      <li><strong>Document observations:</strong> note improvements in responsiveness, and explain how lazy loading
+        improves performance by <strong>deferring resource usage until it is actually required</strong>.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The home page loads quickly with only the lightweight SSR and Interactive Server panes visible. Clicking
+    <strong>"Load Hybrid Inline"</strong> renders <code class="inline">HybridComponent</code> on demand and scrolls
+    to it, and the console shows ordered log lines such as <code class="inline">HybridComponent OnInitialized…</code>,
+    <code class="inline">OnInitializedAsync start/end (elapsed N ms)</code>, and
+    <code class="inline">first render complete (elapsed N ms)</code> — evidence that the heavy component's cost was
+    deferred until the click.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">BlazorPerformanceApp</code> project created and runs in the browser</li>
+      <li><code class="inline">Program.cs</code> calls <code class="inline">builder.Services.AddInteractiveServerComponents();</code></li>
+      <li><code class="inline">HybridComponent.razor</code> composes <code class="inline">SSRPane</code>, <code class="inline">ServerClock</code> (<code class="inline">InteractiveServer</code>) and <code class="inline">SlowList</code> (<code class="inline">InteractiveAuto</code>, <code class="inline">ItemsCount="300"</code>)</li>
+      <li><code class="inline">ILogger</code> + <code class="inline">Stopwatch</code> log <code class="inline">OnInitialized</code>, <code class="inline">OnInitializedAsync</code>, and first-render timings</li>
+      <li><code class="inline">Home.razor</code> renders <code class="inline">HybridComponent</code> only after the <strong>"Load Hybrid Inline"</strong> button is clicked</li>
+      <li><code class="inline">dotnet run</code> shows the page loading fast and the component appearing on demand with timing logs</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Hybrid rendering = per-component render modes</strong> — one page can mix static SSR,
+        <code class="inline">InteractiveServer</code>, and <code class="inline">InteractiveAuto</code> so each
+        component pays only for the interactivity it needs.</li>
+      <li><strong>Measure before you tune</strong> — <code class="inline">Stopwatch</code> +
+        <code class="inline">ILogger</code> around <code class="inline">OnInitialized</code> /
+        <code class="inline">OnInitializedAsync</code> / <code class="inline">OnAfterRenderAsync</code> turn
+        "feels slow" into concrete elapsed-millisecond numbers.</li>
+      <li><strong>Lazy loading defers cost</strong> — gating the heavy <code class="inline">HybridComponent</code>
+        behind a flag/button keeps initial load light and only spends render time when the user asks for it.</li>
+      <li><strong>Clean up interactive resources</strong> — server-driven components like
+        <code class="inline">ServerClock</code> must <code class="inline">Dispose</code> their
+        <code class="inline">Timer</code> (via <code class="inline">@implements IDisposable</code>) to avoid leaks
+        and runaway callbacks.</li>
+      <li><strong>Render mode drives where code runs</strong> — <code class="inline">InteractiveServer</code>
+        executes over a SignalR circuit, while <code class="inline">InteractiveAuto</code> can run the same
+        component in WebAssembly; the choice changes latency, payload, and CPU location.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

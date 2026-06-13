@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Practical Debugging with Copilot — Course 2 · Module 5</title>
+<style>
+  :root {
+    --hdr: #7c3aed;      /* header / create  */
+    --pld: #c026d3;      /* payload / decode */
+    --sig: #6366f1;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* create  */
+  .flow .d { color: #b78bff; }   /* decode  */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 2 — Introduction to Programming With C# · Module 5 · Lesson 2
+      <span class="pill">You Try It!</span></p>
+    <h1>Practical Debugging with Copilot</h1>
+    <p class="lead">
+      Take a working-but-buggy <strong>Library Management System</strong> console app and fix it
+      with the help of <strong>Microsoft Copilot</strong>. The starting code can't reliably add,
+      remove, or display books — your job is to spot the defects, ask Copilot for fixes, apply
+      them, and confirm the program behaves correctly.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Practice a real debugging workflow in C#: run code that misbehaves,
+      <strong>identify the root causes</strong>, use <strong>Microsoft Copilot</strong> to suggest
+      corrections, apply the fixes, and <strong>verify</strong> the repaired program adds, removes,
+      and displays books exactly as intended.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL FIX ===================== -->
+  <h2 class="section"><span class="em">🐞</span> What you'll fix</h2>
+  <div class="card">
+    <p>The starting code compiles, but three defects break its behavior:</p>
+    <table>
+      <thead><tr><th>#</th><th>Defect</th><th>Why it's a problem</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Books are added <strong>before</strong> checking whether the library is full</td><td>A 6th title can overwrite logic or be silently dropped; the "library full" message fires inconsistently</td></tr>
+        <tr><td>2</td><td>The display loop prints <strong>every</strong> slot, including empty ones</td><td>Blank lines are printed for unused slots, confusing the reader</td></tr>
+        <tr><td>3</td><td><code>action</code> is compared without normalizing case</td><td>Typing <code>Add</code> or <code>REMOVE</code> is treated as an invalid command</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">Run buggy code</span> <span class="ar">→</span>
+      <span class="ar">observe issues</span> <span class="ar">→</span>
+      <span class="t">ask Copilot</span> <span class="ar">→</span>
+      <span class="d">apply fixes</span> <span class="ar">→</span>
+      <span class="ar">re-test</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code with the C# extension</li>
+      <li>Access to <strong>Microsoft Copilot</strong></li>
+      <li>The console application you created at the start of the course (edit its <code class="inline">Program.cs</code>)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STARTING CODE ===================== -->
+  <h2 class="section"><span class="em">🐛</span> Starting code (with errors)</h2>
+  <div class="card">
+    <p class="scenario">Replace everything in <code class="inline">Program.cs</code> with the code below, run it, and watch for the defects.</p>
+<pre class="code">class LibraryManager
+{
+    static void Main()
+    {
+        string book1 = "";
+        string book2 = "";
+        string book3 = "";
+        string book4 = "";
+        string book5 = "";
+        while (true)
+        {
+            Console.WriteLine("Would you like to add or remove a book? (add/remove/exit)");
+            string action = Console.ReadLine();
+            if (action == "add")
+            {
+                Console.WriteLine("Enter the title of the book to add:");
+                string newBook = Console.ReadLine();
+                if (string.IsNullOrEmpty(book1))
+                {
+                    book1 = newBook;
+                }
+                else if (string.IsNullOrEmpty(book2))
+                {
+                    book2 = newBook;
+                }
+                else if (string.IsNullOrEmpty(book3))
+                {
+                    book3 = newBook;
+                }
+                else if (string.IsNullOrEmpty(book4))
+                {
+                    book4 = newBook;
+                }
+                else if (string.IsNullOrEmpty(book5))
+                {
+                    book5 = newBook;
+                }
+                else
+                {
+                    Console.WriteLine("The library is full. No more books can be added.");
+                }
+            }
+            else if (action == "remove")
+            {
+                Console.WriteLine("Enter the title of the book to remove:");
+                string removeBook = Console.ReadLine();
+                if (removeBook == book1)
+                {
+                    book1 = "";
+                }
+                else if (removeBook == book2)
+                {
+                    book2 = "";
+                }
+                else if (removeBook == book3)
+                {
+                    book3 = "";
+                }
+                else if (removeBook == book4)
+                {
+                    book4 = "";
+                }
+                else if (removeBook == book5)
+                {
+                    book5 = "";
+                }
+                else
+                {
+                    Console.WriteLine("Book not found.");
+                }
+            }
+            else if (action == "exit")
+            {
+                break;
+            }
+            else
+            {
+                Console.WriteLine("Invalid action. Please type 'add', 'remove', or 'exit'.");
+            }
+            <span class="cmt">// Display the list of books</span>
+            Console.WriteLine("Available books:");
+            Console.WriteLine(book1);
+            Console.WriteLine(book2);
+            Console.WriteLine(book3);
+            Console.WriteLine(book4);
+            Console.WriteLine(book5);
+        }
+    }
+}</pre>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🔎</span> Walkthrough</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Identify the errors</h3>
+    <p class="scenario">Run the <strong>Starting code (with errors)</strong> and observe the issues:</p>
+    <ul class="plain">
+      <li><strong>No "full" check up front when adding.</strong> Each <code class="inline">add</code> walks an
+        <code class="inline">if</code>/<code class="inline">else if</code> chain over five separate variables. The logic is
+        brittle and the "library is full" branch only runs after all five checks fall through — easy to get wrong as the code grows.</li>
+      <li><strong>Empty slots are printed.</strong> The display block writes <code class="inline">book1</code>…<code class="inline">book5</code>
+        unconditionally, so unused slots show up as blank lines and clutter the output.</li>
+      <li><strong>Case-sensitive command matching.</strong> <code class="inline">action == "add"</code> only matches lowercase input.
+        If the user types <code class="inline">Add</code>, the program treats it as an invalid command.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Use Copilot to debug</h3>
+    <p class="scenario">Ask <strong>Microsoft Copilot</strong> to identify and suggest fixes for the errors — for example:</p>
+    <div class="callout">
+      <strong>Prompt idea:</strong> "This C# console app should add, remove, and display books, but empty slots get printed,
+      commands are case-sensitive, and the full-library check is unreliable. Find the bugs and suggest fixes."
+    </div>
+    <p>Apply the suggested corrections. The key improvements are:</p>
+    <ul class="plain">
+      <li>Store the titles in a <code class="inline">string[] books</code> array and <strong>loop</strong> instead of five named variables.</li>
+      <li><strong>Check for free space before adding</strong>, and skip the rest of the loop with <code class="inline">continue</code> when the library is full.</li>
+      <li>Normalize input with <code class="inline">Console.ReadLine()?.Trim().ToLower()</code> so <code class="inline">Add</code>, <code class="inline">ADD</code>, and <code class="inline">add</code> all match.</li>
+      <li>When displaying, <strong>skip null or empty entries</strong> so only real titles are shown.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Test the debugged program</h3>
+    <p class="scenario">After making the corrections, test the program by <strong>adding</strong>, <strong>removing</strong>,
+      and <strong>displaying</strong> books, including the edge cases: a full library, removing a title that doesn't exist,
+      and mixed-case commands.</p>
+  </div>
+
+  <!-- ===================== CORRECTED CODE ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Corrected code</h2>
+  <div class="card">
+    <p class="scenario">Replace the contents of <code class="inline">Program.cs</code> with the debugged version:</p>
+<pre class="code">class LibraryManager
+{
+    static void Main()
+    {
+        string[] books = new string[5];
+        while (true)
+        {
+            Console.WriteLine("Would you like to add or remove a book? (add/remove/exit)");
+            string action = Console.ReadLine()?.Trim().ToLower();
+            if (action == "add")
+            {
+                bool hasSpace = false;
+                foreach (var book in books)
+                {
+                    if (string.IsNullOrEmpty(book))
+                    {
+                        hasSpace = true;
+                        break;
+                    }
+                }
+                if (!hasSpace)
+                {
+                    Console.WriteLine("The library is full. No more books can be added.");
+                    continue;
+                }
+                Console.WriteLine("Enter the title of the book to add:");
+                string newBook = Console.ReadLine()?.Trim();
+                for (int i = 0; i &lt; books.Length; i++)
+                {
+                    if (string.IsNullOrEmpty(books[i]))
+                    {
+                        books[i] = newBook;
+                        Console.WriteLine($"Book \"{newBook}\" added.");
+                        break;
+                    }
+                }
+            }
+            else if (action == "remove")
+            {
+                Console.WriteLine("Enter the title of the book to remove:");
+                string removeBook = Console.ReadLine()?.Trim();
+                bool found = false;
+                for (int i = 0; i &lt; books.Length; i++)
+                {
+                    if (books[i] == removeBook)
+                    {
+                        books[i] = "";
+                        Console.WriteLine($"Book \"{removeBook}\" removed.");
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    Console.WriteLine("Book not found.");
+                }
+            }
+            else if (action == "exit")
+            {
+                Console.WriteLine("Exiting program...");
+                break;
+            }
+            else
+            {
+                Console.WriteLine("Invalid action. Please type 'add', 'remove', or 'exit'.");
+            }
+            <span class="cmt">// Display the list of books</span>
+            Console.WriteLine("\nAvailable books:");
+            foreach (var book in books)
+            {
+                if (!string.IsNullOrEmpty(book))
+                {
+                    Console.WriteLine($"- {book}");
+                }
+            }
+            Console.WriteLine();
+        }
+    }
+}</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    The repaired program loops cleanly: it accepts <strong>add</strong>, <strong>remove</strong>, and <strong>exit</strong>
+    regardless of letter case, confirms each add/remove, refuses new titles once five books are stored, and lists
+    <strong>only</strong> the non-empty titles — no stray blank lines. Typing <code class="inline">exit</code> prints
+    <code class="inline">Exiting program...</code> and ends the loop.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Starting code runs and you can name all three defects (full-check, empty-line display, case sensitivity)</li>
+      <li>Copilot was used to identify and suggest the fixes</li>
+      <li><code class="inline">Program.cs</code> updated so titles are stored in a <code class="inline">string[] books</code> array</li>
+      <li>Input is normalized with <code class="inline">Trim().ToLower()</code> so mixed-case commands work</li>
+      <li>Adding is blocked once the library holds five books</li>
+      <li>Display skips empty slots and shows only real titles</li>
+      <li>Add, remove, full-library, and "book not found" cases all tested and behave correctly</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Reproduce before you fix</strong> — running the buggy code and observing the actual symptoms is the first
+        debugging step; you can't fix what you haven't seen fail.</li>
+      <li><strong>Data structures shape correctness</strong> — swapping five ad-hoc variables for a
+        <code class="inline">string[]</code> array lets a single loop handle add, remove, and display uniformly and removes
+        whole classes of copy-paste bugs.</li>
+      <li><strong>Validate and normalize input</strong> — <code class="inline">Trim()</code> and <code class="inline">ToLower()</code>
+        make command matching robust to whitespace and capitalization; defensive input handling prevents "phantom" invalid commands.</li>
+      <li><strong>Guard clauses keep logic clear</strong> — checking for a full library up front and using
+        <code class="inline">continue</code> avoids deeply nested conditionals and makes the intent obvious.</li>
+      <li><strong>Copilot is an assistant, not an oracle</strong> — it accelerates spotting and fixing defects, but you still
+        reproduce, read the suggestion, apply it deliberately, and re-test to confirm.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
