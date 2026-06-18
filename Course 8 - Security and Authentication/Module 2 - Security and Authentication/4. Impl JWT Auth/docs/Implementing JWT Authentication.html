@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing JWT Authentication — Course 8 · Module 2</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* login / create  */
+  .flow .d { color: #b78bff; }   /* validate / guard */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 2 · Lesson 4
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing JWT Authentication</h1>
+    <p class="lead">
+      Build a small ASP.NET Core <strong>Web API</strong> that issues and verifies JWTs. A client
+      logs in against an <strong>in-memory user store</strong>, receives a <strong>signed JWT</strong>,
+      and uses it as a <code>Bearer</code> token to reach a protected endpoint. Authentication
+      middleware validates every token; the <code>[Authorize]</code> attribute guards the secured
+      route and returns <strong>401</strong> without one.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Implement JWT authentication in an ASP.NET Core application using Visual Studio Code:
+      create an in-memory user store, configure the authentication middleware, issue signed tokens on login,
+      and secure API endpoints so only authenticated callers can reach them.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A Web API project named <code class="inline">JwtAuthDemo</code> with these pieces:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>appsettings.json</code></td><td>Define <code>JwtSettings</code> — secret key, issuer, audience, expiry</td></tr>
+        <tr><td><code>Program.cs</code></td><td>Register JWT Bearer authentication; wire <code>UseAuthentication</code> → <code>UseAuthorization</code></td></tr>
+        <tr><td><code>Models/User.cs</code></td><td>User model — <code>Username</code> and <code>Password</code></td></tr>
+        <tr><td><code>Services/TokenService.cs</code></td><td>Read <code>JwtSettings</code>; build &amp; sign a token via <code>GenerateToken(username)</code></td></tr>
+        <tr><td><code>Controllers/UserController.cs</code></td><td>In-memory user store; <code>POST /login</code>; protected <code>GET /secure-data</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">POST /login</span> <span class="ar">→</span>
+      <span class="ar">validate(store)</span> <span class="ar">→</span>
+      <span class="c">TokenService.GenerateToken()</span> <span class="ar">→</span>
+      <span class="t">JWT</span> <span class="ar">→</span>
+      <span class="d">GET /secure-data [Bearer]</span> <span class="ar">→</span>
+      <span class="d">JwtBearer validates</span> <span class="ar">→</span>
+      <span class="ar">200 / 401</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>NuGet packages: <code class="inline">Microsoft.AspNetCore.Authentication.JwtBearer</code>, <code class="inline">System.IdentityModel.Tokens.Jwt</code></li>
+      <li>A REST client to test — Postman or <code class="inline">curl</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Scaffold the Web API, move into it, and add the JWT packages.</p>
+<pre class="code">dotnet new webapi -n JwtAuthDemo
+cd JwtAuthDemo
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+dotnet add package System.IdentityModel.Tokens.Jwt</pre>
+    <ul class="plain">
+      <li>Create a <code class="inline">Controllers/UserController.cs</code> file (filled in over the next steps).</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Configure JWT authentication</h3>
+    <p class="scenario">Tell the app how to validate tokens.</p>
+    <ul class="plain">
+      <li>Add a <code class="inline">JwtSettings</code> section to <code class="inline">appsettings.json</code>:
+        <strong>secret key</strong>, <strong>issuer</strong>, <strong>audience</strong>, and <strong>expiration</strong> time.</li>
+      <li>In <code class="inline">Program.cs</code>: register JWT Bearer authentication, configure validation against the
+        secret key (issuer, audience, lifetime, signing key), and ensure the pipeline runs
+        <strong>authentication</strong> then <strong>authorization</strong> middleware.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> User model and token generation</h3>
+    <p class="scenario">Model a user and centralize token creation.</p>
+    <ul class="plain">
+      <li>Create <code class="inline">Models/User.cs</code> with <code class="inline">Username</code> and
+        <code class="inline">Password</code> string properties.</li>
+      <li>Create <code class="inline">Services/TokenService.cs</code>: read <code class="inline">JwtSettings</code>,
+        build and <strong>sign</strong> a JWT, and expose <code class="inline">GenerateToken(string username)</code>
+        returning the signed token string.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> In-memory user store + login</h3>
+    <p class="scenario">Authenticate credentials and hand back a token.</p>
+    <ul class="plain">
+      <li>In <code>UserController</code>, declare a <strong>static list</strong> of <code>User</code> objects (hardcoded credentials).</li>
+      <li>Implement <code class="inline">POST /login</code>: validate <code>Username</code>/<code>Password</code> against the
+        store; if valid, return a token from <code>TokenService</code>; if invalid, return <strong>401 Unauthorized</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Secure the routes</h3>
+    <p class="scenario">Guard an endpoint and verify the guard works.</p>
+    <ul class="plain">
+      <li>Add a <code class="inline">GET /secure-data</code> endpoint protected with <code class="inline">[Authorize]</code>;
+        return a simple "you reached a secure endpoint" message.</li>
+      <li>Test with Postman or <code>curl</code> — send the token in the <code class="inline">Authorization</code> header
+        with the <code class="inline">Bearer</code> scheme; confirm requests without a valid token get <strong>401</strong>.</li>
+    </ul>
+<pre class="code"><span class="cmt"># 1) log in → copy the returned token</span>
+curl -X POST http://localhost:5000/login -H "Content-Type: application/json" -d '{"username":"admin","password":"password"}'
+
+<span class="cmt"># 2) call the protected route with the token</span>
+curl http://localhost:5000/secure-data -H "Authorization: Bearer &lt;token&gt;"</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Logging in with valid credentials returns a <strong>signed JWT</strong>. Calling
+    <code class="inline">GET /secure-data</code> with that token in the
+    <code class="inline">Authorization: Bearer …</code> header returns the secure message;
+    calling it with <strong>no token, a tampered token, or an expired one</strong> returns
+    <strong>401 Unauthorized</strong>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">JwtAuthDemo</code> Web API created; <code class="inline">…JwtBearer</code> and <code class="inline">System.IdentityModel.Tokens.Jwt</code> packages added</li>
+      <li><code class="inline">appsettings.json</code> defines <code class="inline">JwtSettings</code> (key, issuer, audience, expiry)</li>
+      <li><code class="inline">Program.cs</code> registers JWT Bearer auth and uses authentication → authorization middleware</li>
+      <li><code class="inline">Models/User.cs</code> and <code class="inline">Services/TokenService.cs</code> (<code class="inline">GenerateToken</code>) created</li>
+      <li><code>UserController</code> exposes <code class="inline">POST /login</code> (JWT on success, 401 on failure)</li>
+      <li><code class="inline">GET /secure-data</code> is <code class="inline">[Authorize]</code>-protected</li>
+      <li>A valid Bearer token reaches <code class="inline">/secure-data</code> (200); a missing/invalid token is rejected (401)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== IMPLEMENTATION NOTES ===================== -->
+  <h2 class="section"><span class="em">🏗️</span> Implementation notes</h2>
+  <div class="card">
+    <p style="margin:0 0 10px">The reference solution in this folder is <strong>enriched beyond the literal steps</strong>
+      for teaching and testability. The deviations below are intentional:</p>
+    <ul class="plain">
+      <li><strong>Layering</strong> — <code class="inline">User</code>, <code class="inline">UserStore</code>,
+        <code class="inline">TokenService</code> and <code class="inline">JwtSettings</code> live in a shared
+        <code class="inline">JwtAuthCore</code> class library (not inside <code class="inline">JwtAuthDemo</code>),
+        so the API and the visual Studio reuse one implementation.</li>
+      <li><strong>Packages</strong> — <code class="inline">System.IdentityModel.Tokens.Jwt</code> sits in
+        <code class="inline">JwtAuthCore</code> (token creation); <code class="inline">JwtAuthDemo</code> holds
+        <code class="inline">…JwtBearer</code> and gets the former transitively.</li>
+      <li><strong>User store</strong> — centralised in <code class="inline">JwtAuthCore.UserStore</code>
+        (still a <code class="inline">static</code> hardcoded list) and injected into
+        <code class="inline">UserController</code> via DI, rather than declared in the controller.</li>
+      <li><strong><code class="inline">JwtAuthStudio</code></strong> — a Blazor “Auth Studio” that exercises the
+        real <code class="inline">JwtBearer</code> guard in-process, making the login → token → 200/401 handshake visible.</li>
+      <li><strong><code class="inline">JwtAuthDemo.Tests</code></strong> — xUnit integration tests
+        (<code class="inline">WebApplicationFactory</code>) for login, the protected route, and missing / tampered /
+        expired tokens — the in-memory <code class="inline">TestServer</code> stands in for the manual curl/Postman step.</li>
+      <li><strong>Enrichments</strong> — a <code class="inline">role</code> claim, a configurable-lifetime
+        <code class="inline">GenerateToken</code> overload, and a second demo account.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Authentication vs authorization</strong> — the JWT Bearer handler <em>authenticates</em>
+        (is this token genuine and unexpired?); <code class="inline">[Authorize]</code> enforces <em>authorization</em>
+        (only authenticated callers pass). Order matters: <code class="inline">UseAuthentication()</code> must run
+        <strong>before</strong> <code class="inline">UseAuthorization()</code>.</li>
+      <li><strong>Stateless sessions</strong> — the signed token itself carries the identity; the server validates the
+        signature with the shared secret and keeps no session, which is what lets JWT auth scale horizontally.</li>
+      <li><strong><code class="inline">TokenValidationParameters</code></strong> — issuer, audience, lifetime <em>and</em>
+        signing key are all checked. Disabling any (e.g. <code class="inline">ValidateIssuer = false</code>) widens the
+        attack surface — only loosen them deliberately.</li>
+      <li><strong>Protect the secret</strong> — a key in <code class="inline">appsettings.json</code> is fine for a local
+        lab, but production keys belong in user-secrets / environment variables / a vault, never in source control.
+        For HS256 the key must be ≥ 256 bits (32+ bytes).</li>
+      <li><strong>Never store plaintext passwords</strong> — the hardcoded store is a teaching shortcut; real systems
+        persist a salted hash (bcrypt / Argon2) and compare hashes, never the raw password.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

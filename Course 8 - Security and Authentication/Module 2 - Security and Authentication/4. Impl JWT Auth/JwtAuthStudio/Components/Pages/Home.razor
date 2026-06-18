@@ -1,0 +1,460 @@
+@page "/"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>Auth Studio</PageTitle>
+
+<div class="studio">
+
+    <header class="s-head">
+        <div class="brand">🔐 Auth <span class="accent">Studio</span></div>
+        <div class="crumb">Implementing JWT Authentication — login → <code>[Authorize]</code> → 200 / 401</div>
+    </header>
+
+    <div class="accounts">
+        <span>Demo accounts:</span>
+        <button class="chip" @onclick="UseAdmin">admin / password</button>
+        <button class="chip" @onclick="UseAlice">alice / pa55</button>
+    </div>
+
+    <div class="grid">
+
+        <section class="panel">
+            <h2><span class="dot c"></span> 1 · Log in</h2>
+
+            <div class="field">
+                <label>Username</label>
+                <input @bind="username" />
+            </div>
+            <div class="field">
+                <label>Password</label>
+                <input @bind="password" />
+            </div>
+
+            <div class="actions">
+                <button class="primary" @onclick="() => Login(null)">Log in</button>
+                <button class="ghost" @onclick="() => Login(10)" title="Issue a token that expires in 10 seconds">⏱ 10-sec token</button>
+                <button class="ghost" @onclick="LogOut">Log out</button>
+            </div>
+
+            @if (loginStatus is not null)
+            {
+                <div class="results @(loggingOut ? "closing" : "")">
+                    <div class="status @(loginOk ? "ok" : "bad")">
+                        <span class="code">@loginStatus</span>
+                        <span>@loginMessage</span>
+                    </div>
+
+                    @if (token is not null)
+                    {
+                        var segs = token.Split('.');
+                        <h4>Issued token</h4>
+                        <div class="token"><span class="t-h">@segs[0]</span><span class="dotsep">.</span><span class="t-p">@(segs.Length > 1 ? segs[1] : "")</span><span class="dotsep">.</span><span class="t-s">@(segs.Length > 2 ? segs[2] : "")</span></div>
+
+                        <h4>Identity — decoded payload</h4>
+                        <table class="claims">
+                            <tbody>
+                                <tr><td class="k">sub</td><td>@sub</td></tr>
+                                <tr><td class="k">role</td><td>@role</td></tr>
+                                <tr><td class="k">exp</td><td>@expText</td></tr>
+                            </tbody>
+                        </table>
+
+                        @if (countdownActive)
+                        {
+                            <div class="countdown @(secondsLeft <= 0 ? "dead" : "")">
+                                @(secondsLeft > 0
+                                    ? $"⏱ token valid for {secondsLeft}s"
+                                    : "⏱ token expired — /secure-data will now return 401")
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="panel">
+            <h2><span class="dot d"></span> 2 · Call <code>GET /secure-data</code></h2>
+
+            <div class="field">
+                <label>How to call it</label>
+                <select @bind="mode">
+                    <option value="with">With Bearer token</option>
+                    <option value="without">Without any token</option>
+                    <option value="tampered">With tampered token</option>
+                </select>
+            </div>
+
+            <h4>Request preview</h4>
+<pre class="req">GET /secure-data
+@RequestAuthLine()</pre>
+
+            <div class="actions">
+                <button class="primary" @onclick="CallSecure" disabled="@(!CanSend)">Send request</button>
+            </div>
+
+            @if (callStatus is not null)
+            {
+                <div class="results @(loggingOut ? "closing" : "")">
+                    <div class="status @(callOk ? "ok" : "bad")">
+                        <span class="code">@callStatus</span>
+                        <span>@(callOk ? "OK — you are in" : "Unauthorized — blocked by [Authorize]")</span>
+                    </div>
+<pre class="resp @(callOk ? "ok" : "bad")">@callBody</pre>
+                </div>
+            }
+        </section>
+    </div>
+
+    <section class="hero">
+        <h3>The boundary — one URL, two outcomes</h3>
+        <div class="hero-grid">
+            <div class="hero-card ok">
+                <div class="big">200</div>
+                <div class="hero-req">GET /secure-data<br /><b>Authorization: Bearer …</b></div>
+                <p>Valid token → middleware authenticates the caller → <code>[Authorize]</code> lets the request through.</p>
+            </div>
+            <div class="hero-card bad">
+                <div class="big">401</div>
+                <div class="hero-req">GET /secure-data<br /><b>(missing / invalid token)</b></div>
+                <p>No proven identity → <code>[Authorize]</code> rejects it. Same URL, same handler — the token is the only difference.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="s-foot">
+        The same <code>JwtBearer</code> guard and <code>[Authorize]</code> attribute run here and under
+        <code>dotnet run</code> in <code>JwtAuthDemo</code> — the Studio just makes the handshake visible.
+    </footer>
+</div>
+
+<style>
+    .studio { max-width: 1040px; margin: 0 auto; padding: 28px 20px 64px; color: #e7ebf2;
+        font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .s-head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+    .brand { font-size: 1.7rem; font-weight: 800; letter-spacing: .01em; }
+    .brand .accent { color: #fb015b; }
+    .crumb { color: #9aa4b8; font-size: .92rem; }
+    .crumb code, .s-foot code, .hero-card code, .s-head code { background: #1c2330; border: 1px solid #2c3446;
+        border-radius: 5px; padding: 1px 6px; font-size: .85em; color: #c7d0e2;
+        font-family: "SFMono-Regular", Consolas, Menlo, monospace; }
+
+    .accounts { margin: 16px 0 22px; color: #9aa4b8; font-size: .9rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .chip { background: #1c2330; color: #c7d0e2; border: 1px solid #2c3446; border-radius: 20px;
+        padding: 4px 12px; cursor: pointer; font-size: .85rem; font-family: "SFMono-Regular", Consolas, monospace; }
+    .chip:hover { border-color: #7b3fe4; color: #fff; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @@media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+    .panel { background: #141a26; border: 1px solid #232c3d; border-radius: 14px; padding: 20px 22px; }
+    .panel h2 { margin: 0 0 16px; font-size: 1.15rem; display: flex; align-items: center; gap: 10px; }
+    .panel h4 { margin: 18px 0 6px; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: #7c8699; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+    .dot.c { background: #fb015b; }
+    .dot.d { background: #0a91d8; }
+
+    .field { margin: 10px 0; }
+    .field label { display: block; font-size: .78rem; color: #9aa4b8; margin-bottom: 4px; }
+    .field input, .field select { width: 100%; background: #0e131d; border: 1px solid #2c3446; color: #e7ebf2;
+        border-radius: 8px; padding: 9px 11px; font-size: .92rem; }
+    .field input:focus, .field select:focus { outline: none; border-color: #7b3fe4; }
+
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    button.primary, button.ghost { border-radius: 8px; padding: 9px 14px; font-size: .9rem; cursor: pointer; border: 1px solid transparent; }
+    button.primary { background: linear-gradient(135deg, #7b3fe4, #fb015b); color: #fff; font-weight: 600; }
+    button.primary:disabled { opacity: .45; cursor: not-allowed; }
+    button.ghost { background: transparent; color: #c7d0e2; border-color: #2c3446; }
+    button.ghost:hover { border-color: #7b3fe4; color: #fff; }
+
+    .status { display: flex; align-items: center; gap: 10px; margin: 16px 0 4px; padding: 10px 12px;
+        border-radius: 9px; font-size: .9rem; border-left: 4px solid; }
+    .status .code { font-weight: 800; font-family: "SFMono-Regular", Consolas, monospace; }
+    .status.ok { background: rgba(43,182,115,.12); border-color: #2bb673; color: #7ce0ad; }
+    .status.bad { background: rgba(244,63,94,.12); border-color: #f43f5e; color: #ff9bab; }
+
+    .token { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .82rem; word-break: break-all;
+        background: #0e131d; border: 1px solid #2c3446; border-radius: 8px; padding: 10px 12px; line-height: 1.7; }
+    .token .t-h { color: #fb015b; }
+    .token .t-p { color: #b78bff; }
+    .token .t-s { color: #43c4f5; }
+    .token .dotsep { color: #5b6573; }
+
+    .claims { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    .claims td { padding: 6px 8px; border-bottom: 1px solid #232c3d; }
+    .claims td.k { color: #7c8699; font-family: "SFMono-Regular", Consolas, monospace; width: 70px; }
+
+    .countdown { margin-top: 12px; padding: 9px 12px; border-radius: 9px; font-size: .9rem; font-weight: 600;
+        background: rgba(123,63,228,.14); border: 1px solid #7b3fe4; color: #c9b3ff; }
+    .countdown.dead { background: rgba(244,63,94,.14); border-color: #f43f5e; color: #ff9bab; }
+
+    pre.req, pre.resp { background: #0e131d; border: 1px solid #2c3446; border-radius: 8px; padding: 11px 13px;
+        font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .82rem; white-space: pre-wrap; margin: 6px 0; }
+    pre.req { word-break: break-all; }
+    pre.resp { overflow-wrap: anywhere; }
+    pre.resp.ok { border-color: #2bb673; color: #b8f0d4; }
+    pre.resp.bad { border-color: #f43f5e; color: #ffc2cb; }
+
+    .hero { margin-top: 26px; background: #141a26; border: 1px solid #232c3d; border-radius: 14px; padding: 22px; }
+    .hero h3 { margin: 0 0 16px; font-size: 1.1rem; }
+    .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @@media (max-width: 800px) { .hero-grid { grid-template-columns: 1fr; } }
+    .hero-card { border-radius: 12px; padding: 18px; border: 1px solid; }
+    .hero-card.ok { background: rgba(43,182,115,.08); border-color: #2bb673; }
+    .hero-card.bad { background: rgba(244,63,94,.08); border-color: #f43f5e; }
+    .hero-card .big { font-size: 2.4rem; font-weight: 800; font-family: "SFMono-Regular", Consolas, monospace; }
+    .hero-card.ok .big { color: #2bb673; }
+    .hero-card.bad .big { color: #f43f5e; }
+    .hero-req { font-family: "SFMono-Regular", Consolas, monospace; font-size: .82rem; color: #c7d0e2; margin: 6px 0 10px; }
+    .hero-card p { margin: 0; font-size: .86rem; color: #9aa4b8; }
+
+    .s-foot { margin-top: 26px; padding-top: 16px; border-top: 1px solid #232c3d; color: #7c8699; font-size: .82rem; }
+
+    /* ---------- motion ---------- */
+    @@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @@keyframes softPulse { 0%, 100% { opacity: 1; } 50% { opacity: .72; } }
+    @@keyframes ripple { 0% { box-shadow: 0 0 0 0 rgba(244,63,94,.45); } 100% { box-shadow: 0 0 0 10px rgba(244,63,94,0); } }
+    @@keyframes revealIn { from { opacity: 0; max-height: 0; transform: translateY(-6px); } to { opacity: 1; max-height: 720px; transform: none; } }
+    @@keyframes revealOut { from { opacity: 1; max-height: 720px; transform: none; } to { opacity: 0; max-height: 0; transform: translateY(-6px); } }
+
+    .s-head   { animation: fadeInUp .4s ease both; }
+    .accounts { animation: fadeInUp .4s ease both .06s; }
+    .grid .panel:first-child { animation: fadeInUp .45s ease both .12s; }
+    .grid .panel:last-child  { animation: fadeInUp .45s ease both .20s; }
+    .hero     { animation: fadeInUp .45s ease both .28s; }
+    .s-foot   { animation: fadeInUp .45s ease both .34s; }
+
+    /* result cards collapse / expand */
+    .results { overflow: hidden; animation: revealIn .34s ease both; }
+    .results.closing { animation: revealOut .3s ease forwards; }
+
+    .countdown { animation: softPulse 1.8s ease-in-out infinite; }
+    .countdown.dead { animation: ripple .55s ease-out both; }
+
+    button.primary, button.ghost, .chip { transition: transform .12s ease, filter .12s ease, border-color .15s ease, color .15s ease, background .15s ease; }
+    button.primary:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+    button.primary:active:not(:disabled) { transform: translateY(0) scale(.98); }
+    button.ghost:hover { transform: translateY(-1px); }
+    button.ghost:active { transform: translateY(0) scale(.98); }
+    .chip:hover { transform: translateY(-1px); }
+    .field input, .field select { transition: border-color .15s ease, box-shadow .15s ease; }
+    .field input:focus, .field select:focus { box-shadow: 0 0 0 3px rgba(123,63,228,.18); }
+    .hero-card { transition: transform .2s ease, box-shadow .2s ease; }
+    .hero-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,.28); }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .studio, .studio * { animation: none !important; transition: none !important; }
+    }
+</style>
+
+@code {
+    private string username = "admin";
+    private string password = "password";
+
+    private string? token;
+    private string sub = "", role = "", expText = "";
+    private DateTime expUtc;
+
+    private int? loginStatus;
+    private bool loginOk;
+    private string loginMessage = "";
+
+    private string mode = "with";
+    private int? callStatus;
+    private bool callOk;
+    private string callBody = "";
+
+    private System.Timers.Timer? timer;
+    private int secondsLeft;
+    private bool countdownActive;
+
+    private bool loggingOut;
+
+    // CollapseDelayMs must match the .results revealOut animation (.3s in <style>).
+    private const int CollapseDelayMs = 340;
+    private const int CountdownIntervalMs = 1000;
+
+    private bool CanSend => mode == "without" || token is not null;
+
+    private void UseAdmin() { username = "admin"; password = "password"; }
+    private void UseAlice() { username = "alice"; password = "pa55"; }
+
+    private async Task Login(int? seconds)
+    {
+        StopTimer();
+        countdownActive = false;
+        callStatus = null;
+        callBody = "";
+
+        var url = Nav.BaseUri.TrimEnd('/') + "/login" + (seconds is > 0 ? $"?seconds={seconds}" : "");
+        try
+        {
+            var resp = await Http.PostAsJsonAsync(url, new LoginRequest(username, password));
+            loginStatus = (int)resp.StatusCode;
+            loginOk = resp.IsSuccessStatusCode;
+
+            if (loginOk)
+            {
+                var body = await resp.Content.ReadFromJsonAsync<TokenResponse>();
+                token = body?.Token;
+                loginMessage = "token issued";
+                DecodeIdentity();
+                if (seconds is > 0) StartCountdown();
+            }
+            else
+            {
+                token = null;
+                var msg = await resp.Content.ReadFromJsonAsync<MessageResponse>();
+                loginMessage = msg?.Message ?? "unauthorized";
+            }
+        }
+        catch (Exception ex)
+        {
+            loginStatus = 0;
+            loginOk = false;
+            loginMessage = ex.Message;
+            token = null;
+        }
+    }
+
+    // Animate the result cards out before clearing the data they render.
+    private async Task LogOut()
+    {
+        if (loggingOut) return;
+
+        loggingOut = true;
+        StopTimer();
+        countdownActive = false;
+        StateHasChanged();
+
+        await Task.Delay(CollapseDelayMs);
+
+        token = null;
+        loginStatus = null;
+        loginMessage = "";
+        callStatus = null;
+        callBody = "";
+        loggingOut = false;
+    }
+
+    private async Task CallSecure()
+    {
+        var url = Nav.BaseUri.TrimEnd('/') + "/secure-data";
+        var req = new HttpRequestMessage(HttpMethod.Get, url);
+
+        var bearer = AuthValueForMode();
+        if (bearer is not null)
+            req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearer);
+
+        try
+        {
+            var resp = await Http.SendAsync(req);
+            callStatus = (int)resp.StatusCode;
+            callOk = resp.IsSuccessStatusCode;
+            callBody = callOk
+                ? (await resp.Content.ReadFromJsonAsync<MessageResponse>())?.Message ?? ""
+                : "Rejected by [Authorize] — this request carried no valid identity.";
+        }
+        catch (Exception ex)
+        {
+            callStatus = 0;
+            callOk = false;
+            callBody = ex.Message;
+        }
+    }
+
+    private string? AuthValueForMode() => mode switch
+    {
+        "with" => token,
+        "without" => null,
+        "tampered" => Tamper(token),
+        _ => token
+    };
+
+    private static string? Tamper(string? t)
+    {
+        if (t is null) return null;
+        var parts = t.Split('.');
+        if (parts.Length < 2 || parts[1].Length == 0) return t;
+        var p = parts[1].ToCharArray();
+        p[0] = p[0] == 'A' ? 'B' : 'A';
+        parts[1] = new string(p);
+        return string.Join('.', parts);
+    }
+
+    private string RequestAuthLine() => mode switch
+    {
+        "with" => "Authorization: Bearer " + Shorten(token),
+        "without" => "(no Authorization header)",
+        "tampered" => "Authorization: Bearer " + Shorten(Tamper(token)) + "   ← payload altered",
+        _ => ""
+    };
+
+    private static string Shorten(string? t)
+        => t is null ? "—" : t.Length <= 28 ? t : $"{t[..14]}…{t[^8..]}";
+
+    private void DecodeIdentity()
+    {
+        sub = role = expText = "";
+        if (token is null) return;
+
+        var parts = token.Split('.');
+        if (parts.Length < 2) return;
+
+        try
+        {
+            var json = Encoding.UTF8.GetString(Base64UrlDecode(parts[1]));
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("sub", out var s)) sub = s.GetString() ?? "";
+            if (root.TryGetProperty("role", out var r)) role = r.GetString() ?? "";
+            if (root.TryGetProperty("exp", out var e) && e.TryGetInt64(out var sec))
+            {
+                expUtc = DateTimeOffset.FromUnixTimeSeconds(sec).UtcDateTime;
+                expText = $"{expUtc:yyyy-MM-dd HH:mm:ss} UTC";
+            }
+        }
+        catch
+        {
+            // display only
+        }
+    }
+
+    private static byte[] Base64UrlDecode(string s)
+    {
+        s = s.Replace('-', '+').Replace('_', '/');
+        s += (s.Length % 4) switch { 2 => "==", 3 => "=", _ => "" };
+        return Convert.FromBase64String(s);
+    }
+
+    private void StartCountdown()
+    {
+        secondsLeft = Math.Max(0, (int)Math.Ceiling((expUtc - DateTime.UtcNow).TotalSeconds));
+        countdownActive = true;
+        timer = new System.Timers.Timer(CountdownIntervalMs) { AutoReset = true };
+        timer.Elapsed += OnTick;
+        timer.Start();
+    }
+
+    private async void OnTick(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        secondsLeft = Math.Max(0, (int)Math.Ceiling((expUtc - DateTime.UtcNow).TotalSeconds));
+        if (secondsLeft <= 0) StopTimer();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void StopTimer()
+    {
+        if (timer is not null)
+        {
+            timer.Elapsed -= OnTick;
+            timer.Stop();
+            timer.Dispose();
+            timer = null;
+        }
+    }
+
+    public void Dispose() => StopTimer();
+}
