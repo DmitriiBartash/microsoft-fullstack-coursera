@@ -1,6 +1,6 @@
 # Microsoft Full-Stack Development (Coursera Certificate)
 
-Welcome to my repository for the **Microsoft Full-Stack Web Development Professional Certificate** on Coursera. This space contains all the projects, assignments, and notes I’ve completed throughout the 12-course specialization. I'm using it to build a professional portfolio and solidify my skills as a full-stack developer.
+Welcome to my repository for the **Microsoft Full-Stack Web Development Professional Certificate** on Coursera. This space contains all the projects, assignments, and notes I’ve completed throughout the specialization. I'm using it to build a professional portfolio and solidify my skills as a full-stack developer.
 
 ---
 
@@ -43,7 +43,7 @@ This roadmap outlines my progress through the Coursera **Microsoft Full-Stack We
 
 ---
 
-### ✅ Course 1: Foundations of Full-Stack Development
+### ✅ Course 1: Foundations of Coding Full-Stack Development
 
 - 🔹 Learned the core principles of full-stack development
 - 🔹 Practiced logic, pseudocode, control structures, and loops
@@ -100,8 +100,8 @@ This roadmap outlines my progress through the Coursera **Microsoft Full-Stack We
 - 🔹 Explored the core features of **Entity Framework Core (EF Core)** for working with relational databases  
 - 🔹 Set up relational databases, modeled data, and performed **CRUD operations** using EF Core  
 - 🔹 Mastered SQL fundamentals: **SELECT**, **INSERT**, **UPDATE**, **DELETE**, **JOINs**, and aggregate functions  
-- 🔹 Applied advanced query techniques, **transactions**, **concurrency control**, and **stored procedures**  
-- 🔹 Learned performance tuning, query optimization, and security best practices for SQL databases  
+- 🔹 Applied advanced query techniques, **transactions**, and **stored procedures**  
+- 🔹 Practiced **query optimization** with indexing and `EXPLAIN`, plus input-validation safety  
 - 🔹 Used **Microsoft Copilot** to write, debug, and optimize complex SQL queries  
 
 ---
@@ -117,12 +117,12 @@ This roadmap outlines my progress through the Coursera **Microsoft Full-Stack We
 
 ---
 
-### 🔄 Course 8: Security and Authentication *(in progress)*
+### ✅ Course 8: Security and Authentication
 
 - 🔹 Implemented user registration, authentication, and role management with **ASP.NET Identity**  
 - 🔹 Secured APIs using **token-based authentication**, **JWT**, and **role-based access control (RBAC)**  
 - 🔹 Built **OAuth 2.0 Authorization Code Flow** for external authentication  
-- 🔹 Applied data protection principles: **AES-256 encryption/decryption**, data masking, and secure storage  
+- 🔹 Applied data protection principles: **AES-256 encryption/decryption** of sensitive data  
 - 🔹 Learning to leverage **Microsoft Copilot** for writing secure code and resolving security issues  
 
 ---
