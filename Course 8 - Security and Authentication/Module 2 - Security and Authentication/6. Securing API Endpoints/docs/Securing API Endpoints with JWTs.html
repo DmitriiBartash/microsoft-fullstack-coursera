@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Securing API Endpoints with JWTs — Course 8 · Module 2</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* login / create  */
+  .flow .d { color: #b78bff; }   /* validate / guard */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+  .flow .ok { color: #4ade80; }  /* 200     */
+  .flow .no { color: #fb7185; }  /* 401/403 */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 2 · Lesson 6
+      <span class="pill">You Try It!</span></p>
+    <h1>Securing API Endpoints with JWTs</h1>
+    <p class="lead">
+      Build an ASP.NET Core <strong>Web API</strong> that authenticates with JWTs <strong>and enforces
+      role-based access control</strong>. A client logs in, receives a <strong>signed JWT carrying role
+      claims</strong>, and uses it as a <code>Bearer</code> token. The JWT Bearer handler validates every
+      token; <code>[Authorize(Roles = …)]</code> then decides <em>who may do what</em> — returning
+      <strong>401</strong> without a token and <strong>403</strong> when the role is wrong.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Secure API endpoints using JWT authentication and <strong>role-based access control
+      (RBAC)</strong>: issue tokens that carry the caller's roles, configure the middleware to read those
+      roles, and protect endpoints so only authorized roles can reach them. By the end, only authenticated
+      users with the right role can access each secured route.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A Web API project named <code class="inline">SecureApiWithJwt</code> with these pieces:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>appsettings.json</code></td><td>Define <code>JwtSettings</code> — <code>Key</code>, <code>Issuer</code>, <code>Audience</code>, <code>DurationInMinutes</code></td></tr>
+        <tr><td><code>Program.cs</code></td><td>Register JWT Bearer auth; set <code>TokenValidationParameters</code> (incl. <strong>role claim mapping</strong>); wire <code>UseAuthentication</code> → <code>UseAuthorization</code></td></tr>
+        <tr><td><code>Models/User.cs</code></td><td>User model — <code>Username</code>, <code>Password</code>, and one or more <code>Roles</code></td></tr>
+        <tr><td><code>Services/TokenService.cs</code></td><td>Read <code>JwtSettings</code>; build &amp; sign a token with <strong>username + role claims</strong></td></tr>
+        <tr><td><code>Controllers/AuthController.cs</code></td><td><code>POST /auth/login</code> — validate credentials, return a JWT (401 on failure)</td></tr>
+        <tr><td><code>Controllers/ValuesController.cs</code></td><td><code>GET</code> endpoints guarded with <code>[Authorize(Roles = "Admin")]</code> / <code>"User"</code></td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">POST /auth/login</span> <span class="ar">→</span>
+      <span class="ar">validate(store)</span> <span class="ar">→</span>
+      <span class="c">TokenService.GenerateToken(user, roles)</span> <span class="ar">→</span>
+      <span class="t">JWT</span> <span class="ar">→</span>
+      <span class="d">GET /values [Bearer]</span> <span class="ar">→</span>
+      <span class="d">JwtBearer validates</span> <span class="ar">→</span>
+      <span class="d">role check</span> <span class="ar">→</span>
+      <span class="ok">200</span> <span class="ar">/</span> <span class="no">401</span> <span class="ar">/</span> <span class="no">403</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>NuGet packages: <code class="inline">Microsoft.AspNetCore.Authentication.JwtBearer</code>, <code class="inline">System.IdentityModel.Tokens.Jwt</code>, <code class="inline">Microsoft.IdentityModel.Tokens</code></li>
+      <li>A REST client to test — <strong>Postman</strong> or <code class="inline">curl</code></li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps <span style="font-size:.7em;color:var(--muted);font-weight:400">· 0 of 6 completed</span></h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Scaffold the Web API, move into it, and add the JWT packages.</p>
+<pre class="code">dotnet new webapi -o SecureApiWithJwt
+cd SecureApiWithJwt
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+dotnet add package System.IdentityModel.Tokens.Jwt --version 7.2.0
+dotnet add package Microsoft.IdentityModel.Tokens --version 7.2.0</pre>
+    <ul class="plain">
+      <li>Remove the default <strong>WeatherForecast</strong> files (<code class="inline">WeatherForecast.cs</code>, <code class="inline">Controllers/WeatherForecastController.cs</code>).</li>
+      <li>Open <code class="inline">Program.cs</code> and <code class="inline">appsettings.json</code> for configuration.</li>
+    </ul>
+    <div class="callout"><strong>Pin <code class="inline">JwtBearer</code> to your SDK's major version</strong> (e.g. <code class="inline">--version 8.0.*</code> on .NET 8) so it matches the runtime.</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Add configuration for JWT authentication</h3>
+    <p class="scenario">Store the settings, then tell the app how to validate tokens.</p>
+    <p>Add a <code class="inline">JwtSettings</code> section to <code class="inline">appsettings.json</code>:</p>
+<pre class="code">"JwtSettings": {
+  "Key": "SuperSecretKeyForJwtTokenAuthorization123456789",
+  "Issuer": "SecureApi",
+  "Audience": "SecureApiUsers",
+  "DurationInMinutes": 60
+}</pre>
+    <p style="margin:12px 0 0">Then in <code class="inline">Program.cs</code>:</p>
+    <ul class="plain">
+      <li>Register JWT Bearer authentication in the service container.</li>
+      <li>Set up <code class="inline">TokenValidationParameters</code> to validate <strong>issuer, audience, lifetime, and signing key</strong>.</li>
+      <li><strong>Map the roles claim</strong> (<code class="inline">RoleClaimType</code>) so <code class="inline">[Authorize(Roles = …)]</code> can read roles from the token.</li>
+      <li>Ensure the pipeline runs <strong>authentication</strong> then <strong>authorization</strong> middleware.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement token generation</h3>
+    <p class="scenario">Centralize JWT creation and put the roles into the token.</p>
+    <ul class="plain">
+      <li>Create a <code class="inline">TokenService</code> class to handle JWT creation, reading values from <code class="inline">JwtSettings</code>.</li>
+      <li>When generating a token, add <strong>claims for the username and the user's roles</strong> (one role claim per role).</li>
+      <li>Expose a method such as <code class="inline">GenerateToken(User user)</code> returning the signed token string.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Add a login endpoint</h3>
+    <p class="scenario">Authenticate credentials and hand back a role-bearing token.</p>
+    <ul class="plain">
+      <li>Create an <code class="inline">AuthController</code> in the <code class="inline">Controllers</code> folder.</li>
+      <li>Implement <code class="inline">POST /auth/login</code>: validate the supplied credentials against the user store; if valid, return the JWT from <code class="inline">TokenService</code>; if invalid, return <strong>401 Unauthorized</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Secure API endpoints</h3>
+    <p class="scenario">Guard endpoints by role and verify the guard works.</p>
+    <ul class="plain">
+      <li>Create a <code class="inline">ValuesController</code> with <code class="inline">GET</code> endpoints.</li>
+      <li>Restrict access by role with <code class="inline">[Authorize]</code>:
+        <ul class="plain">
+          <li><code class="inline">[Authorize(Roles = "Admin")]</code> — admin-only data.</li>
+          <li><code class="inline">[Authorize(Roles = "Admin,User")]</code> — data for either role.</li>
+        </ul>
+      </li>
+      <li>Confirm an anonymous or wrong-role request is rejected.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Test the application</h3>
+    <p class="scenario">Use <strong>Postman</strong> (or <code>curl</code>) to drive the full handshake.</p>
+    <ul class="plain">
+      <li>Generate a token by sending a <code class="inline">POST</code> request to <code class="inline">/auth/login</code> with valid credentials.</li>
+      <li>Call the secured endpoints with <code class="inline">Authorization: Bearer &lt;token&gt;</code> and verify role-based restrictions.</li>
+    </ul>
+<pre class="code"><span class="cmt"># 1) log in as an Admin → copy the returned token</span>
+curl -X POST http://localhost:5000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"password"}'
+
+<span class="cmt"># 2) Admin token reaching an Admin-only route → 200</span>
+curl http://localhost:5000/values/admin -H "Authorization: Bearer &lt;token&gt;"
+
+<span class="cmt"># 3) no token → 401  ·  valid token but wrong role → 403</span>
+curl -i http://localhost:5000/values/admin</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Logging in with valid credentials returns a <strong>signed JWT carrying role claims</strong>. With that
+    token, a route allowed for the caller's role returns <strong>200 OK</strong>; a request with
+    <strong>no/invalid/expired token</strong> returns <strong>401 Unauthorized</strong>; and a request with a
+    <strong>valid token but the wrong role</strong> returns <strong>403 Forbidden</strong>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">SecureApiWithJwt</code> Web API created; <code class="inline">JwtBearer</code>, <code class="inline">System.IdentityModel.Tokens.Jwt</code>, <code class="inline">Microsoft.IdentityModel.Tokens</code> added</li>
+      <li>Default WeatherForecast files removed</li>
+      <li><code class="inline">appsettings.json</code> defines <code class="inline">JwtSettings</code> (key, issuer, audience, duration)</li>
+      <li><code class="inline">Program.cs</code> registers JWT Bearer auth, validates the token, <strong>maps the role claim</strong>, and runs authentication → authorization</li>
+      <li><code class="inline">TokenService</code> issues a signed token with <strong>username + role</strong> claims</li>
+      <li><code class="inline">AuthController</code> exposes <code class="inline">POST /auth/login</code> (JWT on success, 401 on failure)</li>
+      <li><code class="inline">ValuesController</code> endpoints are protected with <code class="inline">[Authorize(Roles = …)]</code></li>
+      <li>Verified: right role → <strong>200</strong>, no token → <strong>401</strong>, wrong role → <strong>403</strong></li>
+    </ul>
+  </div>
+
+  <!-- ===================== IMPLEMENTATION NOTES ===================== -->
+  <h2 class="section"><span class="em">🏗️</span> Implementation notes</h2>
+  <div class="card">
+    <p style="margin:0 0 10px">The reference solution in this folder is <strong>enriched beyond the literal steps</strong>
+      for teaching and testability. The deviations below are intentional:</p>
+    <ul class="plain">
+      <li><strong>Layering</strong> — <code class="inline">User</code>, <code class="inline">UserStore</code>,
+        <code class="inline">TokenService</code> and <code class="inline">JwtSettings</code> live in a shared
+        <code class="inline">SecureApiCore</code> class library, so the API and the visual studio reuse one
+        implementation; <code class="inline">SecureApiWithJwt</code> references it.</li>
+      <li><strong>Packages</strong> — <code class="inline">System.IdentityModel.Tokens.Jwt</code> +
+        <code class="inline">Microsoft.IdentityModel.Tokens</code> sit in <code class="inline">SecureApiCore</code>
+        (token creation); the API holds <code class="inline">…JwtBearer</code> and gets the rest transitively.</li>
+      <li><strong>User store</strong> — centralised in <code class="inline">SecureApiCore.UserStore</code>
+        (a <code class="inline">static</code> hardcoded list <em>with roles</em>) and injected via DI, rather than
+        declared in a controller.</li>
+      <li><strong><code class="inline">SecureApiStudio</code></strong> — a Blazor “Security Studio” that drives the
+        real <code class="inline">JwtBearer</code> + role guard in-process, making the
+        <strong>login → token → 200/401/403</strong> handshake visible per role.</li>
+      <li><strong><code class="inline">SecureApiWithJwt.Tests</code></strong> — xUnit integration tests
+        (<code class="inline">WebApplicationFactory</code>) covering login, admin-only vs shared routes, and missing /
+        wrong-role / tampered / expired tokens — the in-memory <code class="inline">TestServer</code> stands in for
+        the manual Postman step.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>401 vs 403</strong> — the JWT Bearer handler returns <strong>401 Unauthorized</strong> when a token
+        is missing, malformed, or expired (<em>authentication</em> failed); <code class="inline">[Authorize(Roles = …)]</code>
+        returns <strong>403 Forbidden</strong> when the token is valid but lacks the required role
+        (<em>authorization</em> failed). Different failures, different codes.</li>
+      <li><strong>Role claim mapping</strong> — <code class="inline">[Authorize(Roles = …)]</code> reads roles from
+        whichever claim <code class="inline">RoleClaimType</code> points at. If the token writes roles under
+        <code class="inline">"role"</code> but the validator expects <code class="inline">ClaimTypes.Role</code>, every
+        role check fails — map them deliberately so they agree.</li>
+      <li><strong>Roles travel in the token</strong> — RBAC is stateless: the signed JWT carries the role claims, so the
+        API authorizes from the token alone with no per-request database lookup.</li>
+      <li><strong>Middleware order</strong> — <code class="inline">UseAuthentication()</code> must run
+        <strong>before</strong> <code class="inline">UseAuthorization()</code>; otherwise the user's identity (and roles)
+        isn't established when the authorization check runs.</li>
+      <li><strong>Protect the secret &amp; passwords</strong> — the <code class="inline">appsettings.json</code> key is fine
+        for a local lab, but production keys belong in user-secrets / environment variables / a vault, and real
+        credentials are stored as salted hashes (bcrypt / Argon2), never plaintext. HS256 needs a key ≥ 256 bits (32+ bytes).</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>

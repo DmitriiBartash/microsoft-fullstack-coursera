@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="SecureApiCore/SecureApiCore.csproj" />
+  <Project Path="SecureApiStudio/SecureApiStudio.csproj" />
+  <Project Path="SecureApiWithJwt.Tests/SecureApiWithJwt.Tests.csproj" />
+  <Project Path="SecureApiWithJwt/SecureApiWithJwt.csproj" />
+</Solution>

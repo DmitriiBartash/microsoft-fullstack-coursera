@@ -1,0 +1,533 @@
+@page "/"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@using System.Text
+@using System.Text.Json
+@using SecureApiCore.Models
+
+<PageTitle>Security Studio</PageTitle>
+
+<div class="console">
+
+    <header class="hdr">
+        <div class="mark">
+            <span class="shield">🛡️</span>
+            <div>
+                <div class="title">SECURE&nbsp;API<span class="sub"> · access control console</span></div>
+                <div class="crumb">Securing API Endpoints — JWT authentication + role-based access · the real guard, in-process</div>
+            </div>
+        </div>
+    </header>
+
+    <p class="legend">
+        <span class="key"><span class="sw granted"></span>200 granted</span>
+        <span class="key"><span class="sw authn"></span>401 — no valid identity (authentication)</span>
+        <span class="key"><span class="sw authz"></span>403 — wrong role (authorization)</span>
+    </p>
+
+    <!-- ============ ACCESS MATRIX (signature) ============ -->
+    <section class="matrix-card">
+        <table class="matrix @(busy ? "busy" : "")">
+            <thead>
+                <tr>
+                    <th class="corner">identity&nbsp;╲&nbsp;endpoint</th>
+                    @foreach (var ep in endpoints)
+                    {
+                        <th @key="ep.Path">
+                            <div class="ep">@ep.Path</div>
+                            <div class="guard">@ep.Guard</div>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var idn in identities)
+                {
+                    <tr @key="idn.Id" class="@(focusId == idn.Id ? "rowon" : "")">
+                        <th class="rowhead" @onclick="() => SelectIdentity(idn.Id)">
+                            <span class="ava @idn.Id">@Avatar(idn)</span>
+                            <span class="who">
+                                <span class="name">@idn.Label</span>
+                                <span class="role">@idn.RoleText</span>
+                            </span>
+                        </th>
+                        @foreach (var ep in endpoints)
+                        {
+                            var key = Key(idn.Id, ep.Path);
+                            var cell = matrix.GetValueOrDefault(key);
+                            <td @key="ep.Path"
+                                class="cell @(cell is null ? "empty" : cell.Gate) @(selectedKey == key ? "sel" : "")"
+                                @onclick="() => SelectCell(idn.Id, ep.Path)">
+                                @if (cell is null)
+                                {
+                                    <span class="lamp">—</span>
+                                }
+                                else
+                                {
+                                    <span class="lamp">@cell.Status</span>
+                                    <span class="verdict">@Verdict(cell)</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+
+    <div class="panes">
+
+        <!-- ============ TURNSTILE — two gates ============ -->
+        <section class="pane">
+            <h3><span class="pdot clear"></span> Request pipeline</h3>
+
+            @if (selectedKey is null)
+            {
+                <p class="hint">Pick any cell above to trace that request through the two gates — and see <em>which</em> one decided the outcome.</p>
+            }
+            else
+            {
+                var (sid, spath) = ParseKey(selectedKey);
+                var sidn = identities.First(i => i.Id == sid);
+                var sep = endpoints.First(e => e.Path == spath);
+                var shown = tamperReplay && lastTampered is not null ? lastTampered : matrix.GetValueOrDefault(selectedKey);
+
+                <div class="reqline">GET @sep.Path &nbsp;·&nbsp; <b>@sidn.Label</b> (@sidn.RoleText)</div>
+
+                @if (shown is not null)
+                {
+                    var (g1, g2) = Gates(sep, shown);
+                    <div class="gates">
+                        <div class="gate @g1">
+                            <div class="glabel">Gate 1</div>
+                            <div class="gname">Authentication</div>
+                            <div class="gq">valid token?</div>
+                            <div class="gmark">@GateMark(g1)</div>
+                        </div>
+                        <div class="arrow @(Reached(g1) ? "live" : "dead")">→</div>
+                        <div class="gate @g2">
+                            <div class="glabel">Gate 2</div>
+                            <div class="gname">Authorization</div>
+                            <div class="gq">required role?</div>
+                            <div class="gmark">@GateMark(g2)</div>
+                        </div>
+                        <div class="arrow @(g2 is "pass" or "open" ? "live" : "dead")">→</div>
+                        <div class="outcome @(shown.Ok ? "ok" : "no")">@shown.Status</div>
+                    </div>
+
+                    <p class="explain">@Explain(sep, shown)</p>
+                    <pre class="resp @(shown.Ok ? "ok" : "no")">@shown.Body</pre>
+
+                    @if (!sidn.IsAnon)
+                    {
+                        <button type="button" class="mini" @onclick="ReplayTampered" disabled="@busy">↻ Replay with tampered token</button>
+                        @if (tamperReplay)
+                        {
+                            <span class="tnote">Signature no longer matches → Gate 1 rejects it with 401, before the role is ever checked.</span>
+                        }
+                    }
+                }
+            }
+        </section>
+
+        <!-- ============ JWT INSPECTOR ============ -->
+        <section class="pane">
+            <h3><span class="pdot mag"></span> JWT inspector</h3>
+
+            @{
+                var fidn = identities.First(i => i.Id == focusId);
+                var ftoken = tokens.GetValueOrDefault(focusId);
+            }
+            <div class="wholine"><span class="ava @fidn.Id">@Avatar(fidn)</span> <b>@fidn.Label</b> · @fidn.RoleText</div>
+
+            @if (fidn.IsAnon || ftoken is null)
+            {
+                <p class="hint">No token — an anonymous caller carries no identity. Authentication can't succeed, so every protected route answers <b>401</b>.</p>
+            }
+            else
+            {
+                var segs = ftoken.Split('.');
+                var (sub, roles, exp) = Decode(ftoken);
+                <div class="jwt"><span class="t-h">@segs[0]</span><span class="dotsep">.</span><span class="t-p">@(segs.Length > 1 ? segs[1] : "")</span><span class="dotsep">.</span><span class="t-s">@(segs.Length > 2 ? segs[2] : "")</span></div>
+                <p class="seglegend"><span class="t-h">header</span> · <span class="t-p">payload</span> · <span class="t-s">signature</span></p>
+
+                <table class="claims">
+                    <tbody>
+                        <tr><td class="k">sub</td><td>@sub</td></tr>
+                        <tr>
+                            <td class="k">role</td>
+                            <td>
+                                @foreach (var r in roles)
+                                {
+                                    <span class="rolechip" @key="r">@r</span>
+                                }
+                            </td>
+                        </tr>
+                        <tr><td class="k">exp</td><td>@exp</td></tr>
+                    </tbody>
+                </table>
+                <p class="ihint">The <code>role</code> claim is what <code>[Authorize(Roles=…)]</code> reads at Gate 2.</p>
+            }
+        </section>
+    </div>
+
+    <footer class="foot">
+        Every code above is a live HTTP call to this app's own <code>/auth/login</code> and <code>/values/*</code> endpoints,
+        guarded by the same <code>JwtBearer</code> handler and role policies that run under <code>dotnet run</code> in
+        <code>SecureApiWithJwt</code>. The matrix is a real RBAC truth table, not a mock-up.
+    </footer>
+</div>
+
+<style>
+    .console { max-width: 1080px; margin: 0 auto; padding: 30px 22px 70px;
+        --void:#0b0f17; --panel:#121826; --panel2:#0e131d; --line:#233044; --ink:#e6edf6; --mut:#8b97ad;
+        --granted:#34d399; --authn:#f59e0b; --forbid:#fb3a5e; --clear:#22d3ee;
+        --mag:#fb015b; --pur:#7b3fe4; --blu:#38bdf8;
+        color: var(--ink); }
+    .console code { background: #1a2233; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px;
+        font-family: ui-monospace, "SFMono-Regular", Consolas, Menlo, monospace; font-size: .84em; color: #cdd7ea; }
+
+    /* header */
+    .hdr { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .mark { display: flex; align-items: center; gap: 14px; }
+    .shield { font-size: 2rem; filter: drop-shadow(0 2px 6px rgba(34,211,238,.35)); }
+    .title { font-size: 1.5rem; font-weight: 800; letter-spacing: .06em; }
+    .title .sub { color: var(--clear); font-weight: 600; letter-spacing: .02em; font-size: .8rem; text-transform: uppercase; }
+    .crumb { color: var(--mut); font-size: .86rem; margin-top: 3px; }
+    /* legend */
+    .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 18px 0 6px; color: var(--mut); font-size: .82rem; }
+    .legend .key { display: flex; align-items: center; gap: 7px; }
+    .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+    .sw.granted { background: var(--granted); } .sw.authn { background: var(--authn); } .sw.authz { background: var(--forbid); }
+
+    /* matrix */
+    .matrix-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin: 12px 0 22px;
+        box-shadow: 0 18px 40px rgba(0,0,0,.30); overflow-x: auto; }
+    .matrix { width: 100%; border-collapse: separate; border-spacing: 8px; transition: opacity .18s ease; }
+    .matrix.busy { opacity: .5; }
+    .matrix th, .matrix td { text-align: left; }
+    .matrix thead th { color: var(--mut); font-weight: 600; vertical-align: bottom; padding: 6px 10px; }
+    .matrix thead .ep { font-family: ui-monospace, Consolas, monospace; color: #cdd7ea; font-size: .9rem; }
+    .matrix thead .guard { font-size: .72rem; color: var(--mut); margin-top: 2px; }
+    .corner { font-size: .72rem !important; text-transform: uppercase; letter-spacing: .04em; }
+
+    .rowhead { display: flex; align-items: center; gap: 10px; padding: 10px; cursor: pointer; min-width: 150px; }
+    .ava { width: 34px; height: 34px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center;
+        font-family: ui-monospace, Consolas, monospace; font-weight: 800; font-size: .8rem; color: #04141a; flex: 0 0 auto; }
+    .ava.anon  { background: #38465c; color: #cdd7ea; }
+    .ava.alice { background: linear-gradient(135deg, var(--blu), var(--clear)); }
+    .ava.admin { background: linear-gradient(135deg, var(--pur), var(--mag)); color: #fff; }
+    .who { display: flex; flex-direction: column; line-height: 1.25; }
+    .who .name { font-weight: 700; font-size: .95rem; }
+    .who .role { font-size: .74rem; color: var(--mut); }
+    tr.rowon .rowhead { background: rgba(34,211,238,.08); border-radius: 10px; }
+
+    .cell { border: 1px solid var(--line); border-radius: 11px; padding: 14px 10px; cursor: pointer; background: var(--panel2);
+        min-width: 116px; text-align: center; transition: transform .12s ease, box-shadow .15s ease, border-color .15s; }
+    .cell:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0,0,0,.30); }
+    .cell .lamp { display: block; font-family: ui-monospace, Consolas, monospace; font-weight: 800; font-size: 1.5rem; line-height: 1; }
+    .cell .verdict { display: block; font-size: .72rem; margin-top: 5px; opacity: .85; }
+    .cell.empty { color: var(--mut); }
+    .cell.granted { color: var(--granted); border-color: rgba(52,211,153,.45); background: rgba(52,211,153,.07); }
+    .cell.authn   { color: var(--authn);   border-color: rgba(245,158,11,.45);  background: rgba(245,158,11,.07); }
+    .cell.authz   { color: var(--forbid);  border-color: rgba(251,58,94,.45);   background: rgba(251,58,94,.07); }
+    .cell.error   { color: var(--mut); }
+    .cell.sel { outline: 2px solid var(--clear); outline-offset: -2px; }
+
+    /* panes */
+    .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @@media (max-width: 820px) { .panes { grid-template-columns: 1fr; } }
+    .pane { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+    .pane h3 { margin: 0 0 14px; font-size: 1.05rem; display: flex; align-items: center; gap: 9px; }
+    .pdot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+    .pdot.clear { background: var(--clear); } .pdot.mag { background: var(--mag); }
+    .hint { color: var(--mut); font-size: .9rem; line-height: 1.6; }
+
+    /* turnstile */
+    .reqline { font-family: ui-monospace, Consolas, monospace; font-size: .9rem; color: #cdd7ea;
+        background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; }
+    .gates { display: flex; align-items: stretch; gap: 10px; margin: 16px 0 6px; }
+    .gate { flex: 1; border: 1px solid var(--line); border-radius: 11px; padding: 12px 10px; text-align: center; background: var(--panel2); }
+    .gate .glabel { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--mut); }
+    .gate .gname { font-weight: 700; font-size: .9rem; margin-top: 2px; }
+    .gate .gq { font-size: .74rem; color: var(--mut); margin: 2px 0 8px; }
+    .gate .gmark { font-size: 1.3rem; font-weight: 800; }
+    .gate.pass { border-color: var(--granted); color: var(--granted); }
+    .gate.open { border-color: var(--clear);   color: var(--clear); }
+    .gate.stop { border-color: var(--forbid);  color: var(--forbid); box-shadow: inset 0 0 0 1px var(--forbid); }
+    .gate.skip { opacity: .38; }
+    .arrow { align-self: center; color: var(--mut); font-size: 1.2rem; }
+    .arrow.dead { opacity: .25; }
+    .arrow.live { color: var(--clear); }
+    .outcome { align-self: center; min-width: 64px; text-align: center; font-family: ui-monospace, Consolas, monospace;
+        font-weight: 800; font-size: 1.6rem; border-radius: 10px; padding: 10px 8px; }
+    .outcome.ok { color: var(--granted); background: rgba(52,211,153,.10); }
+    .outcome.no { color: var(--forbid); background: rgba(251,58,94,.10); }
+
+    .explain { font-size: .87rem; color: #c3cde0; line-height: 1.6; margin: 12px 0 4px; }
+    pre.resp { background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; margin: 8px 0 0;
+        font-family: ui-monospace, Consolas, monospace; font-size: .8rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+    pre.resp.ok { border-color: rgba(52,211,153,.5); color: #b8f0d4; }
+    pre.resp.no { border-color: rgba(251,58,94,.5); color: #ffc2cb; }
+    .mini { margin-top: 12px; background: transparent; color: #cdd7ea; border: 1px solid var(--line); border-radius: 8px;
+        padding: 7px 12px; font-size: .82rem; cursor: pointer; }
+    .mini:hover:not(:disabled) { border-color: var(--forbid); color: #ffc2cb; }
+    .tnote { display: block; margin-top: 8px; font-size: .8rem; color: var(--authn); }
+
+    /* inspector */
+    .wholine { display: flex; align-items: center; gap: 10px; font-size: .92rem; margin-bottom: 12px; }
+    .jwt { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; word-break: break-all; line-height: 1.7;
+        background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px; }
+    .jwt .t-h { color: var(--mag); } .jwt .t-p { color: var(--pur); } .jwt .t-s { color: var(--blu); } .jwt .dotsep { color: var(--mut); }
+    .seglegend { font-size: .74rem; margin: 6px 0 12px; }
+    .seglegend .t-h { color: var(--mag); } .seglegend .t-p { color: var(--pur); } .seglegend .t-s { color: var(--blu); }
+    .claims { width: 100%; border-collapse: collapse; font-size: .86rem; }
+    .claims td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .claims td.k { color: var(--mut); font-family: ui-monospace, Consolas, monospace; width: 56px; }
+    .rolechip { display: inline-block; background: rgba(123,63,228,.18); border: 1px solid var(--pur); color: #d3c2ff;
+        border-radius: 20px; padding: 2px 10px; margin: 0 6px 4px 0; font-size: .78rem; font-weight: 600; }
+    .ihint { font-size: .78rem; color: var(--mut); margin: 10px 0 0; line-height: 1.55; }
+
+    .foot { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--mut); font-size: .82rem; line-height: 1.6; }
+
+    /* motion */
+    @@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .hdr { animation: fadeUp .4s ease both; }
+    .matrix-card { animation: fadeUp .45s ease both .08s; }
+    .panes { animation: fadeUp .45s ease both .16s; }
+    .gates .gate.stop { animation: fadeUp .3s ease both; }
+    @@media (prefers-reduced-motion: reduce) { .console, .console * { animation: none !important; transition: none !important; } }
+</style>
+
+@code {
+    private sealed record Identity(string Id, string Label, string Username, string Password, string RoleText, bool IsAnon);
+    private sealed record Endpoint(string Path, string Guard);
+    private sealed record Cell(int Status, bool Ok, string Gate, string Body);
+
+    private readonly Identity[] identities =
+    [
+        new("anon",  "Anonymous", "",      "",         "no token", true),
+        new("alice", "alice",     "alice", "pa55",     "User",     false),
+        new("admin", "admin",     "admin", "password", "Admin",    false),
+    ];
+
+    private readonly Endpoint[] endpoints =
+    [
+        new("/values/public", "AllowAnonymous"),
+        new("/values/user",   "Roles: Admin, User"),
+        new("/values/admin",  "Roles: Admin"),
+    ];
+
+    private readonly Dictionary<string, string?> tokens = new();   // identityId -> token (null = none)
+    private readonly Dictionary<string, Cell> matrix = new();       // "id|path" -> Cell
+    private string focusId = "admin";
+    private string? selectedKey;
+    private Cell? lastTampered;
+    private bool tamperReplay;
+    private bool busy;
+
+    private static string Key(string id, string path) => $"{id}|{path}";
+    private static (string id, string path) ParseKey(string key) { var p = key.Split('|', 2); return (p[0], p[1]); }
+    private static string Avatar(Identity i) => i.IsAnon ? "∅" : i.Id[..2].ToUpperInvariant();
+    private static string Verdict(Cell c) => c.Status switch { 200 => "granted", 401 => "no identity", 403 => "wrong role", _ => "error" };
+    private static string GateMark(string s) => s switch { "pass" => "✓", "open" => "○", "stop" => "✕", "skip" => "·", _ => "?" };
+    private static bool Reached(string g1) => g1 is "pass" or "open";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await RunAll();
+            StateHasChanged();
+        }
+    }
+
+    private async Task RunAll()
+    {
+        busy = true;
+        tamperReplay = false;
+        // Overwrite each cell in place (no Clear) so components update rather than disappear/reappear.
+        foreach (var idn in identities)
+        {
+            var token = await EnsureToken(idn);
+            foreach (var ep in endpoints)
+                matrix[Key(idn.Id, ep.Path)] = await Call(ep, token, tamper: false);
+        }
+        busy = false;
+    }
+
+    private void SelectIdentity(string id)
+    {
+        focusId = id;
+        selectedKey = null;
+        tamperReplay = false;
+    }
+
+    private async Task SelectCell(string id, string path)
+    {
+        focusId = id;
+        selectedKey = Key(id, path);
+        tamperReplay = false;
+        if (!matrix.ContainsKey(selectedKey))
+        {
+            var idn = identities.First(i => i.Id == id);
+            var ep = endpoints.First(e => e.Path == path);
+            busy = true;
+            matrix[selectedKey] = await Call(ep, await EnsureToken(idn), tamper: false);
+            busy = false;
+        }
+    }
+
+    private async Task ReplayTampered()
+    {
+        if (selectedKey is null) return;
+        var (id, path) = ParseKey(selectedKey);
+        var idn = identities.First(i => i.Id == id);
+        var ep = endpoints.First(e => e.Path == path);
+        busy = true;
+        lastTampered = await Call(ep, await EnsureToken(idn), tamper: true);
+        tamperReplay = true;
+        busy = false;
+    }
+
+    private async Task<string?> EnsureToken(Identity idn)
+    {
+        if (idn.IsAnon) return null;
+        if (tokens.TryGetValue(idn.Id, out var cached)) return cached;
+        var url = Nav.BaseUri.TrimEnd('/') + "/auth/login";
+        try
+        {
+            var resp = await Http.PostAsJsonAsync(url, new LoginRequest(idn.Username, idn.Password));
+            var token = resp.IsSuccessStatusCode
+                ? (await resp.Content.ReadFromJsonAsync<TokenResponse>())?.Token
+                : null;
+            tokens[idn.Id] = token;
+            return token;
+        }
+        catch
+        {
+            tokens[idn.Id] = null;
+            return null;
+        }
+    }
+
+    private async Task<Cell> Call(Endpoint ep, string? token, bool tamper)
+    {
+        var url = Nav.BaseUri.TrimEnd('/') + ep.Path;
+        var req = new HttpRequestMessage(HttpMethod.Get, url);
+        var bearer = tamper ? Tamper(token) : token;
+        if (bearer is not null)
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+        try
+        {
+            var resp = await Http.SendAsync(req);
+            var status = (int)resp.StatusCode;
+            var ok = resp.IsSuccessStatusCode;
+            var body = ok
+                ? (await resp.Content.ReadFromJsonAsync<MessageResponse>())?.Message ?? ""
+                : await SafeMessage(resp);
+            return new Cell(status, ok, GateFor(status), body);
+        }
+        catch (Exception ex)
+        {
+            return new Cell(0, false, "error", ex.Message);
+        }
+    }
+
+    private static async Task<string> SafeMessage(HttpResponseMessage resp)
+    {
+        try
+        {
+            var m = await resp.Content.ReadFromJsonAsync<MessageResponse>();
+            if (!string.IsNullOrEmpty(m?.Message)) return m.Message;
+        }
+        catch { /* body may be empty for 401/403 */ }
+        return (int)resp.StatusCode == 403
+            ? "403 Forbidden — authenticated, but your role doesn't grant access here."
+            : "401 Unauthorized — no valid identity was presented.";
+    }
+
+    private static string GateFor(int status) => status switch
+    {
+        200 => "granted",
+        401 => "authn",
+        403 => "authz",
+        _ => "error"
+    };
+
+    private static (string g1, string g2) Gates(Endpoint ep, Cell cell)
+    {
+        if (ep.Guard == "AllowAnonymous") return ("open", "open");
+        return cell.Status switch
+        {
+            200 => ("pass", "pass"),
+            401 => ("stop", "skip"),
+            403 => ("pass", "stop"),
+            _ => ("?", "?")
+        };
+    }
+
+    private static string Explain(Endpoint ep, Cell cell)
+    {
+        if (ep.Guard == "AllowAnonymous")
+            return "AllowAnonymous — there's no gate to pass. Everyone gets 200, with or without a token.";
+        return cell.Status switch
+        {
+            200 => "The token authenticated (Gate 1) and its role satisfies the policy (Gate 2) — both gates open, 200.",
+            401 => "No valid token, so authentication fails at Gate 1. The role is never even checked — that's why it's 401, not 403.",
+            403 => "The token is valid (Gate 1 passed), but the role isn't allowed, so Gate 2 blocks it with 403. Authenticated ≠ authorized.",
+            _ => "The request could not be completed."
+        };
+    }
+
+    private static (string sub, string[] roles, string exp) Decode(string? token)
+    {
+        if (token is null) return ("", [], "");
+        var parts = token.Split('.');
+        if (parts.Length < 2) return ("", [], "");
+        try
+        {
+            var json = Encoding.UTF8.GetString(Base64UrlDecode(parts[1]));
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var sub = root.TryGetProperty("sub", out var s) ? s.GetString() ?? "" : "";
+            var roles = new List<string>();
+            if (root.TryGetProperty("role", out var r))
+            {
+                if (r.ValueKind == JsonValueKind.Array)
+                    roles.AddRange(r.EnumerateArray().Select(e => e.GetString() ?? ""));
+                else if (r.ValueKind == JsonValueKind.String)
+                    roles.Add(r.GetString() ?? "");
+            }
+            var exp = root.TryGetProperty("exp", out var e) && e.TryGetInt64(out var sec)
+                ? DateTimeOffset.FromUnixTimeSeconds(sec).UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss") + " UTC"
+                : "";
+            return (sub, roles.ToArray(), exp);
+        }
+        catch
+        {
+            return ("", [], "");
+        }
+    }
+
+    private static string? Tamper(string? token)
+    {
+        if (token is null) return null;
+        var parts = token.Split('.');
+        if (parts.Length < 2 || parts[1].Length == 0) return token;
+        var p = parts[1].ToCharArray();
+        p[0] = p[0] == 'A' ? 'B' : 'A';
+        parts[1] = new string(p);
+        return string.Join('.', parts);
+    }
+
+    private static byte[] Base64UrlDecode(string s)
+    {
+        s = s.Replace('-', '+').Replace('_', '/');
+        s += (s.Length % 4) switch { 2 => "==", 3 => "=", _ => "" };
+        return Convert.FromBase64String(s);
+    }
+}
