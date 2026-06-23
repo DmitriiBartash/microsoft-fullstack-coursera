@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Planning Security for API Endpoints — Solutions — Course 8 · Module 2</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #233148 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(43,182,115,.28); color: #d6ffe9; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  pre.code .kw { color: var(--pld); }
+  pre.code .at { color: var(--hdr); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+  ul.plain ul { margin: 4px 0; }
+
+  .why { margin-top: 14px; }
+  .why h4 { color: var(--sig); }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 2 · Lesson 5
+      <span class="pill">Answer key</span></p>
+    <h1>Planning Security for API Endpoints — Solutions</h1>
+    <p class="lead">
+      Worked answers for the two student tasks. Each route is planned on three axes:
+      <strong>JWT validation</strong> (authentication — <em>who you are</em>), <strong>roles</strong>
+      (coarse authorization — <em>what type of thing you may do</em>), and <strong>claims</strong>
+      (fine authorization — <em>which specific record you may touch</em>).
+    </p>
+  </header>
+
+  <div class="callout">
+    <strong>Reading the claim column.</strong> "Must include the user ID" means the caller's own
+    identity from the token is compared against the resource's owner — the token does not carry a list
+    of every record the caller may reach.
+  </div>
+
+  <!-- ===================== TASK 1 ===================== -->
+  <h2 class="section"><span class="em">📱</span> Task 1 — Social Media Platform</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Scenario</h3>
+    <p class="scenario">A social media platform exposes:</p>
+    <ul class="plain">
+      <li><code class="inline">GET /users/{id}</code> — returns profile information for a specific user.</li>
+      <li><code class="inline">POST /posts</code> — creates a new post.</li>
+      <li><code class="inline">DELETE /posts/{id}</code> — deletes a specific post.</li>
+    </ul>
+
+    <h4>Step 1 — Which routes require JWT validation?</h4>
+    <ul class="plain">
+      <li><strong><code class="inline">GET /users/{id}</code> — JWT required.</strong> A profile holds
+        personal information and is subject to privacy settings and block lists, so the platform must
+        know <em>who is asking</em> before deciding what to return; requiring a token also blocks
+        anonymous scraping. <em>(If the platform intentionally publishes fully public profiles, a
+        trimmed version could be <code class="inline">AllowAnonymous</code>; the secure default is to
+        authenticate, then filter fields by the viewer's relationship to the target.)</em></li>
+      <li><strong><code class="inline">POST /posts</code> — JWT required.</strong> Creating content is a
+        write that must be tied to a real, authenticated author; anonymous posting invites spam and
+        makes authors un-attributable.</li>
+      <li><strong><code class="inline">DELETE /posts/{id}</code> — JWT required.</strong> Deletion is a
+        destructive write on a specific record; only an authenticated user may attempt it, and only the
+        owner or a moderator may succeed.</li>
+    </ul>
+    <div class="callout ok"><strong>All three routes require JWT validation.</strong> Unlike an
+      e-commerce product catalog, none of these operations is safely anonymous.</div>
+
+    <h4>Step 2 — Specify roles and claims</h4>
+    <ul class="plain">
+      <li><strong><code class="inline">GET /users/{id}</code></strong> — Roles:
+        <code class="inline">user</code> (any authenticated user). Viewing profiles is the core of a
+        social network, so this route is intentionally <strong>not</strong> owner-restricted — you view
+        <em>other people's</em> profiles. Claims: the caller's user ID applies relationship rules
+        (privacy, blocks, friends-only fields), not an owner restriction. This is the key contrast with
+        <code class="inline">GET /orders/{id}</code>, which <em>is</em> owner-only.</li>
+      <li><strong><code class="inline">POST /posts</code></strong> — Roles:
+        <code class="inline">user</code>. Claims: must include the caller's user ID, used to set the new
+        post's author. The client must never send an arbitrary <code class="inline">authorId</code> — it
+        is taken from the token so a post is created only on the caller's behalf.</li>
+      <li><strong><code class="inline">DELETE /posts/{id}</code></strong> — Roles:
+        <code class="inline">user</code> (as the post's <strong>owner</strong>) <strong>or</strong>
+        <code class="inline">moderator</code> / <code class="inline">admin</code>. Claims: the caller's
+        user ID must match the post's <code class="inline">authorId</code> <strong>or</strong> the caller
+        holds a moderation role — the "owner <em>or</em> elevated role" pattern.</li>
+    </ul>
+
+    <h4>Step 3 — Security plan summary table</h4>
+    <table>
+      <thead><tr><th>Route</th><th>JWT validation</th><th>Roles</th><th>Claims</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /users/{id}</code></td><td>Required</td><td><code>user</code> (any authenticated)</td><td>Caller's user ID applies privacy/block rules. <strong>Not</strong> owner-restricted — users view others' profiles.</td></tr>
+        <tr><td><code>POST /posts</code></td><td>Required</td><td><code>user</code></td><td>Must include the caller's user ID to set the post's author.</td></tr>
+        <tr><td><code>DELETE /posts/{id}</code></td><td>Required</td><td><code>user</code> (owner) <strong>or</strong> <code>moderator</code>/<code>admin</code></td><td>Caller's ID must match the post's author, <strong>or</strong> caller holds a moderation role.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="why">
+      <h4>Why this design</h4>
+      <ul class="plain">
+        <li><strong>JWT decisions.</strong> Every route either exposes personal data or performs a write,
+          so none is a candidate for anonymous access — authenticate-first, the opposite of a public
+          product catalog.</li>
+        <li><strong>Roles &amp; claims.</strong> <code class="inline">GET /users/{id}</code> stays open to
+          any authenticated user because a social graph exists to view <em>others</em>; owner-scoping it
+          would break the product. Writes tighten access: the author comes from the token (never the
+          body), and delete adds "owner or moderator" so moderation is possible without letting users
+          delete each other's posts.</li>
+        <li><strong>Data protection.</strong> The author claim prevents impersonation, the ownership
+          check on delete prevents tampering, and JWT validation keeps the whole surface off-limits to
+          anonymous abuse — defense in depth.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===================== TASK 2 ===================== -->
+  <h2 class="section"><span class="em">🎓</span> Task 2 — Learning Management System (LMS)</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Scenario</h3>
+    <p class="scenario">An LMS exposes:</p>
+    <ul class="plain">
+      <li><code class="inline">GET /courses</code> — lists all available courses.</li>
+      <li><code class="inline">POST /assignments</code> — creates a new assignment.</li>
+      <li><code class="inline">GET /grades/{id}</code> — returns grades for a specific student.</li>
+    </ul>
+
+    <h4>Step 1 — Which routes require JWT validation?</h4>
+    <ul class="plain">
+      <li><strong><code class="inline">GET /courses</code> — JWT not required (public).</strong> A catalog
+        of available courses is marketing surface meant to be browsable by prospective students; like
+        <code class="inline">GET /products</code>, it carries no sensitive data. <em>(If courses are
+        private to an enrolled institution, this becomes <code class="inline">[Authorize]</code> and lists
+        only the caller's available courses — but the default catalog is public.)</em></li>
+      <li><strong><code class="inline">POST /assignments</code> — JWT required.</strong> Authoring an
+        assignment is a privileged write; restricted to authenticated staff who own the relevant
+        course.</li>
+      <li><strong><code class="inline">GET /grades/{id}</code> — JWT required.</strong> Grades are highly
+        sensitive academic records (protected under privacy regulations such as FERPA); access must be
+        authenticated and then tightly scoped.</li>
+    </ul>
+    <div class="callout ok"><strong>Two of three routes require JWT validation;</strong> the public
+      catalog mirrors the e-commerce products example.</div>
+
+    <h4>Step 2 — Specify roles and claims</h4>
+    <ul class="plain">
+      <li><strong><code class="inline">GET /courses</code></strong> — Roles: none (public). Claims: none.</li>
+      <li><strong><code class="inline">POST /assignments</code></strong> — Roles:
+        <code class="inline">instructor</code>, <code class="inline">admin</code> (students must never
+        create assignments). Claims: the instructor must own/teach the target course — the course's owner
+        is checked against the caller's ID; an <code class="inline">admin</code> may create for any
+        course. A resource-ownership check on the course the assignment belongs to.</li>
+      <li><strong><code class="inline">GET /grades/{id}</code></strong> — Roles:
+        <code class="inline">student</code> (owner of the record), <code class="inline">instructor</code>,
+        <code class="inline">admin</code>. Claims:
+        <ul class="plain">
+          <li><code class="inline">student</code> — caller's user ID must match
+            <code class="inline">{id}</code>; sees <strong>only their own</strong> grades.</li>
+          <li><code class="inline">instructor</code> — limited to students enrolled in courses they teach,
+            not the whole student body.</li>
+          <li><code class="inline">admin</code> — full access for administrative purposes.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4>Step 3 — Security plan summary table</h4>
+    <table>
+      <thead><tr><th>Route</th><th>JWT validation</th><th>Roles</th><th>Claims</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /courses</code></td><td>Not required</td><td>None (public)</td><td>None.</td></tr>
+        <tr><td><code>POST /assignments</code></td><td>Required</td><td><code>instructor</code>, <code>admin</code></td><td>Instructor must own the target course; admin unrestricted.</td></tr>
+        <tr><td><code>GET /grades/{id}</code></td><td>Required</td><td><code>student</code>, <code>instructor</code>, <code>admin</code></td><td>Student: ID must match <code>{id}</code>. Instructor: own students only. Admin: full.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="why">
+      <h4>Why this design</h4>
+      <ul class="plain">
+        <li><strong>JWT decisions.</strong> The catalog is public to encourage discovery and enrollment,
+          like a product list. Everything that authors content or exposes grades is gated.</li>
+        <li><strong>Roles &amp; claims.</strong> <code class="inline">POST /assignments</code> shows
+          <strong>role + resource ownership</strong>: the role gets you to the route, but a
+          course-ownership check stops one instructor adding assignments to another's course.
+          <code class="inline">GET /grades/{id}</code> shows <strong>one resource, three scopes</strong>:
+          students (own grades), instructors (own students), admins (all) — each role narrowed by a
+          different claim/relationship rule.</li>
+        <li><strong>Data protection.</strong> Grades — the most sensitive asset — are reachable only by
+          the owning student, the responsible instructor, or an admin (least privilege, FERPA). Assignment
+          authoring is walled off from students and scoped to course ownership, while the public catalog
+          deliberately exposes nothing sensitive.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===================== ENFORCEMENT ===================== -->
+  <h2 class="section"><span class="em">🔧</span> Enforcement at a glance (ASP.NET Core)</h2>
+  <div class="card">
+    <p>The <strong>role gate</strong> is declarative (<code class="inline">[Authorize(Roles = …)]</code>);
+      the <strong>ownership / claim check</strong> (axis 3) is imperative, because the framework can't know
+      who owns record <code class="inline">{id}</code> until it loads it.</p>
+<pre class="code"><span class="cmt">// GET /courses  — public</span>
+[AllowAnonymous]
+[HttpGet("/courses")]
+public IActionResult ListCourses() =&gt; Ok(_catalog.All());
+
+<span class="cmt">// POST /assignments — instructors or admins; ownership checked imperatively</span>
+[Authorize(Roles = "instructor,admin")]
+[HttpPost("/assignments")]
+public IActionResult Create(CreateAssignment dto)
+{
+    var callerId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+    if (!User.IsInRole("admin") &amp;&amp; !_courses.IsOwnedBy(dto.CourseId, callerId))
+        return Forbid();                       <span class="cmt">// axis 3: resource ownership</span>
+    return Ok(_assignments.Create(dto));
+}
+
+<span class="cmt">// GET /grades/{id} — self, instructor-of-record, or admin</span>
+[Authorize(Roles = "student,instructor,admin")]
+[HttpGet("/grades/{id}")]
+public IActionResult Grades(string id)
+{
+    var callerId = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+    if (User.IsInRole("student") &amp;&amp; callerId != id) return Forbid();   <span class="cmt">// own grades only</span>
+    if (User.IsInRole("instructor") &amp;&amp; !_enroll.Teaches(callerId, id)) return Forbid();
+    return Ok(_grades.For(id));
+}</pre>
+    <p style="margin:12px 0 0">For reuse, the ownership logic can move into a resource-based
+      <code class="inline">IAuthorizationHandler</code> behind a named policy.</p>
+  </div>
+
+</div>
+</body>
+</html>

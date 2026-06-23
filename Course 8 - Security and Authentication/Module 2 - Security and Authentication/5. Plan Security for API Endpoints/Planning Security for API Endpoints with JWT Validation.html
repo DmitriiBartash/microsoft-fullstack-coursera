@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Planning Security for API Endpoints with JWT Validation — Course 8 · Module 2</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* authentication */
+  .flow .d { color: #b78bff; }   /* role           */
+  .flow .t { color: #43c4f5; }   /* claim          */
+  .flow .ar { color: #6b7280; }  /* arrows         */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 2 · Lesson 5
+      <span class="pill">You Try It!</span></p>
+    <h1>Planning Security for API Endpoints with JWT Validation</h1>
+    <p class="lead">
+      Plan <strong>endpoint-level security</strong> for a REST API: decide which routes require
+      JWT validation, then which <strong>roles</strong> and <strong>claims</strong> gate each
+      one. You'll study two worked examples (healthcare, e-commerce), then plan two APIs of your
+      own — always separating <strong>authentication</strong> (<em>who you are</em>) from
+      <strong>authorization</strong> (<em>what you may do</em>).
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Plan security for API endpoints by <strong>identifying routes that require
+      JWT validation</strong> and <strong>defining which roles or claims are needed</strong> for
+      access. Practice reasoning about each route as a separate decision: is it public or protected,
+      which roles may call it, and does access have to be narrowed to a <em>specific record</em> the
+      caller owns.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL PRODUCE ===================== -->
+  <h2 class="section"><span class="em">📦</span> What you'll produce</h2>
+  <div class="card">
+    <p>For each API, a short security plan built on <strong>three axes</strong>:</p>
+    <table>
+      <thead><tr><th>Deliverable</th><th>What it contains</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Route classification</strong></td><td>For every route: does it require JWT validation (protected), or is it public?</td></tr>
+        <tr><td><strong>Role &amp; claim mapping</strong></td><td>The roles allowed on each protected route, plus any claim / ownership check that scopes access to specific records</td></tr>
+        <tr><td><strong>Security plan table</strong></td><td>A summary mapping every route to <strong>JWT validation · Roles · Claims</strong></td></tr>
+      </tbody>
+    </table>
+    <p style="margin:16px 0 0">Read the three axes as a funnel:</p>
+    <p class="flow">
+      Request <span class="ar">──▶</span> [ <span class="c">1. JWT valid?</span> ]
+      <span class="ar">──▶</span> [ <span class="d">2. Right role?</span> ]
+      <span class="ar">──▶</span> [ <span class="t">3. Owns this record?</span> ]
+      <span class="ar">──▶</span> allow
+    </p>
+    <ul class="plain" style="margin-top:14px">
+      <li><strong>Axis 1 — JWT validation (authentication).</strong> Is a valid, unexpired,
+        correctly-signed token required at all? Public routes skip this; protected routes reject
+        anonymous callers.</li>
+      <li><strong>Axis 2 — Roles (coarse authorization).</strong> Which role(s) may reach this route —
+        <code class="inline">doctor</code>, <code class="inline">admin</code>,
+        <code class="inline">customer</code>? A role grants access to a <em>type</em> of operation.</li>
+      <li><strong>Axis 3 — Claims (fine authorization).</strong> Even with the right role, can the
+        caller touch <em>this specific record</em>? A claim (typically the caller's own user/account
+        ID in the token) is compared against the resource's owner so users only act on data that is
+        theirs.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WALKTHROUGH ===================== -->
+  <h2 class="section"><span class="em">🧭</span> Walkthrough</h2>
+  <p>Two fully worked examples show the method before you try it yourself. For each route, follow the
+    same three steps: <strong>(1)</strong> decide if JWT validation is required, <strong>(2)</strong>
+    specify roles and claims, <strong>(3)</strong> explain why — then summarize in a table.</p>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Example — Medical Records System</h3>
+    <p class="scenario">A medical company manages patient data through an API with three key routes:
+      <code class="inline">GET /patients/{id}</code> (returns patient information),
+      <code class="inline">PUT /patients/{id}</code> (updates patient records), and
+      <code class="inline">GET /reports</code> (system-wide reports).</p>
+
+    <h4>Step 1 — Which routes require JWT validation?</h4>
+    <ul class="plain">
+      <li><code class="inline">GET /patients/{id}</code> — returns <strong>sensitive</strong> patient
+        information, so only authenticated users may access it. JWT validation proves the requester is
+        legitimate.</li>
+      <li><code class="inline">PUT /patients/{id}</code> — updates sensitive records; must be restricted
+        to authenticated users with a specific role (e.g., doctors).</li>
+      <li><code class="inline">GET /reports</code> — exposes system-wide data relevant only to
+        administrative roles. JWT validation keeps unauthorized users out.</li>
+    </ul>
+    <div class="callout ok"><strong>All three routes require JWT validation</strong> — none of this
+      data is public.</div>
+
+    <h4>Step 2 — Specify roles and claims</h4>
+    <ul class="plain">
+      <li><code class="inline">GET /patients/{id}</code> — Roles: <code class="inline">doctor</code>,
+        <code class="inline">nurse</code>. Claim: the caller must be authorized for the specific patient
+        <code class="inline">{id}</code>.</li>
+      <li><code class="inline">PUT /patients/{id}</code> — Roles: <code class="inline">doctor</code>.
+        Claim: the caller must be authorized for the specific patient <code class="inline">{id}</code>
+        they are updating.</li>
+      <li><code class="inline">GET /reports</code> — Roles: <code class="inline">manager</code>,
+        <code class="inline">admin</code>. Claims: none beyond the role.</li>
+    </ul>
+
+    <h4>Step 3 — Summarize the plan</h4>
+    <table>
+      <thead><tr><th>Route</th><th>JWT validation</th><th>Roles</th><th>Claims</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /patients/{id}</code></td><td>Required</td><td><code>doctor</code>, <code>nurse</code></td><td>Must be authorized for the patient <code>{id}</code>.</td></tr>
+        <tr><td><code>PUT /patients/{id}</code></td><td>Required</td><td><code>doctor</code></td><td>Must be authorized for the patient <code>{id}</code>.</td></tr>
+        <tr><td><code>GET /reports</code></td><td>Required</td><td><code>manager</code>, <code>admin</code></td><td>None.</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:14px 0 0"><strong>Why these restrictions are necessary.</strong> JWT validation
+      ensures only authenticated users reach sensitive routes. Restricting roles reduces the risk of
+      unauthorized actions — nurses may <em>view</em> patient data but not <em>modify</em> it, while
+      managers see only administrative reports. Claims add a further layer: users interact only with
+      data they're authorized for (the patient-specific record), not every record the route can serve.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Example — E-Commerce Platform</h3>
+    <p class="scenario">An e-commerce platform exposes <code class="inline">GET /products</code> (lists
+      all available products), <code class="inline">POST /orders</code> (places a new order), and
+      <code class="inline">GET /orders/{id}</code> (returns details for a specific order).</p>
+
+    <h4>Step 1 — Which routes require JWT validation?</h4>
+    <ul class="plain">
+      <li><code class="inline">GET /products</code> — <strong>public</strong>, so JWT validation is
+        <strong>not</strong> required.</li>
+      <li><code class="inline">POST /orders</code> — places an order; requires authentication to ensure
+        the user is legitimate.</li>
+      <li><code class="inline">GET /orders/{id}</code> — returns sensitive order details; restricted to
+        authenticated users.</li>
+    </ul>
+
+    <h4>Step 2 — Specify roles and claims</h4>
+    <ul class="plain">
+      <li><code class="inline">GET /products</code> — no JWT validation needed; no roles, no claims.</li>
+      <li><code class="inline">POST /orders</code> — Roles: <code class="inline">customer</code>. Claim:
+        the caller's user ID, so the order is associated with the correct account.</li>
+      <li><code class="inline">GET /orders/{id}</code> — Roles: <code class="inline">customer</code>.
+        Claim: the caller may only read an order whose owner matches their user ID — they see
+        <em>their own</em> orders only.</li>
+    </ul>
+
+    <h4>Step 3 — Summarize the plan</h4>
+    <table>
+      <thead><tr><th>Route</th><th>JWT validation</th><th>Roles</th><th>Claims</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /products</code></td><td>Not required</td><td>None</td><td>None.</td></tr>
+        <tr><td><code>POST /orders</code></td><td>Required</td><td><code>customer</code></td><td>Must include the user ID (sets the owner).</td></tr>
+        <tr><td><code>GET /orders/{id}</code></td><td>Required</td><td><code>customer</code></td><td>Order's owner must match the caller's ID.</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:14px 0 0"><strong>Why these restrictions are necessary.</strong> Public access to
+      <code class="inline">GET /products</code> lets anyone browse without friction. Authentication on
+      <code class="inline">POST /orders</code> ensures only legitimate users place orders, and binding
+      the order to a user ID prevents fraud. On <code class="inline">GET /orders/{id}</code>, JWT
+      validation plus the ownership claim ensure users can only view their own orders, protecting
+      sensitive information.</p>
+  </div>
+
+  <!-- ===================== YOUR TURN ===================== -->
+  <h2 class="section"><span class="em">✍️</span> Your turn</h2>
+  <p>Apply the same three-step method (JWT? → roles &amp; claims → table) to plan security for the
+    following APIs. For each route, identify whether JWT validation is required, specify the roles or
+    claims needed for access, and summarize your plan in a table.</p>
+
+  <div class="card">
+    <h3>Task 1 — Social Media Platform</h3>
+    <p class="scenario">A social media platform exposes the following API routes:</p>
+    <ul class="plain">
+      <li><code class="inline">GET /users/{id}</code> — returns profile information for a specific user.</li>
+      <li><code class="inline">POST /posts</code> — creates a new post.</li>
+      <li><code class="inline">DELETE /posts/{id}</code> — deletes a specific post.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>Task 2 — Learning Management System (LMS)</h3>
+    <p class="scenario">An LMS exposes the following API routes:</p>
+    <ul class="plain">
+      <li><code class="inline">GET /courses</code> — lists all available courses.</li>
+      <li><code class="inline">POST /assignments</code> — creates a new assignment.</li>
+      <li><code class="inline">GET /grades/{id}</code> — returns grades for a specific student.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== WHAT GOOD LOOKS LIKE ===================== -->
+  <h2 class="section"><span class="em">🌟</span> What good looks like</h2>
+  <div class="card">
+    <ul class="plain">
+      <li><strong>Every route is classified first.</strong> Decide <em>public vs protected</em> before
+        anything else; a route that needs no JWT (a public catalog) is a deliberate choice, not an
+        oversight.</li>
+      <li><strong>Authentication and authorization stay separate.</strong> JWT validation answers
+        <em>who are you</em>; roles and claims answer <em>what may you do</em>. A valid token alone is
+        never enough for a protected, role-scoped route.</li>
+      <li><strong>Roles gate the operation; claims gate the record.</strong> A role lets you reach a
+        <em>type</em> of endpoint; an ownership claim narrows you to <em>your own</em> record (your
+        order, your post, your grades) — the two work together.</li>
+      <li><strong>Write operations are tighter than reads.</strong> Viewing may be open to several
+        roles, but creating, updating, or deleting is restricted to the owner or an elevated role (a
+        nurse reads but a doctor writes; an author or moderator deletes).</li>
+      <li><strong>Self-access is scoped to ownership.</strong> Where a route serves one record, end
+        users reach <em>only theirs</em> — compare a claim (the caller's ID) against the resource
+        owner, and deny by default on mismatch.</li>
+      <li><strong>The table is the deliverable.</strong> A clean <em>route → JWT · Roles · Claims</em>
+        table makes the security posture reviewable at a glance and easy to translate into code.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== FROM PLAN TO CODE ===================== -->
+  <h2 class="section"><span class="em">🔧</span> From plan to code (ASP.NET Core)</h2>
+  <div class="card">
+    <p>The plan maps directly onto the framework once the JWT bearer pipeline is configured:</p>
+    <table>
+      <thead><tr><th>Plan element</th><th>ASP.NET Core enforcement</th></tr></thead>
+      <tbody>
+        <tr><td>Public route (no JWT)</td><td><code>[AllowAnonymous]</code></td></tr>
+        <tr><td>JWT required (any role)</td><td><code>[Authorize]</code></td></tr>
+        <tr><td>JWT required + specific roles</td><td><code>[Authorize(Roles = "doctor,nurse")]</code> or a role policy</td></tr>
+        <tr><td>Claim / ownership check</td><td>Compare <code>User.FindFirst(ClaimTypes.NameIdentifier)</code> to the record's owner, or a resource-based <code>IAuthorizationHandler</code></td></tr>
+      </tbody>
+    </table>
+    <p style="margin:14px 0 0">The role gate (axis 2) is <strong>declarative</strong> (an attribute).
+      The ownership check (axis 3) is usually <strong>imperative or resource-based</strong>, because the
+      framework can't know who owns record <code class="inline">{id}</code> until it loads it.</p>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li>Every route classified as <strong>JWT-required</strong> or <strong>public</strong>, with a reason</li>
+      <li>Roles specified for each protected route</li>
+      <li>Claim / ownership checks specified wherever a route serves a <strong>specific record</strong></li>
+      <li>A <strong>table</strong> summarizes each API as <em>route → JWT · Roles · Claims</em></li>
+      <li>Write/delete routes are at least as restricted as the matching read routes</li>
+      <li>Public routes are a <strong>deliberate</strong> choice (no sensitive data exposed anonymously)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Authentication vs authorization</strong> — JWT validation authenticates (<em>who you
+        are</em>); roles and claims authorize (<em>what you may do</em>). They are separate gates and
+        you need both on a protected route.</li>
+      <li><strong>JWT validation</strong> — the API verifies the token's signature, expiry, issuer, and
+        audience before trusting any identity inside it; an invalid token is rejected at the door.</li>
+      <li><strong>Roles (coarse-grained)</strong> — a role grants access to a <em>type</em> of operation
+        (<code class="inline">doctor</code>, <code class="inline">admin</code>,
+        <code class="inline">customer</code>); ideal for the first authorization decision on a route.</li>
+      <li><strong>Claims &amp; resource-based authorization (fine-grained)</strong> — a claim (often the
+        caller's own ID) is checked against a specific record's owner so users act only on data that is
+        theirs.</li>
+      <li><strong>Least privilege &amp; deny-by-default</strong> — grant the narrowest access each route
+        needs and reject anything not explicitly allowed; tighten write/delete beyond read.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
