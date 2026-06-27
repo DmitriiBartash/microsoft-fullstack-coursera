@@ -1,0 +1,705 @@
+@page "/"
+@rendermode InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject JwtSettings Settings
+@implements IDisposable
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@using System.Text
+@using System.Text.Json
+@using JwtSecurityCore
+@using JwtSecurityCore.Models
+
+<PageTitle>JWT Security Studio</PageTitle>
+
+<div class="console">
+
+    <header class="hdr">
+        <div class="mark">
+            <span class="shield">🔐</span>
+            <div>
+                <div class="title">JWT&nbsp;SECURITY<span class="sub"> · session lifecycle console</span></div>
+                <div class="crumb">Applying JWT Best Practices — short-lived access token + rotating refresh token in an HttpOnly cookie, the real handshake, in-process</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ============ login + autopilot bar ============ -->
+    <section class="bar-row">
+        <div class="accounts">
+            <span class="lbl">Accounts</span>
+            <button class="chip" @onclick='() => Fill("admin", "password")'>admin / password</button>
+            <button class="chip" @onclick='() => Fill("alice", "pa55")'>alice / pa55</button>
+        </div>
+        <div class="loginbox">
+            <input class="in" @bind="username" placeholder="username" />
+            <input class="in" @bind="password" placeholder="password" />
+            <button class="primary" @onclick="Login" disabled="@busy">Log in</button>
+            <button class="ghost" @onclick="Logout" disabled="@(busy || accessToken is null)">Log out</button>
+        </div>
+    </section>
+
+    <!-- ============ SIGNATURE — session lifecycle ============ -->
+    <section class="life">
+        <div class="life-head">
+            <h3><span class="pdot clear"></span> Session lifecycle</h3>
+            <div class="autop">
+                <span class="state @StateClass">@StateText</span>
+                <button class="auto @(autopilot ? "on" : "")" @onclick="ToggleAutopilot" disabled="@(accessToken is null)">
+                    @(autopilot ? "⏸ Pause auto-pilot" : "▶ Auto-pilot")
+                </button>
+            </div>
+        </div>
+
+        <div class="bars">
+            <div class="bar">
+                <div class="bk">access&nbsp;token</div>
+                <div class="track"><div class="fill @AccessFillClass" style="width:@(AccessPct)%"></div></div>
+                <div class="bv">@AccessLeftText</div>
+            </div>
+            <div class="bar">
+                <div class="bk">refresh&nbsp;token</div>
+                <div class="track"><div class="fill rfr" style="width:@(refreshValue is null ? 0 : 100)%"></div></div>
+                <div class="bv">@RefreshMeta</div>
+            </div>
+        </div>
+
+        <div class="life-actions">
+            <button class="mini" @onclick="CallSecure" disabled="@(busy || accessToken is null)">GET /secure</button>
+            <button class="mini" @onclick="RefreshNow" disabled="@(busy || refreshValue is null)">↻ Refresh now</button>
+            <button class="mini" @onclick="ClearLog" disabled="@(events.Count == 0 && ledger.Count == 0)">🗑 Clear log</button>
+            <span class="tip">Auto-pilot calls <code>/secure</code> every few seconds — watch it hit <b>401</b> the moment the access token dies, then silently refresh and carry on.</span>
+        </div>
+
+        <ul class="timeline">
+            @if (events.Count == 0)
+            {
+                <li class="ev empty">Log in to start a session — the timeline records every token event here.</li>
+            }
+            @foreach (var e in events)
+            {
+                <li class="ev" @key="e.Seq">
+                    <span class="clk">@e.Clock</span>
+                    <span class="kdot @e.Kind"></span>
+                    <span class="etx">@e.Text</span>
+                </li>
+            }
+        </ul>
+    </section>
+
+    <div class="panes">
+
+        <!-- ============ HARDENING ============ -->
+        <section class="pane">
+            <h3><span class="pdot grn"></span> Hardening choices</h3>
+            <p class="hint">Flip a setting, then <b>Log in</b> again to feel the trade-off. Each choice changes the real request.</p>
+
+            <div class="opt">
+                <div class="ok-label">Access-token lifetime <span class="why">shorter = smaller theft window</span></div>
+                <div class="seg">
+                    <button class="@(accessTtl == 12 ? "sel" : "")" @onclick="() => accessTtl = 12">12s</button>
+                    <button class="@(accessTtl == 30 ? "sel" : "")" @onclick="() => accessTtl = 30">30s</button>
+                    <button class="@(accessTtl == 900 ? "sel" : "")" @onclick="() => accessTtl = 900">15 min</button>
+                </div>
+            </div>
+
+            <div class="opt">
+                <div class="ok-label">Refresh-token storage <span class="why">HttpOnly hides it from scripts</span></div>
+                <div class="seg">
+                    <button class="@(httpOnly ? "sel" : "")" @onclick="() => httpOnly = true">HttpOnly cookie</button>
+                    <button class="@(!httpOnly ? "sel danger" : "")" @onclick="() => httpOnly = false">JS-readable</button>
+                </div>
+            </div>
+
+            <div class="opt">
+                <div class="ok-label">Refresh-token rotation <span class="why">single-use + reuse detection</span></div>
+                <div class="seg">
+                    <button class="@(rotate ? "sel" : "")" @onclick="() => rotate = true">On</button>
+                    <button class="@(!rotate ? "sel danger" : "")" @onclick="() => rotate = false">Off</button>
+                </div>
+            </div>
+
+            <h4>Set-Cookie issued by the server</h4>
+            @if (setCookieRaw is null)
+            {
+                <p class="hint">No cookie yet — log in to capture it.</p>
+            }
+            else
+            {
+                <pre class="cookie @(httpOnly ? "" : "weak")">@setCookieRaw</pre>
+                <p class="ihint">
+                    @if (httpOnly)
+                    {
+                        <span>Because of <code>HttpOnly</code>, the browser never exposes this cookie to <code>document.cookie</code> — an XSS payload cannot read the refresh token. The access token stays in memory only.</span>
+                    }
+                    else
+                    {
+                        <span class="warn">⚠ No <code>HttpOnly</code>, and the refresh token is also echoed in the response body — any injected script could steal it. This is the insecure baseline, shown for contrast.</span>
+                    }
+                </p>
+            }
+        </section>
+
+        <!-- ============ ATTACKS + TOKEN ============ -->
+        <section class="pane">
+            <h3><span class="pdot mag"></span> Attacks &amp; token</h3>
+
+            <div class="atk">
+                <button class="mini" @onclick="ReplayRotated" disabled="@(busy || !CanReplay)" title="@(CanReplay ? "Replay the rotated-out token" : "Let a refresh rotate the token first")">↻ Replay the rotated refresh token</button>
+                <button class="mini" @onclick="TamperAccess" disabled="@(busy || accessToken is null)">✎ Tamper the access token</button>
+                <button class="mini" @onclick="WrongRole" disabled="@busy">🚫 alice → /secure/admin</button>
+            </div>
+            @if (attackVerdict is not null)
+            {
+                <div class="verdict @(attackOk ? "good" : "bad")">
+                    <span class="vcode">@attackCode</span><span>@attackVerdict</span>
+                </div>
+            }
+
+            <h4>Rotation ledger</h4>
+            @if (ledger.Count == 0)
+            {
+                <p class="hint">Each refresh revokes the old token and mints a new one. The chain shows up here.</p>
+            }
+            else
+            {
+                <div class="ledger">
+                    @foreach (var l in ledger)
+                    {
+                        <span class="rid @l.State" @key="l.Id">#@l.Id</span>
+                    }
+                </div>
+            }
+
+            <h4>Access token — decoded</h4>
+            @if (accessToken is null)
+            {
+                <p class="hint">No access token yet.</p>
+            }
+            else
+            {
+                var segs = accessToken.Split('.');
+                var (sub, roles, _) = Decode(accessToken);
+                <div class="jwt"><span class="t-h">@segs[0]</span><span class="dotsep">.</span><span class="t-p">@(segs.Length > 1 ? segs[1] : "")</span><span class="dotsep">.</span><span class="t-s">@(segs.Length > 2 ? segs[2] : "")</span></div>
+                <table class="claims">
+                    <tbody>
+                        <tr><td class="k">sub</td><td>@sub</td></tr>
+                        <tr><td class="k">role</td><td>@foreach (var r in roles){<span class="rolechip" @key="r">@r</span>}</td></tr>
+                        <tr><td class="k">exp</td><td>@(accessSecondsLeft > 0 ? $"in {accessSecondsLeft}s" : "expired")</td></tr>
+                    </tbody>
+                </table>
+            }
+        </section>
+    </div>
+
+    <footer class="foot">
+        Every action is a live HTTP call to this app's own <code>/auth/login</code>, <code>/auth/refresh</code> and
+        <code>/secure</code> endpoints, guarded by the same <code>JwtBearer</code> handler that runs under
+        <code>dotnet run</code> in <code>JwtAuthExample</code>. The page captures the real <code>Set-Cookie</code> the
+        server issues and replays it exactly as a browser would, so the rotation and reuse-detection you see are the
+        genuine in-memory <code>RefreshTokenStore</code> accepting and revoking real tokens.
+    </footer>
+</div>
+
+<style>
+    .console { max-width: 1080px; margin: 0 auto; padding: 30px 22px 70px;
+        --void:#0b0f17; --panel:#121826; --panel2:#0e131d; --line:#233044; --ink:#e6edf6; --mut:#8b97ad;
+        --granted:#34d399; --authn:#f59e0b; --forbid:#fb3a5e; --clear:#22d3ee;
+        --mag:#fb015b; --pur:#7b3fe4; --blu:#38bdf8;
+        color: var(--ink); }
+    .console code { background: #1a2233; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px;
+        font-family: ui-monospace, "SFMono-Regular", Consolas, Menlo, monospace; font-size: .84em; color: #cdd7ea; }
+
+    .hdr { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .mark { display: flex; align-items: center; gap: 14px; }
+    .shield { font-size: 2rem; filter: drop-shadow(0 2px 6px rgba(123,63,228,.4)); }
+    .title { font-size: 1.5rem; font-weight: 800; letter-spacing: .06em; }
+    .title .sub { color: var(--clear); font-weight: 600; letter-spacing: .02em; font-size: .8rem; text-transform: uppercase; }
+    .crumb { color: var(--mut); font-size: .86rem; margin-top: 3px; }
+
+    /* login row */
+    .bar-row { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: center; margin: 20px 0 6px; }
+    .accounts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .accounts .lbl { color: var(--mut); font-size: .82rem; }
+    .chip { background: #1c2330; color: #c7d0e2; border: 1px solid var(--line); border-radius: 20px;
+        padding: 4px 12px; cursor: pointer; font-size: .82rem; font-family: ui-monospace, Consolas, monospace; }
+    .chip:hover { border-color: var(--pur); color: #fff; }
+    .loginbox { display: flex; gap: 8px; flex-wrap: wrap; }
+    .in { background: var(--panel2); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 8px 11px; font-size: .9rem; width: 130px; }
+    .in:focus { outline: none; border-color: var(--pur); box-shadow: 0 0 0 3px rgba(123,63,228,.18); }
+    .primary, .ghost { border-radius: 8px; padding: 8px 14px; font-size: .9rem; cursor: pointer; border: 1px solid transparent; }
+    .primary { background: linear-gradient(135deg, var(--pur), var(--mag)); color: #fff; font-weight: 600; }
+    .primary:disabled, .ghost:disabled { opacity: .45; cursor: not-allowed; }
+    .ghost { background: transparent; color: #c7d0e2; border-color: var(--line); }
+    .ghost:hover:not(:disabled) { border-color: var(--forbid); color: #ffc2cb; }
+
+    /* lifecycle */
+    .life { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; margin: 14px 0 22px;
+        box-shadow: 0 18px 40px rgba(0,0,0,.30); }
+    .life-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .life h3, .pane h3 { margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 9px; }
+    .pdot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+    .pdot.clear { background: var(--clear); } .pdot.mag { background: var(--mag); } .pdot.grn { background: var(--granted); }
+    .autop { display: flex; align-items: center; gap: 12px; }
+    .state { font-size: .82rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; border: 1px solid var(--line); }
+    .state.idle { color: var(--mut); }
+    .state.live { color: var(--granted); border-color: rgba(52,211,153,.5); background: rgba(52,211,153,.08); }
+    .state.warn { color: var(--authn); border-color: rgba(245,158,11,.5); background: rgba(245,158,11,.08); }
+    .auto { background: transparent; color: #cdd7ea; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font-size: .84rem; cursor: pointer; }
+    .auto:hover:not(:disabled) { border-color: var(--clear); color: #fff; }
+    .auto:disabled { opacity: .4; cursor: not-allowed; }
+    .auto.on { border-color: var(--clear); color: var(--clear); box-shadow: inset 0 0 0 1px var(--clear); }
+
+    .bars { margin: 16px 0 12px; display: grid; gap: 10px; }
+    .bar { display: grid; grid-template-columns: 110px 1fr 130px; align-items: center; gap: 12px; }
+    .bk { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; color: var(--mut); }
+    .track { height: 14px; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+    .fill { height: 100%; border-radius: 7px 0 0 7px; transition: width .9s linear, background .3s ease; }
+    .fill.ok  { background: linear-gradient(90deg, var(--granted), #10b981); }
+    .fill.warn{ background: linear-gradient(90deg, var(--authn), #d97706); }
+    .fill.bad { background: linear-gradient(90deg, var(--forbid), #e11d48); }
+    .fill.rfr { background: linear-gradient(90deg, var(--pur), var(--blu)); transition: width .4s ease; }
+    .bv { font-size: .8rem; color: #cdd7ea; text-align: right; font-family: ui-monospace, Consolas, monospace; }
+
+    .life-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+    .tip { color: var(--mut); font-size: .8rem; flex: 1; min-width: 220px; }
+
+    .timeline { list-style: none; margin: 0; padding: 12px; background: var(--panel2); border: 1px solid var(--line); border-radius: 11px; }
+    .ev { display: flex; align-items: center; gap: 10px; padding: 5px 2px; font-size: .85rem; animation: slideIn .25s ease both; }
+    .ev.empty { color: var(--mut); }
+    .clk { font-family: ui-monospace, Consolas, monospace; font-size: .76rem; color: var(--mut); width: 64px; flex: 0 0 auto; }
+    .kdot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; background: var(--mut); }
+    .kdot.issue { background: var(--clear); } .kdot.ok { background: var(--granted); }
+    .kdot.warn { background: var(--authn); } .kdot.bad { background: var(--forbid); } .kdot.rot { background: var(--pur); }
+    .etx { color: #d4ddec; }
+
+    /* panes */
+    .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @@media (max-width: 860px) { .panes { grid-template-columns: 1fr; } .bar { grid-template-columns: 92px 1fr 96px; } }
+    .pane { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+    .pane h4 { margin: 18px 0 8px; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--mut); }
+    .hint { color: var(--mut); font-size: .86rem; line-height: 1.6; margin: 6px 0 0; }
+
+    .opt { margin: 14px 0; }
+    .ok-label { font-size: .86rem; margin-bottom: 6px; }
+    .ok-label .why { color: var(--mut); font-size: .76rem; margin-left: 6px; }
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+    .seg button { background: var(--panel2); color: #c7d0e2; border: none; border-right: 1px solid var(--line);
+        padding: 7px 13px; font-size: .82rem; cursor: pointer; }
+    .seg button:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+    .seg button:last-child { border-right: none; border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+    .seg button:hover { color: #fff; }
+    .seg button.sel { background: rgba(34,211,238,.16); color: #fff; box-shadow: inset 0 0 0 1px var(--clear); }
+    .seg button.sel.danger { background: rgba(251,58,94,.16); box-shadow: inset 0 0 0 1px var(--forbid); }
+
+    pre.cookie { background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; margin: 4px 0 0;
+        font-family: ui-monospace, Consolas, monospace; font-size: .76rem; white-space: pre-wrap; overflow-wrap: anywhere; color: #b8f0d4; border-color: rgba(52,211,153,.4); }
+    pre.cookie.weak { color: #ffc2cb; border-color: rgba(251,58,94,.45); }
+    .ihint { font-size: .8rem; color: var(--mut); margin: 8px 0 0; line-height: 1.55; }
+    .ihint .warn { color: var(--authn); }
+
+    .atk { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+    .mini { background: transparent; color: #cdd7ea; border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font-size: .82rem; cursor: pointer; }
+    .mini:hover:not(:disabled) { border-color: var(--clear); color: #fff; }
+    .mini:disabled { opacity: .4; cursor: not-allowed; }
+    .verdict { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 9px 12px; border-radius: 9px; font-size: .84rem; border-left: 4px solid; }
+    .verdict .vcode { font-weight: 800; font-family: ui-monospace, Consolas, monospace; }
+    .verdict.good { background: rgba(52,211,153,.10); border-color: var(--granted); color: #b8f0d4; }
+    .verdict.bad { background: rgba(251,58,94,.10); border-color: var(--forbid); color: #ffc2cb; }
+
+    .ledger { display: flex; flex-wrap: wrap; gap: 7px; }
+    .rid { font-family: ui-monospace, Consolas, monospace; font-size: .78rem; padding: 3px 10px; border-radius: 7px; border: 1px solid var(--line); }
+    .rid.current { color: var(--granted); border-color: rgba(52,211,153,.5); background: rgba(52,211,153,.08); }
+    .rid.revoked { color: var(--mut); text-decoration: line-through; opacity: .7; }
+
+    .jwt { font-family: ui-monospace, Consolas, monospace; font-size: .78rem; word-break: break-all; line-height: 1.7;
+        background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; }
+    .jwt .t-h { color: var(--mag); } .jwt .t-p { color: var(--pur); } .jwt .t-s { color: var(--blu); } .jwt .dotsep { color: var(--mut); }
+    .claims { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: 8px; }
+    .claims td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .claims td.k { color: var(--mut); font-family: ui-monospace, Consolas, monospace; width: 52px; }
+    .rolechip { display: inline-block; background: rgba(123,63,228,.18); border: 1px solid var(--pur); color: #d3c2ff;
+        border-radius: 20px; padding: 2px 10px; margin: 0 6px 4px 0; font-size: .76rem; font-weight: 600; }
+
+    .foot { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--mut); font-size: .82rem; line-height: 1.6; }
+
+    /* motion */
+    @@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @@keyframes slideIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+    .hdr { animation: fadeUp .4s ease both; }
+    .life { animation: fadeUp .45s ease both .08s; }
+    .panes { animation: fadeUp .45s ease both .16s; }
+    .primary, .ghost, .chip, .mini, .auto, .seg button { transition: transform .12s ease, border-color .15s, color .15s, background .15s; }
+    .primary:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+    @@media (prefers-reduced-motion: reduce) { .console, .console * { animation: none !important; transition: none !important; } }
+</style>
+
+@code {
+    private sealed record Ev(int Seq, string Clock, string Kind, string Text);
+    private sealed record Ledger(string Id, string State);
+
+    private string username = "admin";
+    private string password = "password";
+
+    private int accessTtl = 12;
+    private bool httpOnly = true;
+    private bool rotate = true;
+
+    private string? accessToken;
+    private DateTime accessExpUtc;
+    private int accessTtlActual = 12;
+    private string? refreshValue;
+    private string? firstRefreshValue;
+    private string? setCookieRaw;
+    private readonly List<Ledger> ledger = new();
+    private readonly List<Ev> events = new();
+    private int seq;
+
+    private string? attackVerdict;
+    private string attackCode = "";
+    private bool attackOk;
+
+    private bool autopilot;
+    private bool busy;
+    private int tick;
+    private System.Timers.Timer? timer;
+
+    private const int CallEveryTicks = 3;
+    private const int LedgerCap = 8;
+
+    private int accessSecondsLeft =>
+        accessToken is null ? 0 : Math.Max(0, (int)Math.Ceiling((accessExpUtc - DateTime.UtcNow).TotalSeconds));
+
+    private int AccessPct => accessToken is null || accessTtlActual <= 0 ? 0
+        : Math.Clamp((int)(100.0 * accessSecondsLeft / accessTtlActual), 0, 100);
+
+    private string AccessFillClass => accessSecondsLeft <= 0 ? "bad" : AccessPct <= 25 ? "warn" : "ok";
+
+    private string AccessLeftText => accessToken is null ? "—"
+        : accessSecondsLeft <= 0 ? "expired"
+        : accessSecondsLeft >= 60 ? $"expires in {accessSecondsLeft / 60}m {accessSecondsLeft % 60:00}s"
+        : $"expires in {accessSecondsLeft}s";
+
+    private string RefreshMeta => refreshValue is null ? "—"
+        : httpOnly ? $"valid {Settings.RefreshTokenDays}d · HttpOnly 🍪" : $"valid {Settings.RefreshTokenDays}d · ⚠ JS-readable";
+
+    private bool CanReplay => firstRefreshValue is not null && firstRefreshValue != refreshValue;
+
+    private string StateText => accessToken is null ? "no session"
+        : accessSecondsLeft > 0 ? "access live" : "access expired";
+    private string StateClass => accessToken is null ? "idle" : accessSecondsLeft > 0 ? "live" : "warn";
+
+    private void Fill(string u, string p) { username = u; password = p; }
+
+    private void Log(string kind, string text)
+    {
+        events.Insert(0, new Ev(seq++, DateTime.Now.ToString("HH:mm:ss"), kind, text));
+        if (events.Count > 9) events.RemoveAt(events.Count - 1);
+    }
+
+    private void ClearLog()
+    {
+        events.Clear();
+        ledger.Clear();
+        attackVerdict = null;
+    }
+
+    private void ResetSession()
+    {
+        EndSession();
+        setCookieRaw = null;
+        ledger.Clear();
+    }
+
+    private void EndSession()
+    {
+        StopTimer();
+        autopilot = false;
+        accessToken = null;
+        refreshValue = null;
+        firstRefreshValue = null;
+    }
+
+    private async Task Login()
+    {
+        busy = true;
+        attackVerdict = null;
+        ResetSession();
+        try
+        {
+            var url = $"{Base}/auth/login?seconds={accessTtl}&httpOnly={(httpOnly ? "true" : "false")}";
+            var resp = await Http.PostAsJsonAsync(url, new LoginRequest(username, password));
+            if (!resp.IsSuccessStatusCode)
+            {
+                Log("bad", $"login → {(int)resp.StatusCode} (invalid credentials)");
+                return;
+            }
+
+            var body = await resp.Content.ReadFromJsonAsync<TokenResponse>();
+            accessToken = body?.Token;
+            accessTtlActual = accessTtl;
+            accessExpUtc = ExpOf(accessToken) ?? DateTime.UtcNow.AddSeconds(accessTtl);
+
+            CaptureCookie(resp);
+            firstRefreshValue = refreshValue;
+            if (refreshValue is not null) ledger.Add(new Ledger(Short(refreshValue), "current"));
+
+            Log("issue", $"login → 200 · access ({accessTtl}s) + refresh issued");
+            StartTimer();
+        }
+        catch (Exception ex) { Log("bad", $"login error: {ex.Message}"); }
+        finally { busy = false; }
+    }
+
+    private async Task CallSecure()
+    {
+        if (accessToken is null) return;
+        busy = true;
+        try
+        {
+            var resp = await GetSecure("/secure", accessToken);
+            if (resp == 200) { Log("ok", "GET /secure → 200 OK"); }
+            else if (resp == 401)
+            {
+                Log("warn", "GET /secure → 401 — access token expired");
+                if (refreshValue is not null) { await SilentRefresh(); if (accessToken is not null) { await Retry(); } }
+            }
+            else { Log("bad", $"GET /secure → {resp}"); }
+        }
+        finally { busy = false; }
+    }
+
+    private async Task Retry()
+    {
+        var resp = await GetSecure("/secure", accessToken);
+        Log(resp == 200 ? "ok" : "bad", $"retry /secure → {resp}{(resp == 200 ? " OK" : "")}");
+    }
+
+    private async Task SilentRefresh()
+    {
+        var old = refreshValue;
+        var url = $"{Base}/auth/refresh?rotate={(rotate ? "true" : "false")}&seconds={accessTtl}&httpOnly={(httpOnly ? "true" : "false")}";
+        var req = new HttpRequestMessage(HttpMethod.Post, url);
+        if (refreshValue is not null) req.Headers.Add("Cookie", $"{RefreshCookieDefaults.Name}={refreshValue}");
+
+        HttpResponseMessage resp;
+        try { resp = await Http.SendAsync(req); }
+        catch (Exception ex) { Log("bad", $"refresh failed: {ex.Message}"); EndSession(); return; }
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            Log("bad", $"POST /auth/refresh → {(int)resp.StatusCode} — session ended");
+            EndSession();
+            return;
+        }
+
+        var body = await resp.Content.ReadFromJsonAsync<TokenResponse>();
+        accessToken = body?.Token;
+        accessTtlActual = accessTtl;
+        accessExpUtc = ExpOf(accessToken) ?? DateTime.UtcNow.AddSeconds(accessTtl);
+        CaptureCookie(resp);
+
+        if (rotate && refreshValue is not null && refreshValue != old)
+        {
+            for (var i = 0; i < ledger.Count; i++)
+                if (ledger[i].State == "current") ledger[i] = ledger[i] with { State = "revoked" };
+            ledger.Add(new Ledger(Short(refreshValue), "current"));
+            if (ledger.Count > LedgerCap) ledger.RemoveAt(0);
+            Log("rot", $"refresh rotated → #{Short(old)} revoked, #{Short(refreshValue)} issued");
+        }
+        else { Log("rot", "refresh → new access token (no rotation)"); }
+    }
+
+    private async Task RefreshNow() { busy = true; try { await SilentRefresh(); } finally { busy = false; } }
+
+    private async Task Logout()
+    {
+        busy = true;
+        try
+        {
+            var req = new HttpRequestMessage(HttpMethod.Post, $"{Base}/auth/logout");
+            if (refreshValue is not null) req.Headers.Add("Cookie", $"{RefreshCookieDefaults.Name}={refreshValue}");
+            try { await Http.SendAsync(req); } catch { }
+            Log("warn", "logout → refresh token revoked");
+            ResetSession();
+        }
+        finally { busy = false; }
+    }
+
+    private void ToggleAutopilot()
+    {
+        autopilot = !autopilot;
+        Log("issue", autopilot ? "auto-pilot engaged — calling /secure on a loop" : "auto-pilot paused");
+    }
+
+    // ---- attacks ----
+
+    private async Task ReplayRotated()
+    {
+        busy = true;
+        try
+        {
+            var req = new HttpRequestMessage(HttpMethod.Post, $"{Base}/auth/refresh?rotate=true");
+            if (firstRefreshValue is not null) req.Headers.Add("Cookie", $"refresh_token={firstRefreshValue}");
+            var resp = await Http.SendAsync(req);
+            attackCode = ((int)resp.StatusCode).ToString();
+            attackOk = !resp.IsSuccessStatusCode;
+            attackVerdict = attackOk
+                ? "Rejected — replaying the rotated-out token tripped reuse detection: the whole token family is revoked and the session ends."
+                : "Accepted — the server issued a new token, so reuse detection did not catch it (rotation must be off).";
+            Log(attackOk ? "ok" : "bad", $"attack: replay rotated refresh → {attackCode}");
+            if (attackOk) { Log("bad", "session ended by reuse detection"); EndSession(); }
+        }
+        finally { busy = false; }
+    }
+
+    private async Task TamperAccess()
+    {
+        busy = true;
+        try
+        {
+            var resp = await GetSecure("/secure", Tamper(accessToken));
+            attackCode = resp.ToString();
+            attackOk = resp == 401;
+            attackVerdict = attackOk
+                ? "Rejected — flipping one byte breaks the HS256 signature, so authentication fails at the gate."
+                : "Unexpected — a tampered token should be rejected.";
+            Log(attackOk ? "ok" : "bad", $"attack: tampered access token → {resp}");
+        }
+        finally { busy = false; }
+    }
+
+    private async Task WrongRole()
+    {
+        busy = true;
+        try
+        {
+            var login = await Http.PostAsJsonAsync($"{Base}/auth/login?seconds=60", new LoginRequest("alice", "pa55"));
+            var token = (await login.Content.ReadFromJsonAsync<TokenResponse>())?.Token;
+            var resp = await GetSecure("/secure/admin", token);
+            attackCode = resp.ToString();
+            attackOk = resp == 403;
+            attackVerdict = attackOk
+                ? "Forbidden — alice authenticates (valid token) but lacks the Admin role. Authenticated ≠ authorized."
+                : $"Unexpected → {resp}.";
+            Log(attackOk ? "ok" : "bad", $"attack: alice → /secure/admin → {resp}");
+            await RevokeThrowaway(login);
+        }
+        finally { busy = false; }
+    }
+
+    private async Task RevokeThrowaway(HttpResponseMessage login)
+    {
+        var (cookie, _) = ExtractRefresh(login);
+        if (cookie is null) return;
+        var req = new HttpRequestMessage(HttpMethod.Post, $"{Base}/auth/logout");
+        req.Headers.Add("Cookie", $"{RefreshCookieDefaults.Name}={cookie}");
+        try { await Http.SendAsync(req); } catch { }
+    }
+
+    // ---- timer ----
+
+    private void StartTimer()
+    {
+        StopTimer();
+        tick = 0;
+        timer = new System.Timers.Timer(1000) { AutoReset = true };
+        timer.Elapsed += (_, _) => _ = InvokeAsync(TickAsync);
+        timer.Start();
+    }
+
+    private async Task TickAsync()
+    {
+        if (autopilot && !busy)
+        {
+            tick++;
+            if (tick % CallEveryTicks == 0) await CallSecure();
+        }
+        StateHasChanged();
+    }
+
+    private void StopTimer()
+    {
+        if (timer is not null) { timer.Stop(); timer.Dispose(); timer = null; }
+    }
+
+    // ---- helpers ----
+
+    private string Base => Nav.BaseUri.TrimEnd('/');
+
+    private async Task<int> GetSecure(string path, string? bearer)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Get, Base + path);
+        if (bearer is not null) req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+        try { return (int)(await Http.SendAsync(req)).StatusCode; }
+        catch { return 0; }
+    }
+
+    private void CaptureCookie(HttpResponseMessage resp)
+    {
+        var (val, raw) = ExtractRefresh(resp);
+        if (raw is not null) { refreshValue = val; setCookieRaw = raw; }
+    }
+
+    private static (string? value, string? raw) ExtractRefresh(HttpResponseMessage resp)
+    {
+        if (!resp.Headers.TryGetValues("Set-Cookie", out var cookies)) return (null, null);
+        var raw = cookies.FirstOrDefault(c => c.StartsWith($"{RefreshCookieDefaults.Name}="));
+        if (raw is null) return (null, null);
+        var val = raw.Split(';')[0][($"{RefreshCookieDefaults.Name}=").Length..];
+        return (string.IsNullOrEmpty(val) ? null : val, raw);
+    }
+
+    private static string Short(string? token) => token is null ? "----" : token[..Math.Min(6, token.Length)];
+
+    private static DateTime? ExpOf(string? token)
+    {
+        var (_, _, exp) = Decode(token);
+        return exp;
+    }
+
+    private static (string sub, string[] roles, DateTime? exp) Decode(string? token)
+    {
+        if (token is null) return ("", [], null);
+        var parts = token.Split('.');
+        if (parts.Length < 2) return ("", [], null);
+        try
+        {
+            var json = Encoding.UTF8.GetString(Base64UrlDecode(parts[1]));
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var sub = root.TryGetProperty("sub", out var s) ? s.GetString() ?? "" : "";
+            var roles = new List<string>();
+            if (root.TryGetProperty("role", out var r))
+            {
+                if (r.ValueKind == JsonValueKind.Array) roles.AddRange(r.EnumerateArray().Select(e => e.GetString() ?? ""));
+                else if (r.ValueKind == JsonValueKind.String) roles.Add(r.GetString() ?? "");
+            }
+            DateTime? exp = root.TryGetProperty("exp", out var e) && e.TryGetInt64(out var sec)
+                ? DateTimeOffset.FromUnixTimeSeconds(sec).UtcDateTime : null;
+            return (sub, roles.ToArray(), exp);
+        }
+        catch { return ("", [], null); }
+    }
+
+    private static string? Tamper(string? token)
+    {
+        if (token is null) return null;
+        var parts = token.Split('.');
+        if (parts.Length < 2 || parts[1].Length == 0) return token;
+        var p = parts[1].ToCharArray();
+        p[0] = p[0] == 'A' ? 'B' : 'A';
+        parts[1] = new string(p);
+        return string.Join('.', parts);
+    }
+
+    private static byte[] Base64UrlDecode(string s)
+    {
+        s = s.Replace('-', '+').Replace('_', '/');
+        s += (s.Length % 4) switch { 2 => "==", 3 => "=", _ => "" };
+        return Convert.FromBase64String(s);
+    }
+
+    public void Dispose() => StopTimer();
+}

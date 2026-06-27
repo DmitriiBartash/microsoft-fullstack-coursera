@@ -1,0 +1,25 @@
+@host = https://localhost:7150
+
+### Log in — returns an access token in the body, sets the refresh_token HttpOnly cookie
+# @name login
+POST {{host}}/auth/login
+Content-Type: application/json
+
+{ "username": "admin", "password": "password" }
+
+### Call a protected endpoint with the access token
+GET {{host}}/secure
+Authorization: Bearer {{login.response.body.token}}
+
+### Admin-only endpoint (200 for admin, 403 for a User-role token)
+GET {{host}}/secure/admin
+Authorization: Bearer {{login.response.body.token}}
+
+### Refresh — sends the cookie automatically, rotates the refresh token, returns a new access token
+POST {{host}}/auth/refresh
+
+### Log out — revokes the refresh token and clears the cookie
+POST {{host}}/auth/logout
+
+### No token → 401
+GET {{host}}/secure

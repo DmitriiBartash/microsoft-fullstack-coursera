@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="JwtSecurityCore/JwtSecurityCore.csproj" />
+  <Project Path="JwtSecurityStudio/JwtSecurityStudio.csproj" />
+  <Project Path="JwtAuthExample.Tests/JwtAuthExample.Tests.csproj" />
+  <Project Path="JwtAuthExample/JwtAuthExample.csproj" />
+</Solution>

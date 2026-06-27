@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Applying JWT Security Best Practices — Course 8 · Module 2</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* header / create  */
+    --pld: #7b3fe4;      /* payload / decode */
+    --sig: #0a91d8;      /* signature        */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* login / create  */
+  .flow .d { color: #b78bff; }   /* validate / guard */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+  .flow .ok { color: #4ade80; }  /* 200     */
+  .flow .no { color: #fb7185; }  /* 401/403 */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 2 · Lesson 7 · JWT Best Practices
+      <span class="pill">You Try It!</span></p>
+    <h1>Applying JWT Security Best Practices</h1>
+    <p class="lead">
+      Build an ASP.NET Core <strong>Web API</strong> that authenticates with JWTs the way production systems do:
+      a <strong>short-lived access token</strong> carried as a <code>Bearer</code> header, plus a
+      <strong>long-lived refresh token</strong> kept in an <strong>HttpOnly cookie</strong>. When the access
+      token expires the client silently calls <code>/auth/refresh</code>, the server <strong>rotates</strong>
+      the refresh token (single-use, with reuse detection), and the session continues — no re-login, minimal
+      blast radius if a token leaks.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Apply JWT security best practices: keep access tokens short-lived, renew them with
+      <strong>rotating refresh tokens</strong> stored in HttpOnly cookies, sign with a strong key sourced from
+      configuration, and protect endpoints with role-based <code class="inline">[Authorize]</code>. By the end you
+      can log in, ride out access-token expiry via <strong>silent refresh</strong>, and see a stolen/replayed
+      refresh token get rejected.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A Web API project named <code class="inline">JwtAuthExample</code> with these pieces:</p>
+    <table>
+      <thead><tr><th>File</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>appsettings.json</code></td><td><code>JwtSettings</code> — <code>Key</code>, <code>Issuer</code>, <code>Audience</code>, <code>AccessTokenMinutes</code>, <code>RefreshTokenDays</code></td></tr>
+        <tr><td><code>Program.cs</code></td><td>Register JWT Bearer auth; set <code>TokenValidationParameters</code>; <strong>refuse a weak key outside Development</strong>; wire <code>UseAuthentication</code> → <code>UseAuthorization</code></td></tr>
+        <tr><td><code>Models/User.cs</code></td><td>User model — <code>Username</code>, <code>Password</code>, one or more <code>Roles</code></td></tr>
+        <tr><td><code>Services/TokenService.cs</code></td><td>Build &amp; sign a <strong>short-lived access token</strong> with <strong>username + role</strong> claims</td></tr>
+        <tr><td><code>Services/RefreshTokenStore.cs</code></td><td>In-memory refresh tokens with <strong>rotation + reuse detection</strong></td></tr>
+        <tr><td><code>Controllers/AuthController.cs</code></td><td><code>POST /auth/login</code>, <code>POST /auth/refresh</code>, <code>POST /auth/logout</code> (refresh token in an HttpOnly cookie)</td></tr>
+        <tr><td><code>Controllers/SecureController.cs</code></td><td><code>GET /secure</code> (<code>[Authorize]</code>) and <code>GET /secure/admin</code> (<code>[Authorize(Roles="Admin")]</code>)</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">POST /auth/login</span> <span class="ar">→</span>
+      <span class="t">access token (body)</span> <span class="ar">+</span>
+      <span class="t">refresh cookie (HttpOnly)</span> <span class="ar">→</span>
+      <span class="d">GET /secure [Bearer]</span> <span class="ar">→</span>
+      <span class="ok">200</span> <span class="ar">…</span>
+      access expires <span class="ar">→</span>
+      <span class="no">401</span> <span class="ar">→</span>
+      <span class="c">POST /auth/refresh [cookie]</span> <span class="ar">→</span>
+      <span class="d">rotate</span> <span class="ar">→</span>
+      <span class="t">new access token</span> <span class="ar">→</span>
+      <span class="ok">200</span>
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code</li>
+      <li>NuGet packages: <code class="inline">Microsoft.AspNetCore.Authentication.JwtBearer</code>, <code class="inline">System.IdentityModel.Tokens.Jwt</code>, <code class="inline">Microsoft.IdentityModel.Tokens</code></li>
+      <li>A REST client — <strong>Postman</strong> or <code class="inline">curl</code> (a cookie jar helps for the refresh step)</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps <span style="font-size:.7em;color:var(--muted);font-weight:400">· 0 of 6 completed</span></h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the application</h3>
+    <p class="scenario">Scaffold the Web API, move into it, and add the JWT packages.</p>
+<pre class="code">dotnet new webapi -o JwtAuthExample
+cd JwtAuthExample
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+dotnet add package System.IdentityModel.Tokens.Jwt
+dotnet add package Microsoft.IdentityModel.Tokens</pre>
+    <ul class="plain">
+      <li>Remove the default <strong>WeatherForecast</strong> files.</li>
+      <li>Open <code class="inline">Program.cs</code> and <code class="inline">appsettings.json</code>.</li>
+    </ul>
+    <div class="callout"><strong>Pin <code class="inline">JwtBearer</code> to your SDK's major version</strong> (e.g. <code class="inline">--version 8.0.*</code> on .NET 8) so it matches the runtime.</div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Configure JWT authentication</h3>
+    <p class="scenario">Store the settings — note the split lifetimes — then tell the app how to validate tokens.</p>
+    <p>Add a <code class="inline">JwtSettings</code> section to <code class="inline">appsettings.json</code> — note the <strong>split lifetimes</strong>:</p>
+<pre class="code">"JwtSettings": {
+  "Key": "SuperSecretKeyForJwtTokenAuthorization123456789",
+  "Issuer": "JwtAuthExample",
+  "Audience": "JwtAuthExampleUsers",
+  "AccessTokenMinutes": 15,
+  "RefreshTokenDays": 7
+}</pre>
+    <p style="margin:12px 0 0">Then in <code class="inline">Program.cs</code>:</p>
+    <ul class="plain">
+      <li>Register JWT Bearer auth; set <code class="inline">TokenValidationParameters</code> to validate <strong>issuer, audience, lifetime, signing key</strong> with <code class="inline">ClockSkew = TimeSpan.Zero</code>.</li>
+      <li><strong>Map the role claim</strong> (<code class="inline">RoleClaimType</code>) so <code class="inline">[Authorize(Roles = …)]</code> can read roles.</li>
+      <li>The <code class="inline">Key</code> in <code class="inline">appsettings.json</code> is a <strong>development default only</strong> — supply the real one from an environment variable (<code class="inline">JwtSettings__Key</code>) or a secret store. Refuse to start outside Development with a weak/default key.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Implement user authentication</h3>
+    <p class="scenario">Issue a short-lived access token on a valid login.</p>
+    <ul class="plain">
+      <li>Create <code class="inline">TokenService</code> reading <code class="inline">JwtSettings</code>; issue a <strong>short-lived</strong> access token with <strong>username + role</strong> claims, signed HS256.</li>
+      <li>Add <code class="inline">POST /auth/login</code>: validate credentials against the user store; on success return the access token (and its lifetime); on failure return <strong>401</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Add refresh-token functionality</h3>
+    <p class="scenario">Renew access silently from an HttpOnly cookie, and rotate on every use.</p>
+    <ul class="plain">
+      <li>Store refresh tokens in a simple in-memory structure (<code class="inline">RefreshTokenStore</code>): an opaque high-entropy string bound to a user, with an expiry.</li>
+      <li><code class="inline">POST /auth/refresh</code>: read the refresh token <strong>from the cookie</strong>, validate it, and issue a <strong>new access token</strong>.</li>
+      <li>Set the refresh token as a cookie with <code class="inline">HttpOnly</code>, <code class="inline">Secure</code>, <code class="inline">SameSite=Strict</code>, and a path scoped to <code class="inline">/auth</code>.</li>
+      <li><strong>Best practice — rotation:</strong> every refresh <strong>revokes</strong> the presented token and issues a <strong>new</strong> one (single-use). Re-presenting a used token (the signature of a replayed/stolen token) is <strong>reuse</strong>, and revokes the whole token family.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Protect API endpoints</h3>
+    <p class="scenario">Guard endpoints by authentication and role, then verify the guard works.</p>
+    <ul class="plain">
+      <li>Add <code class="inline">SecureController</code>:
+        <ul class="plain">
+          <li><code class="inline">GET /secure</code> → <code class="inline">[Authorize]</code> (any authenticated caller).</li>
+          <li><code class="inline">GET /secure/admin</code> → <code class="inline">[Authorize(Roles = "Admin")]</code> (Admin only).</li>
+        </ul>
+      </li>
+      <li>Confirm: valid token → <strong>200</strong>, no/expired/tampered token → <strong>401</strong>, valid token but wrong role → <strong>403</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">6</span> Test and debug</h3>
+    <p class="scenario">Use <strong>Postman</strong> (or <code>curl</code>) to drive login, protected access, and silent refresh.</p>
+<pre class="code"><span class="cmt"># 1) log in → access token in body, refresh_token set as an HttpOnly cookie (save the cookie jar)</span>
+curl -i -c jar.txt -X POST http://localhost:5000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"password"}'
+
+<span class="cmt"># 2) call a protected route with the access token → 200</span>
+curl http://localhost:5000/secure -H "Authorization: Bearer &lt;token&gt;"
+
+<span class="cmt"># 3) renew with the cookie → new access token, rotated refresh cookie</span>
+curl -i -b jar.txt -c jar.txt -X POST http://localhost:5000/auth/refresh
+
+<span class="cmt"># 4) no token → 401 · valid User token on /secure/admin → 403</span>
+curl -i http://localhost:5000/secure</pre>
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="callout ok">
+    Login returns a <strong>signed, short-lived access token</strong> and sets an <strong>HttpOnly refresh
+    cookie</strong>. A valid access token reaches <code class="inline">/secure</code> with <strong>200</strong>;
+    once it expires, <code class="inline">/secure</code> returns <strong>401</strong>.
+    <code class="inline">POST /auth/refresh</code> with the cookie returns a <strong>fresh access token</strong> and
+    <strong>rotates</strong> the refresh token. Replaying a <strong>rotated-out</strong> refresh token returns
+    <strong>401</strong> (reuse detection); a <strong>wrong-role</strong> token gets <strong>403</strong>.
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code class="inline">JwtAuthExample</code> Web API created; JWT packages added; WeatherForecast removed</li>
+      <li><code class="inline">appsettings.json</code> defines <code class="inline">JwtSettings</code> with split <code class="inline">AccessTokenMinutes</code> / <code class="inline">RefreshTokenDays</code></li>
+      <li><code class="inline">Program.cs</code> registers JWT Bearer auth, validates the token, <strong>maps the role claim</strong>, and guards against a weak key outside Development</li>
+      <li><code class="inline">TokenService</code> issues a short-lived signed token with <strong>username + role</strong> claims</li>
+      <li><code class="inline">RefreshTokenStore</code> stores refresh tokens and <strong>rotates</strong> them with <strong>reuse detection</strong></li>
+      <li><code class="inline">AuthController</code> exposes <code class="inline">login</code> / <code class="inline">refresh</code> / <code class="inline">logout</code>; the refresh token rides in an <strong>HttpOnly, Secure, SameSite=Strict</strong> cookie</li>
+      <li><code class="inline">SecureController</code> endpoints are protected with <code class="inline">[Authorize]</code> / <code class="inline">[Authorize(Roles = …)]</code></li>
+      <li>Verified: access expiry → <strong>401</strong> → refresh → <strong>200</strong>; rotated-token replay → <strong>401</strong>; wrong role → <strong>403</strong></li>
+    </ul>
+  </div>
+
+  <!-- ===================== IMPLEMENTATION NOTES ===================== -->
+  <h2 class="section"><span class="em">🏗️</span> Implementation notes</h2>
+  <div class="card">
+    <p style="margin:0 0 10px">The reference solution is <strong>enriched beyond the literal steps</strong> for
+      teaching and testability. The deviations below are intentional:</p>
+    <ul class="plain">
+      <li><strong>Layering</strong> — <code class="inline">User</code>, <code class="inline">UserStore</code>,
+        <code class="inline">JwtSettings</code>, <code class="inline">TokenService</code> and
+        <code class="inline">RefreshTokenStore</code> live in a shared <code class="inline">JwtSecurityCore</code>
+        class library, so the API, the tests and the Studio reuse one implementation.</li>
+      <li><strong><code class="inline">JwtSecurityStudio</code></strong> — a Blazor "JWT Security Studio" that drives
+        the genuine <code class="inline">JwtBearer</code> handler and the real refresh/cookie endpoints in-process,
+        making the <strong>access/refresh lifecycle</strong> visible: a live dual countdown, an auto-pilot that hits
+        401 on expiry and silently refreshes, the rotation ledger, the captured <code class="inline">Set-Cookie</code>,
+        and attack replays (rotated-token reuse, tampered token, wrong role).</li>
+      <li><strong>Refresh-token rotation + reuse detection</strong> — beyond the literal "issue a new access token",
+        the store makes refresh tokens single-use and revokes the family on reuse, the current OWASP guidance.</li>
+      <li><strong><code class="inline">JwtAuthExample.Tests</code></strong> — xUnit integration tests
+        (<code class="inline">WebApplicationFactory</code>) covering login + cookie, access expiry, refresh,
+        rotation-replay rejection, logout revocation, tampered tokens and RBAC — the in-memory
+        <code class="inline">TestServer</code> stands in for the manual Postman step.</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Short access + long refresh</strong> — a short access-token lifetime limits the damage window if it
+        leaks; the refresh token renews it without forcing re-login. Two tokens, two jobs.</li>
+      <li><strong>HttpOnly cookies</strong> — keeping the refresh token in an <code class="inline">HttpOnly</code> cookie
+        means page scripts (and thus XSS payloads) can't read it via <code class="inline">document.cookie</code>.
+        <code class="inline">Secure</code> keeps it to HTTPS; <code class="inline">SameSite=Strict</code> blocks
+        cross-site sends; scoping the <code class="inline">Path</code> to <code class="inline">/auth</code> means it's
+        only ever sent to the refresh endpoint.</li>
+      <li><strong>Refresh-token rotation</strong> — each refresh consumes the old token and issues a new one. If an old
+        token is ever presented again, that's a sign it was stolen and replayed — revoke the whole family and force a
+        login.</li>
+      <li><strong>401 vs 403</strong> — a missing/expired/tampered token fails <em>authentication</em> →
+        <strong>401</strong>; a valid token without the required role fails <em>authorization</em> →
+        <strong>403</strong>. The 401 is the client's cue to refresh.</li>
+      <li><strong>Protect the secret</strong> — the signing key is a secret: load it from an environment variable /
+        user-secrets / a vault, never source control. HS256 needs a key ≥ 256 bits (32+ bytes); real passwords are
+        stored as salted hashes (bcrypt / Argon2), never plaintext.</li>
+      <li><strong>Middleware order</strong> — <code class="inline">UseAuthentication()</code> must run
+        <strong>before</strong> <code class="inline">UseAuthorization()</code>, or the identity (and roles) isn't
+        established when the authorization check runs.</li>
+    </ul>
+  </div>
+
+</div>
+</body>
+</html>
