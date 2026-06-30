@@ -1,0 +1,220 @@
+@page "/"
+@rendermode InteractiveServer
+@using SecureDataCore.Models
+@inject SecureStorage Storage
+
+<PageTitle>Secure Data Studio</PageTitle>
+
+<div class="studio">
+
+    <section class="intro">
+        <h1>Encrypt at rest, then gate every read by role</h1>
+        <p>Store a secret AES-encrypted in memory, then read it back as different users —
+            <code>StoreData</code> → role check → <code>RetrieveData</code> <span class="muted">/ denied</span>.</p>
+    </section>
+
+    <div class="grid">
+
+        <section class="panel">
+            <h2><span class="dot c"></span> 1 · Store a secret</h2>
+
+            <div class="field">
+                <label>Sensitive data (plaintext)</label>
+                <textarea rows="3" @bind="plaintext" @bind:event="oninput"></textarea>
+            </div>
+
+            <div class="actions">
+                <button class="primary" @onclick="Store" disabled="@string.IsNullOrWhiteSpace(plaintext)">🔐 Encrypt &amp; store</button>
+            </div>
+
+            @if (stored)
+            {
+                <div class="results">
+                    <div class="status ok">
+                        <span class="code">STORED</span>
+                        <span>encrypted in memory — only ciphertext is kept</span>
+                    </div>
+
+                    <h4>At rest — ciphertext (base64)</h4>
+                    <pre class="cipher">@cipherB64</pre>
+                    <p class="hint">First 16 bytes are the random IV; the rest is AES ciphertext. The plaintext is not recoverable from this alone.</p>
+                </div>
+            }
+        </section>
+
+        <section class="panel">
+            <h2><span class="dot d"></span> 2 · Retrieve as a user</h2>
+
+            <div class="field">
+                <label>Username</label>
+                <input @bind="username" @bind:event="oninput" />
+            </div>
+
+            <div class="field">
+                <label>Role</label>
+                <div class="roles">
+                    <button class="role @(role == Roles.Admin ? "on" : "")" @onclick='() => role = Roles.Admin'>👑 Admin</button>
+                    <button class="role @(role == Roles.User ? "on" : "")" @onclick='() => role = Roles.User'>👤 User</button>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="primary" @onclick="Retrieve" disabled="@(!stored)" title="@(stored ? "" : "Store a secret first")">🔓 Retrieve data</button>
+            </div>
+
+            @if (granted is not null)
+            {
+                <div class="results">
+                    <div class="status @(granted == true ? "ok" : "bad")">
+                        <span class="code">@(granted == true ? "GRANTED" : "DENIED")</span>
+                        <span>@(granted == true ? $"decrypted for {username}" : "blocked by role check")</span>
+                    </div>
+                    <pre class="resp @(granted == true ? "ok" : "bad")">@resultText</pre>
+                </div>
+            }
+        </section>
+    </div>
+
+    <section class="hero">
+        <h3>One vault, two outcomes — the role is the only difference</h3>
+        <div class="hero-grid">
+            <div class="hero-card ok">
+                <div class="big">🔓</div>
+                <div class="hero-req">RetrieveData(<b>Admin</b>)</div>
+                <p>Role check passes → the secret is decrypted with the AES key and returned.</p>
+            </div>
+            <div class="hero-card bad">
+                <div class="big">🔒</div>
+                <div class="hero-req">RetrieveData(<b>User</b>)</div>
+                <p><code>UnauthorizedAccessException</code> — the key is never used, the data stays encrypted.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="s-foot">
+        The same <code>SecureStorage</code> class runs here and under <code>dotnet run</code> in
+        <code>SecureDataApp</code> — the Studio just makes the encrypt → authorize → decrypt flow visible.
+    </footer>
+</div>
+
+<style>
+    .studio { max-width: 1140px; margin: 0 auto; padding: 30px 24px 72px; color: #e7ebf2;
+        font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    .intro { margin: 2px 0 6px; }
+    .intro h1 { margin: 0 0 7px; font-size: 1.6rem; font-weight: 800; letter-spacing: -.01em; }
+    .intro p { margin: 0; color: #9aa4b8; font-size: .96rem; max-width: 72ch; }
+    .intro .muted { color: #6b7689; }
+    .intro code, .s-foot code, .hero-card code { background: #1c2330; border: 1px solid #2c3446;
+        border-radius: 5px; padding: 1px 6px; font-size: .85em; color: #c7d0e2;
+        font-family: "SFMono-Regular", Consolas, Menlo, monospace; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 22px; }
+    @@media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+    .panel { background: #141a26; border: 1px solid #232c3d; border-radius: 14px; padding: 20px 22px; }
+    .panel h2 { margin: 0 0 16px; font-size: 1.15rem; display: flex; align-items: center; gap: 10px; }
+    .panel h4 { margin: 18px 0 6px; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: #7c8699; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+    .dot.c { background: #fb015b; }
+    .dot.d { background: #0a91d8; }
+
+    .field { margin: 10px 0; }
+    .field label { display: block; font-size: .78rem; color: #9aa4b8; margin-bottom: 4px; }
+    .field input, .field textarea { width: 100%; background: #0e131d; border: 1px solid #2c3446; color: #e7ebf2;
+        border-radius: 8px; padding: 9px 11px; font-size: .92rem; font-family: inherit; resize: vertical; }
+    .field input:focus, .field textarea:focus { outline: none; border-color: #7b3fe4; box-shadow: 0 0 0 3px rgba(123,63,228,.18); }
+
+    .roles { display: flex; gap: 8px; }
+    .role { flex: 1; background: #0e131d; color: #c7d0e2; border: 1px solid #2c3446; border-radius: 8px;
+        padding: 9px 12px; cursor: pointer; font-size: .9rem; }
+    .role:hover { border-color: #7b3fe4; color: #fff; }
+    .role.on { background: linear-gradient(135deg, #7b3fe4, #fb015b); color: #fff; border-color: transparent; font-weight: 600; }
+
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    button.primary { border-radius: 8px; padding: 9px 14px; font-size: .9rem; cursor: pointer; border: 1px solid transparent;
+        background: linear-gradient(135deg, #7b3fe4, #fb015b); color: #fff; font-weight: 600; }
+    button.primary:disabled { opacity: .45; cursor: not-allowed; }
+
+    .status { display: flex; align-items: center; gap: 10px; margin: 16px 0 4px; padding: 10px 12px;
+        border-radius: 9px; font-size: .9rem; border-left: 4px solid; }
+    .status .code { font-weight: 800; font-family: "SFMono-Regular", Consolas, monospace; }
+    .status.ok { background: rgba(43,182,115,.12); border-color: #2bb673; color: #7ce0ad; }
+    .status.bad { background: rgba(244,63,94,.12); border-color: #f43f5e; color: #ff9bab; }
+
+    .hint { font-size: .8rem; color: #7c8699; margin: 6px 0 0; }
+    pre.cipher, pre.resp { background: #0e131d; border: 1px solid #2c3446; border-radius: 8px; padding: 11px 13px;
+        font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .82rem; white-space: pre-wrap;
+        word-break: break-all; margin: 6px 0; }
+    pre.cipher { color: #b78bff; }
+    pre.resp.ok { border-color: #2bb673; color: #b8f0d4; }
+    pre.resp.bad { border-color: #f43f5e; color: #ffc2cb; }
+
+    .hero { margin-top: 26px; background: #141a26; border: 1px solid #232c3d; border-radius: 14px; padding: 22px; }
+    .hero h3 { margin: 0 0 16px; font-size: 1.1rem; }
+    .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @@media (max-width: 800px) { .hero-grid { grid-template-columns: 1fr; } }
+    .hero-card { border-radius: 12px; padding: 18px; border: 1px solid; }
+    .hero-card.ok { background: rgba(43,182,115,.08); border-color: #2bb673; }
+    .hero-card.bad { background: rgba(244,63,94,.08); border-color: #f43f5e; }
+    .hero-card .big { font-size: 2.4rem; }
+    .hero-req { font-family: "SFMono-Regular", Consolas, monospace; font-size: .82rem; color: #c7d0e2; margin: 6px 0 10px; }
+    .hero-card p { margin: 0; font-size: .86rem; color: #9aa4b8; }
+
+    .s-foot { margin-top: 26px; padding-top: 16px; border-top: 1px solid #232c3d; color: #7c8699; font-size: .82rem; }
+
+    @@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @@keyframes revealIn { from { opacity: 0; max-height: 0; transform: translateY(-6px); } to { opacity: 1; max-height: 720px; transform: none; } }
+    .intro { animation: fadeInUp .4s ease both; }
+    .grid .panel:first-child { animation: fadeInUp .45s ease both .12s; }
+    .grid .panel:last-child  { animation: fadeInUp .45s ease both .20s; }
+    .hero { animation: fadeInUp .45s ease both .28s; }
+    .s-foot { animation: fadeInUp .45s ease both .34s; }
+    .results { overflow: hidden; animation: revealIn .34s ease both; }
+    button.primary, .role { transition: transform .12s ease, filter .12s ease, border-color .15s ease, color .15s ease, background .15s ease; }
+    button.primary:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+    button.primary:active:not(:disabled) { transform: translateY(0) scale(.98); }
+    .role:hover { transform: translateY(-1px); }
+    .hero-card { transition: transform .2s ease, box-shadow .2s ease; }
+    .hero-card:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(0,0,0,.28); }
+    .panel { transition: border-color .2s ease, box-shadow .2s ease; }
+    .panel:hover { border-color: #2c3850; box-shadow: 0 14px 32px rgba(0,0,0,.30); }
+    @@media (prefers-reduced-motion: reduce) { .studio, .studio * { animation: none !important; transition: none !important; } }
+</style>
+
+@code {
+    private string plaintext = "Customer SSN: 123-45-6789";
+    private bool stored;
+    private string cipherB64 = "";
+
+    private string username = "bob";
+    private string role = Roles.User;
+
+    private bool? granted;
+    private string resultText = "";
+
+    private void Store()
+    {
+        if (string.IsNullOrWhiteSpace(plaintext)) return;
+        Storage.StoreData(plaintext);
+        cipherB64 = Convert.ToBase64String(Storage.GetEncryptedBytes());
+        stored = true;
+        granted = null;
+        resultText = "";
+    }
+
+    private void Retrieve()
+    {
+        if (!stored) return;
+        var user = new User(username, role);
+        try
+        {
+            resultText = Storage.RetrieveData(user);
+            granted = true;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            resultText = ex.Message;
+            granted = false;
+        }
+    }
+}

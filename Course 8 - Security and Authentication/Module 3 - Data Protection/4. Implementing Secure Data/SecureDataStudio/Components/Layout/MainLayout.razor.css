@@ -1,0 +1,49 @@
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+
+.appbar {
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(10, 14, 22, .72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid #1c2433;
+}
+
+.appbar-inner {
+    max-width: 1140px; margin: 0 auto; padding: 13px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+
+.brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; color: #e7ebf2; }
+.brand:hover { text-decoration: none; }
+.brand-mark {
+    font-size: 1.1rem; width: 34px; height: 34px; border-radius: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #7b3fe4, #fb015b);
+    box-shadow: 0 4px 14px rgba(123, 63, 228, .35);
+}
+.brand-text { font-size: 1.18rem; font-weight: 800; letter-spacing: .01em; }
+.brand .accent { color: #fb015b; }
+
+.appbar-meta { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chip {
+    font-size: .73rem; font-weight: 600; letter-spacing: .02em; color: #c7d0e2;
+    background: #161d2b; border: 1px solid #283246; border-radius: 20px; padding: 4px 11px;
+}
+.chip.k { color: #c9b3ff; border-color: #3a2d63; background: #1a1530; }
+.crumbtag { font-size: .76rem; color: #6b7689; padding-left: 4px; }
+
+.app-main { flex: 1 0 auto; width: 100%; }
+
+@media (max-width: 720px) {
+    .crumbtag { display: none; }
+    .appbar-inner { padding: 11px 16px; }
+    .brand-text { font-size: 1.05rem; }
+}
+
+#blazor-error-ui {
+    background: #2a1722; color: #ffc2cb; border-top: 1px solid #f43f5e;
+    bottom: 0; box-sizing: border-box; display: none; left: 0;
+    padding: 0.7rem 1.25rem; position: fixed; width: 100%; z-index: 1000;
+}
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: 0.75rem; top: 0.6rem; }
+#blazor-error-ui .reload { color: #ff9bab; }

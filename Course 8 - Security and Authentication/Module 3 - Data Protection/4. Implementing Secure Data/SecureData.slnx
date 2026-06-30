@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="SecureDataApp/SecureDataApp.csproj" />
+  <Project Path="SecureDataCore.Tests/SecureDataCore.Tests.csproj" />
+  <Project Path="SecureDataCore/SecureDataCore.csproj" />
+  <Project Path="SecureDataStudio/SecureDataStudio.csproj" />
+</Solution>

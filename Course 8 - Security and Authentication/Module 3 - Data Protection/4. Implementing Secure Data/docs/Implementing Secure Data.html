@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Implementing Secure Data Storage — Course 8 · Module 3</title>
+<style>
+  :root {
+    --hdr: #fb015b;      /* encrypt / store  */
+    --pld: #7b3fe4;      /* decrypt / read   */
+    --sig: #0a91d8;      /* accent           */
+    --ink: #1c2330;
+    --muted: #5b6573;
+    --line: #e4e8ee;
+    --card: #ffffff;
+    --bg: #eef1f6;
+    --warn-bg: #fff7e6;
+    --warn-br: #f0b429;
+    --ok-bg: #eafaf1;
+    --ok-br: #2bb673;
+    --code-bg: #f4f6f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 40px 20px 80px; }
+  header.page {
+    background: linear-gradient(135deg, #2b2f49 0%, #1c2330 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 32px 36px;
+    box-shadow: 0 10px 30px rgba(28, 35, 48, .25);
+  }
+  header.page .crumb {
+    font-size: .82rem; letter-spacing: .04em; text-transform: uppercase;
+    color: #aeb6d6; margin: 0 0 8px;
+  }
+  header.page .crumb .pill {
+    display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 20px;
+    background: rgba(255,255,255,.12); color: #fff; letter-spacing: .02em;
+  }
+  header.page h1 { margin: 0; font-size: 2rem; }
+  header.page .lead {
+    margin: 14px 0 0; color: #d6dbef; font-size: .98rem;
+    border-left: 3px solid #4b5280; padding-left: 14px;
+  }
+  header.page .lead code { color: #fff; }
+
+  h2.section {
+    margin: 48px 0 18px; font-size: 1.5rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2.section .em { font-size: 1.4rem; }
+  h3 { margin: 0 0 14px; font-size: 1.2rem; display: flex; align-items: center; }
+  h4 { margin: 22px 0 8px; font-size: 1rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin: 18px 0;
+    box-shadow: 0 2px 10px rgba(28,35,48,.04);
+  }
+  .scenario { color: var(--muted); margin: 0 0 14px; }
+  p { margin: 0 0 12px; }
+
+  /* numbered step badge */
+  .step-badge {
+    flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--pld), var(--hdr));
+    color: #fff; font-size: .95rem; font-weight: 700; margin-right: 12px;
+    box-shadow: 0 3px 8px rgba(123,63,228,.3);
+  }
+
+  /* flow line */
+  .flow {
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    background: #11161f; color: #e7ebf2; border-radius: 10px;
+    padding: 14px 18px; margin: 4px 0 0; word-break: break-word; line-height: 1.8;
+  }
+  .flow .c { color: #ff5c93; }   /* encrypt */
+  .flow .d { color: #b78bff; }   /* decrypt */
+  .flow .t { color: #43c4f5; }   /* token   */
+  .flow .ar { color: #6b7280; }  /* arrows  */
+
+  pre.code {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9rem;
+    margin: 10px 0; white-space: pre;
+  }
+  pre.code .cmt { color: var(--muted); }
+  code.inline {
+    background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 5px; padding: 1px 6px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #f7f9fc; font-weight: 600; }
+  td code, th code { font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: .9em; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    border-radius: 10px; padding: 14px 18px; margin: 16px 0;
+    border-left: 4px solid var(--warn-br); background: var(--warn-bg);
+    font-size: .92rem;
+  }
+  .callout.ok { border-left-color: var(--ok-br); background: var(--ok-bg); }
+  .callout.ok::before { content: "▶️ "; }
+  .callout strong { color: #9a6700; }
+  .callout.ok strong { color: #1d8a57; }
+
+  ul.plain { margin: 8px 0; padding-left: 22px; }
+  ul.plain li { margin: 6px 0; }
+
+  /* definition-of-done checklist */
+  ul.checklist { padding-left: 0; list-style: none; margin: 6px 0; }
+  ul.checklist li { padding: 8px 0 8px 32px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.checklist li:last-child { border-bottom: none; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 2px; top: 6px;
+    font-size: 1.15rem; color: var(--sig);
+  }
+
+  ul.takeaways { padding-left: 0; list-style: none; margin: 0; }
+  ul.takeaways li { padding: 8px 0 8px 28px; position: relative; border-bottom: 1px dashed var(--line); }
+  ul.takeaways li:last-child { border-bottom: none; }
+  ul.takeaways li::before { content: "🔑"; position: absolute; left: 0; top: 8px; }
+
+  img.shot {
+    max-width: 100%; border-radius: 12px; border: 1px solid var(--line);
+    margin: 14px 0 4px; box-shadow: 0 6px 18px rgba(28,35,48,.12); display: block;
+  }
+  .caption { color: var(--muted); font-size: .82rem; margin: 0 0 4px; }
+
+  footer.note { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    header.page { padding: 24px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <p class="crumb">Course 8 — Security &amp; Authentication · Module 3 · Lesson 4
+      <span class="pill">You Try It!</span></p>
+    <h1>Implementing Secure Data Storage</h1>
+    <p class="lead">
+      Store sensitive data <strong>encrypted at rest</strong> with <strong>AES</strong>, then gate every
+      read behind a <strong>role check</strong> so only an <code>Admin</code> can decrypt it. The crypto and
+      authorization logic live in one reusable <code>SecureStorage</code> class, exercised three ways: a
+      console demo, an xUnit test suite, and an interactive Blazor <strong>Studio</strong>.
+    </p>
+  </header>
+
+  <!-- ===================== OBJECTIVE ===================== -->
+  <h2 class="section"><span class="em">🎯</span> Objective</h2>
+  <div class="card">
+    <p style="margin:0">Implement secure data storage techniques: <strong>encrypt</strong> data before it sits
+      in memory, <strong>authorize</strong> retrieval by user role, and <strong>test</strong> that both hold.
+      You use the <code class="inline">System.Security.Cryptography</code> <strong>AES</strong> primitives, model
+      users with roles, and prove — with output, tests, and a live UI — that data is unreadable at rest and that
+      access is denied without the right role.</p>
+  </div>
+
+  <!-- ===================== WHAT YOU'LL BUILD ===================== -->
+  <h2 class="section"><span class="em">🗂️</span> What you'll build</h2>
+  <div class="card">
+    <p>A solution named <code class="inline">SecureData</code> with four projects that share one piece of logic:</p>
+    <table>
+      <thead><tr><th>Project</th><th>Type</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td><code>SecureDataCore</code></td><td>class library</td><td><code>User</code> + <code>Roles</code> and <code>SecureStorage</code> (AES + role gate)</td></tr>
+        <tr><td><code>SecureDataApp</code></td><td>console</td><td>The literal lab: two users, <code>StoreData</code>/<code>RetrieveData</code>, logged output</td></tr>
+        <tr><td><code>SecureDataCore.Tests</code></td><td>xUnit</td><td>Round-trip, "encrypted at rest", Admin-allowed, non-Admin-denied</td></tr>
+        <tr><td><code>SecureDataStudio</code></td><td>Blazor Server</td><td>Interactive: type data → see ciphertext → toggle role → granted/denied</td></tr>
+      </tbody>
+    </table>
+    <h4>Flow</h4>
+    <div class="flow">
+      <span class="c">StoreData(plaintext)</span> <span class="ar">→</span>
+      <span class="c">AES encrypt (random IV)</span> <span class="ar">→</span>
+      <span class="t">ciphertext in memory</span> <span class="ar">→</span>
+      <span class="d">RetrieveData(user)</span> <span class="ar">→</span>
+      <span class="ar">role == Admin ?</span> <span class="d">decrypt</span> <span class="ar">:</span> <span class="c">denied</span>
+    </div>
+    <div class="callout">
+      <strong>Why one <code>SecureStorage</code>, not a copy per app?</strong> The task names
+      <code>Models/User.cs</code> and <code>Models/DataStorage.cs</code>. Here those files live once in
+      <code>SecureDataCore</code>, and the console, tests, and Studio all reference it — the same separation of
+      concerns the encryption lesson teaches, with no duplicated cryptography.
+    </div>
+  </div>
+
+  <!-- ===================== PREREQUISITES ===================== -->
+  <h2 class="section"><span class="em">✅</span> Prerequisites</h2>
+  <div class="card">
+    <ul class="plain">
+      <li>.NET SDK installed — check with <code class="inline">dotnet --version</code></li>
+      <li>Visual Studio Code with the C# Dev Kit</li>
+      <li>A terminal open at the folder where you want the solution</li>
+    </ul>
+  </div>
+
+  <!-- ===================== STEPS ===================== -->
+  <h2 class="section"><span class="em">🛠️</span> Steps</h2>
+
+  <div class="card">
+    <h3><span class="step-badge">1</span> Prepare the solution</h3>
+    <p class="scenario">Scaffold a solution with the four projects, wire the references, and confirm a green build.</p>
+<pre class="code">dotnet new sln -n SecureData
+dotnet new classlib -n SecureDataCore   -o SecureDataCore
+dotnet new console  -n SecureDataApp    -o SecureDataApp
+dotnet new xunit    -n SecureDataCore.Tests -o SecureDataCore.Tests
+dotnet new blazor   -n SecureDataStudio -o SecureDataStudio --interactivity Server
+
+dotnet sln SecureData.slnx add SecureDataCore SecureDataApp SecureDataCore.Tests SecureDataStudio
+dotnet add SecureDataApp        reference SecureDataCore
+dotnet add SecureDataStudio     reference SecureDataCore
+dotnet add SecureDataCore.Tests reference SecureDataCore
+
+dotnet build</pre>
+    <div class="callout">
+      <strong>Note:</strong> on .NET 9+ <code>dotnet new sln</code> creates the XML-based
+      <code>SecureData.slnx</code>, so add projects to that file.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">2</span> Encrypt stored data</h3>
+    <p class="scenario">In <code class="inline">SecureDataCore</code>, create <code class="inline">Models/DataStorage.cs</code>
+      with a <code>SecureStorage</code> class. It encrypts plaintext with a symmetric <strong>AES</strong> key, keeps only
+      the ciphertext in memory, and generates a fresh <strong>IV</strong> per encryption (prepended to the ciphertext).</p>
+<pre class="code">using System.Security.Cryptography;
+using System.Text;
+
+namespace SecureDataCore.Models;
+
+public sealed class SecureStorage
+{
+    private readonly byte[] _key;
+    private byte[]? _encrypted;
+
+    public SecureStorage(byte[] key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        if (key.Length is not (16 or 24 or 32))
+            throw new ArgumentException("AES key must be 16, 24, or 32 bytes.", nameof(key));
+        _key = key;
+    }
+
+    public bool HasData =&gt; _encrypted is not null;
+
+    public void StoreData(string plaintext)
+    {
+        ArgumentNullException.ThrowIfNull(plaintext);
+        _encrypted = Encrypt(Encoding.UTF8.GetBytes(plaintext));
+    }
+
+    <span class="cmt">// Raw bytes held at rest (IV + ciphertext) for proof/inspection; never decrypts.</span>
+    public byte[] GetEncryptedBytes()
+        =&gt; _encrypted is null
+            ? throw new InvalidOperationException("No data has been stored yet.")
+            : (byte[])_encrypted.Clone();
+
+    <span class="cmt">// Fresh random IV per call, prepended to the ciphertext.</span>
+    private byte[] Encrypt(byte[] plainData)
+    {
+        using var aes = Aes.Create();
+        aes.Key = _key;
+        aes.GenerateIV();
+
+        using var encryptor = aes.CreateEncryptor();
+        var cipher = encryptor.TransformFinalBlock(plainData, 0, plainData.Length);
+
+        var result = new byte[aes.IV.Length + cipher.Length];
+        Buffer.BlockCopy(aes.IV, 0, result, 0, aes.IV.Length);
+        Buffer.BlockCopy(cipher, 0, result, aes.IV.Length, cipher.Length);
+        return result;
+    }
+
+    <span class="cmt">// Reads the IV back off the front, then decrypts the remainder.</span>
+    private byte[] Decrypt(byte[] ivAndCipher)
+    {
+        using var aes = Aes.Create();
+        aes.Key = _key;
+
+        var iv = new byte[aes.BlockSize / 8];
+        var cipher = new byte[ivAndCipher.Length - iv.Length];
+        Buffer.BlockCopy(ivAndCipher, 0, iv, 0, iv.Length);
+        Buffer.BlockCopy(ivAndCipher, iv.Length, cipher, 0, cipher.Length);
+        aes.IV = iv;
+
+        using var decryptor = aes.CreateDecryptor();
+        return decryptor.TransformFinalBlock(cipher, 0, cipher.Length);
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">3</span> Configure access controls</h3>
+    <p class="scenario">In <code class="inline">Models/User.cs</code>, model who is asking and in what role. Then add the
+      role gate to <code>RetrieveData</code>: only an <code>Admin</code> may decrypt; anyone else gets an
+      <code>UnauthorizedAccessException</code> and the data stays encrypted.</p>
+<pre class="code">namespace SecureDataCore.Models;
+
+public sealed class User(string username, string role)
+{
+    public string Username { get; } = username;
+    public string Role { get; } = role;
+}
+
+<span class="cmt">// Named role constants keep authorization checks free of magic strings.</span>
+public static class Roles
+{
+    public const string Admin = "Admin";
+    public const string User = "User";
+}</pre>
+    <p>Add the gated read to <code>SecureStorage</code> — it decrypts <em>only after</em> the role check passes:</p>
+<pre class="code">public string RetrieveData(User user)
+{
+    ArgumentNullException.ThrowIfNull(user);
+    if (_encrypted is null)
+        throw new InvalidOperationException("No data has been stored yet.");
+    if (!string.Equals(user.Role, Roles.Admin, StringComparison.Ordinal))
+        throw new UnauthorizedAccessException(
+            $"Access denied for '{user.Username}' (role '{user.Role}'). Admin role required.");
+
+    return Encoding.UTF8.GetString(Decrypt(_encrypted));
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">4</span> Test secure storage</h3>
+    <p class="scenario">Write the tests first (TDD). Prove the four behaviours that matter: the round trip, that bytes
+      at rest are ciphertext, that an Admin is allowed, and that a non-Admin is denied.</p>
+<pre class="code">using System.Security.Cryptography;
+using System.Text;
+using SecureDataCore.Models;
+
+public class SecureStorageTests
+{
+    private static byte[] TestKey() =&gt; SHA256.HashData("unit-test-key"u8.ToArray());
+    private static User Admin()   =&gt; new("root",  Roles.Admin);
+    private static User Regular() =&gt; new("guest", Roles.User);
+
+    [Fact]
+    public void Admin_can_store_then_retrieve_the_original_plaintext()
+    {
+        var storage = new SecureStorage(TestKey());
+        storage.StoreData("Top secret: launch codes 0000");
+        Assert.Equal("Top secret: launch codes 0000", storage.RetrieveData(Admin()));
+    }
+
+    [Fact]
+    public void Stored_bytes_are_ciphertext_not_the_plaintext()
+    {
+        var storage = new SecureStorage(TestKey());
+        storage.StoreData("Sensitive PII: 123-45-6789");
+        var atRest = Encoding.UTF8.GetString(storage.GetEncryptedBytes());
+        Assert.DoesNotContain("Sensitive PII", atRest);
+    }
+
+    [Fact]
+    public void Non_admin_retrieval_is_denied()
+    {
+        var storage = new SecureStorage(TestKey());
+        storage.StoreData("Top secret");
+        Assert.Throws&lt;UnauthorizedAccessException&gt;(() =&gt; storage.RetrieveData(Regular()));
+    }
+
+    [Fact]
+    public void Same_plaintext_produces_different_ciphertext_due_to_random_iv()
+    {
+        var a = new SecureStorage(TestKey()); a.StoreData("same input");
+        var b = new SecureStorage(TestKey()); b.StoreData("same input");
+        Assert.NotEqual(a.GetEncryptedBytes(), b.GetEncryptedBytes());
+    }
+}</pre>
+<pre class="code">dotnet test</pre>
+    <p>Then drive the same class from the console (<code class="inline">SecureDataApp/Program.cs</code>). The key comes
+      from <code class="inline">appsettings.json</code> (<code>Encryption:Key</code>, a base64 32-byte AES-256 key) —
+      never hard-coded.</p>
+<pre class="code">using Microsoft.Extensions.Configuration;
+using SecureDataCore.Models;
+
+var config = new ConfigurationBuilder()
+    .SetBasePath(AppContext.BaseDirectory)
+    .AddJsonFile("appsettings.json", optional: false)
+    .Build();
+
+var storage = new SecureStorage(Convert.FromBase64String(config["Encryption:Key"]!));
+
+var admin   = new User("alice", Roles.Admin);
+var regular = new User("bob",   Roles.User);
+
+storage.StoreData("Customer SSN: 123-45-6789");
+Console.WriteLine($"At rest (base64) : {Convert.ToBase64String(storage.GetEncryptedBytes())}");
+
+TryRetrieve(admin);
+TryRetrieve(regular);
+
+void TryRetrieve(User user)
+{
+    Console.Write($"{user.Username} (role '{user.Role}') -&gt; ");
+    try   { Console.WriteLine($"GRANTED: \"{storage.RetrieveData(user)}\""); }
+    catch (UnauthorizedAccessException ex) { Console.WriteLine($"DENIED: {ex.Message}"); }
+}</pre>
+  </div>
+
+  <div class="card">
+    <h3><span class="step-badge">5</span> Make it interactive (Studio)</h3>
+    <p class="scenario">Register <code>SecureStorage</code> for DI in <code class="inline">SecureDataStudio/Program.cs</code>
+      (scoped = one vault per browser circuit), seeded with the configured key.</p>
+<pre class="code">builder.Services.AddScoped(sp =&gt;
+{
+    var key = sp.GetRequiredService&lt;IConfiguration&gt;()["Encryption:Key"]
+        ?? throw new InvalidOperationException("Encryption:Key is not configured.");
+    return new SecureStorage(Convert.FromBase64String(key));
+});</pre>
+    <p>In <code class="inline">Components/Pages/Home.razor</code>, mark the page <code>@rendermode InteractiveServer</code>,
+      <code>@inject SecureStorage</code>, and wire two buttons: <strong>Encrypt &amp; store</strong> (shows the ciphertext)
+      and <strong>Retrieve data</strong> (decrypts for an Admin, shows <code>DENIED</code> for a User). Run it:</p>
+<pre class="code"><span class="cmt"># Blazor dev run: Development environment + http profile</span>
+ASPNETCORE_ENVIRONMENT=Development dotnet run --project SecureDataStudio --urls http://localhost:5247</pre>
+    <p class="caption">SecureDataStudio — Admin retrieval granted; a User is denied. Same <code>SecureStorage</code> as the console.</p>
+    <img class="shot" src="assets/secure-data-studio-granted.png" alt="Secure Data Studio showing stored ciphertext and an Admin-granted decryption" />
+  </div>
+
+  <!-- ===================== EXPECTED RESULT ===================== -->
+  <h2 class="section"><span class="em">▶️</span> Expected result</h2>
+  <div class="card">
+    <p>Running the console prints unreadable ciphertext for the stored secret, then <strong>grants</strong> the Admin and
+      <strong>denies</strong> the regular user:</p>
+<pre class="code">=== Secure Data Storage demo ===
+
+Stored plaintext : Customer SSN: 123-45-6789
+At rest (base64) : m6LXytPGZuqxuODLLlSHvhTGOc2EEyqJlOSYf/jKVc1rQXEn9Cf8zVFaBpu1hmCS
+  -&gt; the bytes above are ciphertext (IV + AES); plaintext is not recoverable from them alone.
+
+alice (role 'Admin') requests the data -&gt; GRANTED: "Customer SSN: 123-45-6789"
+bob (role 'User') requests the data -&gt; DENIED: Access denied for 'bob' (role 'User'). Admin role required.</pre>
+    <div class="callout ok">
+      <strong>Green across the board:</strong> <code>dotnet test</code> passes, the console shows ciphertext at rest plus
+      a granted Admin read and a denied User read, and the Studio shows the same two outcomes live.
+    </div>
+  </div>
+
+  <!-- ===================== DEFINITION OF DONE ===================== -->
+  <h2 class="section"><span class="em">☑️</span> Definition of done</h2>
+  <div class="card">
+    <ul class="checklist">
+      <li><code>SecureData</code> solution with four projects builds clean (<code>dotnet build</code>)</li>
+      <li><code>SecureStorage</code> encrypts data with a symmetric <strong>AES</strong> key and a fresh <strong>IV</strong> per call</li>
+      <li>Data held in memory is ciphertext — the plaintext is not present in the raw bytes</li>
+      <li><code>RetrieveData</code> returns the original only for an <code>Admin</code>; others get <code>UnauthorizedAccessException</code></li>
+      <li>xUnit tests cover round-trip, "encrypted at rest", Admin-allowed, and non-Admin-denied — all green</li>
+      <li>The console logs ciphertext at rest, a granted Admin read, and a denied User read</li>
+      <li>The AES key is loaded from configuration, never hard-coded in source</li>
+    </ul>
+  </div>
+
+  <!-- ===================== KEY CONCEPTS ===================== -->
+  <h2 class="section"><span class="em">🔑</span> Key concepts</h2>
+  <div class="card">
+    <ul class="takeaways">
+      <li><strong>Symmetric encryption (AES)</strong> — the <em>same</em> key encrypts and decrypts. <code>Aes.Create()</code>
+        gives a vetted, hardware-accelerated implementation; never roll your own cipher.</li>
+      <li><strong>The IV is not secret, but must be unique</strong> — a fresh initialization vector per encryption (stored at
+        the front of the ciphertext) means the <em>same</em> plaintext encrypts to <em>different</em> bytes each time. That is
+        why <code>Same_plaintext_produces_different_ciphertext</code> passes — and why reusing an IV leaks information.</li>
+      <li><strong>Access control sits on top of crypto</strong> — <code>RetrieveData</code> checks the role <em>before</em> it
+        ever touches the key. A denied caller never triggers a decryption, so the secret stays encrypted.</li>
+      <li><strong>Separation of concerns</strong> — cryptography and authorization live in <code>SecureStorage</code>; the
+        console, tests, and Studio only orchestrate it. One place to audit, one place to fix.</li>
+      <li><strong>Honest caveat — role strings vs. real authorization.</strong> Comparing <code>Role == "Admin"</code> is fine
+        for a teaching demo, but production ASP.NET Core uses <strong>claims/policy-based authorization</strong>
+        (<code>[Authorize(Roles = "Admin")]</code>, policies, requirements) — see Module 1 (Roles and Claims) and Module 2.
+        The <code>Roles</code> constants here at least keep the magic string in one place.</li>
+      <li><strong>Honest caveat — "at rest" in one process.</strong> Encrypting an in-memory value inside a single console app
+        does not truly protect it: the key lives in the same process. Real <em>data at rest</em> means encrypting the
+        disk/database and holding the key in a <strong>key vault</strong> with rotation. The value of this lab is the
+        <em>technique</em> — AES usage, IV handling, and layering access control over encryption.</li>
+    </ul>
+  </div>
+
+  <footer class="note">
+    Course 8 — Security &amp; Authentication · Module 3 · Lesson 4 · Implementing Secure Data Storage.
+    The same <code>SecureStorage</code> runs in <code>SecureDataApp</code> (console), <code>SecureDataCore.Tests</code>
+    (xUnit), and <code>SecureDataStudio</code> (Blazor) — encrypt → authorize → decrypt, made visible.
+  </footer>
+
+</div>
+</body>
+</html>

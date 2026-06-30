@@ -1,0 +1,53 @@
+:root {
+    --bg: #0a0e16;
+    --panel: #141a26;
+    --border: #232c3d;
+    --ink: #e7ebf2;
+    --muted: #9aa4b8;
+    --faint: #6b7689;
+    --pink: #fb015b;
+    --purple: #7b3fe4;
+    --blue: #0a91d8;
+    --ok: #2bb673;
+    --bad: #f43f5e;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+body {
+    min-height: 100vh;
+    background:
+        radial-gradient(1100px 480px at 80% -10%, rgba(123, 63, 228, .18), transparent 60%),
+        radial-gradient(900px 420px at 10% 0%, rgba(251, 1, 91, .10), transparent 55%),
+        var(--bg);
+    background-attachment: fixed;
+}
+
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1:focus { outline: none; }
+
+/* slim dark scrollbar */
+* { scrollbar-width: thin; scrollbar-color: #2a3346 transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #2a3346; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: #38435c; background-clip: content-box; }
+
+/* framework form validation */
+.valid.modified:not([type=checkbox]) { outline: 1px solid var(--ok); }
+.invalid { outline: 1px solid var(--bad); }
+.validation-message { color: var(--bad); }
+
+/* Blazor error boundary */
+.blazor-error-boundary { background: #b32121; padding: 1rem; color: #fff; border-radius: 8px; }
+.blazor-error-boundary::after { content: "An error has occurred."; }
